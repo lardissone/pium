@@ -12,6 +12,9 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
+    # Every target needs one: the XCUITest runner cannot be code signed without
+    # it, and an unsigned runner is rejected at launch as "damaged".
+    GENERATE_INFOPLIST_FILE: YES
     # No App Sandbox: Pium must run local tools, read ~/.config, and search
     # user files. Omitting CODE_SIGN_ENTITLEMENTS entirely is what makes this
     # true — there is no entitlements file to remove.
@@ -26,7 +29,6 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.pium.Pium
-        GENERATE_INFOPLIST_FILE: YES
         # Menubar agent: no Dock icon, no default main window.
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 Leandro Ardissone. MIT licensed."
