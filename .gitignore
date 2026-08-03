@@ -1,0 +1,12 @@
+.DS_Store
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.xcscmblueprint
+*.xccheckout
+.swiftpm/
+
+# Generated from project.yml by XcodeGen. Edit project.yml, not this.
+Pium.xcodeproj/

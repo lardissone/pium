@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_26.app
+
+      - name: Show toolchain
+        run: xcodebuild -version && swift --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      # PiumUITests is skipped on purpose: XCUITest needs a real GUI session,
+      # and Pium additionally needs a registered global hotkey and a floating
+      # panel. Those run locally. Do not re-enable this without confirming the
+      # runner actually passes.
+      - name: Build Debug and run tests
+        run: |
+          xcodebuild test \
+            -project Pium.xcodeproj \
+            -scheme Pium \
+            -destination 'platform=macOS' \
+            -skip-testing:PiumUITests \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Build Release
+        run: |
+          xcodebuild build \
+            -project Pium.xcodeproj \
+            -scheme Pium \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO
