@@ -15,11 +15,13 @@ enum Tokens {
 
     enum Radius {
         static let panel: CGFloat = 14
+        static let row: CGFloat = 8
     }
 
     enum Size {
         static let panelWidth: CGFloat = 680
         static let searchFieldHeight: CGFloat = 56
+        static let resultRowHeight: CGFloat = 44
         /// Cap for the expanded result list, applied from Phase 2 onward.
         static let maxResultListHeight: CGFloat = 420
     }
