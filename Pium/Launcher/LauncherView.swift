@@ -8,7 +8,6 @@ struct LauncherView: View {
     let onQueryChanged: (String) -> Void
     let onActivate: (SearchResult) -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var isQueryFocused: Bool
 
     var body: some View {
@@ -21,10 +20,10 @@ struct LauncherView: View {
         }
         .frame(width: Tokens.Size.panelWidth)
         .background(.regularMaterial, in: .rect(cornerRadius: Tokens.Radius.panel))
-        .animation(
-            reduceMotion ? nil : .easeOut(duration: 0.12),
-            value: state.results.isEmpty
-        )
+        // Pinned to the top: the panel is resized in one step by AppKit, and
+        // without this the hosting view centres the content vertically, so the
+        // search field slides while the two heights disagree.
+        .frame(maxHeight: .infinity, alignment: .top)
         // Not `onAppear`: the panel is hidden rather than destroyed, so the
         // view stays mounted and only the first opening would be reset.
         .onChange(of: state.presentationToken, initial: true) {

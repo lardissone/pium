@@ -14,7 +14,12 @@ struct ResultListView: View {
                         ResultRowView(result: result, isSelected: result.id == state.selectedID)
                             .id(result.id)
                             .onTapGesture(count: 2) { onActivate(result) }
-                            .onTapGesture { state.select(id: result.id) }
+                            // Simultaneous, not chained: a plain second
+                            // `onTapGesture` would wait out the double-click
+                            // window before selecting, which reads as a hang.
+                            .simultaneousGesture(
+                                TapGesture().onEnded { state.select(id: result.id) }
+                            )
                     }
                 }
                 .padding(.vertical, Tokens.Spacing.tight)
