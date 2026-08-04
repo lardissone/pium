@@ -82,17 +82,23 @@ struct GlobalHotkeyControllerTests {
         #expect(controller.registeredShortcut == Self.unclaimed)
     }
 
-    /// The system rejects a combination another application already owns, and
-    /// that rejection must surface rather than be swallowed. The host
-    /// application registers the launcher shortcut at launch, which makes it a
-    /// reliable source of a real conflict.
-    @Test func aShortcutAlreadyOwnedBySomeoneElseIsReportedAsRejected() {
-        let controller = GlobalHotkeyController()
-        defer { controller.unregister() }
+    /// The system rejects a combination someone else already owns, and that
+    /// rejection must surface rather than be swallowed.
+    ///
+    /// The conflict is created here rather than relying on the shortcut the
+    /// host application registers at launch, because that one is whatever the
+    /// developer last saved in Settings.
+    @Test func aShortcutAlreadyOwnedBySomeoneElseIsReportedAsRejected() throws {
+        let owner = GlobalHotkeyController()
+        defer { owner.unregister() }
+        try owner.register(Self.unclaimed) {}
+
+        let contender = GlobalHotkeyController()
+        defer { contender.unregister() }
 
         #expect(throws: GlobalHotkeyController.RegistrationError.self) {
-            try controller.register(.optionSpace) {}
+            try contender.register(Self.unclaimed) {}
         }
-        #expect(controller.registeredShortcut == nil)
+        #expect(contender.registeredShortcut == nil)
     }
 }

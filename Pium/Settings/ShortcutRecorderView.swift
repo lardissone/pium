@@ -29,8 +29,11 @@ struct ShortcutRecorderView: NSViewRepresentable {
             didSet { needsDisplay = true }
         }
 
-        private var isRecording = false {
-            didSet { needsDisplay = true }
+        /// Derived from the responder chain rather than tracked separately, so
+        /// the drawn state cannot fall out of step with whether the view is
+        /// actually listening for keys.
+        private var isRecording: Bool {
+            window?.firstResponder === self
         }
 
         override var acceptsFirstResponder: Bool { true }
@@ -38,11 +41,15 @@ struct ShortcutRecorderView: NSViewRepresentable {
 
         override func mouseDown(with event: NSEvent) {
             window?.makeFirstResponder(self)
-            isRecording = true
+        }
+
+        override func becomeFirstResponder() -> Bool {
+            needsDisplay = true
+            return true
         }
 
         override func resignFirstResponder() -> Bool {
-            isRecording = false
+            needsDisplay = true
             return true
         }
 
@@ -54,7 +61,6 @@ struct ShortcutRecorderView: NSViewRepresentable {
 
             if event.keyCode == Self.escapeKeyCode {
                 // Abandon recording and keep the existing shortcut.
-                isRecording = false
                 window?.makeFirstResponder(nil)
                 return
             }
@@ -71,7 +77,6 @@ struct ShortcutRecorderView: NSViewRepresentable {
 
             shortcut = candidate
             onRecord?(candidate)
-            isRecording = false
             window?.makeFirstResponder(nil)
         }
 

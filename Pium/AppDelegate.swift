@@ -9,12 +9,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyController = GlobalHotkeyController()
     private let panelController = LauncherPanelController()
     private let onboardingController = OnboardingWindowController()
+    private let settingsController = SettingsWindowController()
     private var menuBarController: MenuBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         menuBarController = MenuBarController(
             onOpenLauncher: { [weak self] in self?.panelController.show() },
-            onOpenSettings: { Self.openSettings() }
+            onOpenSettings: { [weak self] in self?.openSettings() }
         )
 
         registerShortcut(Preferences.shared.shortcut)
@@ -45,8 +46,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private static func openSettings() {
-        NSApp.activate()
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    private func openSettings() {
+        settingsController.present { [weak self] shortcut in
+            self?.registerShortcut(shortcut)
+        }
     }
 }

@@ -16,6 +16,10 @@ final class OnboardingWindowController {
         )
         window.title = String(localized: "onboarding.windowTitle")
         window.isReleasedWhenClosed = false
+        // Pium has no Dock icon and does not appear in the application
+        // switcher, so a window that slips behind another one cannot be
+        // brought back. Floating keeps first launch reachable.
+        window.level = .floating
         window.center()
         window.contentView = NSHostingView(
             rootView: OnboardingView(shortcut: shortcut) { [weak self] in

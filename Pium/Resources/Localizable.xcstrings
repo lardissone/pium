@@ -358,19 +358,18 @@
         }
       }
     },
-    "settings.tab.general" : {
-      "extractionState" : "stale",
+    "settings.windowTitle" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "General"
+            "value" : "Pium Settings"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "General"
+            "value" : "Ajustes de Pium"
           }
         }
       }
