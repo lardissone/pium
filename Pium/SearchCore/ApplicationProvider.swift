@@ -26,7 +26,15 @@ final class ApplicationProvider: ResultProvider {
         self.reveal = reveal
     }
 
-    func results(for query: NormalizedQuery) async -> [SearchResult] {
+    func results(for query: NormalizedQuery) -> AsyncStream<[SearchResult]> {
+        // The index is in memory, so there is one batch and it is ready now.
+        AsyncStream { continuation in
+            continuation.yield(matches(for: query))
+            continuation.finish()
+        }
+    }
+
+    private func matches(for query: NormalizedQuery) -> [SearchResult] {
         guard !query.isEmpty else { return [] }
 
         return index.applications
