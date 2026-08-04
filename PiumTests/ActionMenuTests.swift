@@ -61,6 +61,40 @@ struct ActionMenuTests {
         #expect(state.isActionMenuPresented == false)
     }
 
+    /// Every keystroke runs a search, so a batch arriving just after `⌘ K` must
+    /// not close the menu the user opened. It only closes when the result it
+    /// describes is actually gone.
+    @Test func aRefreshThatKeepsTheSelectedResultLeavesTheMenuOpen() {
+        let state = stateWithResult(actions: safariActions())
+        state.presentActionMenu()
+
+        state.setResults([
+            SearchResult(
+                id: "app:Safari",
+                kind: .application,
+                title: "Safari",
+                subtitle: nil,
+                iconSource: .systemSymbol("app"),
+                searchableTerms: ["Safari"],
+                textScore: 1,
+                actions: safariActions()
+            ),
+            SearchResult(
+                id: "app:1Password for Safari",
+                kind: .application,
+                title: "1Password for Safari",
+                subtitle: nil,
+                iconSource: .systemSymbol("app"),
+                searchableTerms: ["1Password for Safari"],
+                textScore: 0.7,
+                actions: safariActions()
+            ),
+        ])
+
+        #expect(state.isActionMenuPresented)
+        #expect(state.highlightedAction?.id == "open")
+    }
+
     @Test func preparingForPresentationClosesTheMenu() {
         let state = stateWithResult(actions: [ResultAction(id: "open", title: "Open") {}])
         state.presentActionMenu()

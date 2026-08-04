@@ -41,8 +41,6 @@ final class LauncherState {
     func setResults(_ newResults: [SearchResult]) {
         let previousID = selectedID
         results = newResults
-        // A new search must not leave a menu hanging over stale results.
-        dismissActionMenu()
 
         // Keep the user's selection if it survived the update; otherwise fall
         // back to the top rather than leaving nothing selected.
@@ -50,6 +48,11 @@ final class LauncherState {
             selectedID = previousID
         } else {
             selectedID = newResults.first?.id
+            // The menu described a result that is gone. Closing it only in this
+            // case matters: every keystroke runs a search, so dismissing on any
+            // update would let a batch still in flight close a menu the user
+            // just opened.
+            dismissActionMenu()
         }
     }
 
