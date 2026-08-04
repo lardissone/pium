@@ -57,12 +57,15 @@ final class ApplicationProvider: ResultProvider {
             searchableTerms: [application.name],
             textScore: score,
             actions: [
-                ResultAction(id: "open", title: String(localized: "action.open")) {
-                    [open] in open(url)
-                },
+                ResultAction(
+                    id: "open",
+                    title: String(localized: "action.open"),
+                    shortcut: .returnKey
+                ) { [open] in open(url) },
                 ResultAction(
                     id: "reveal",
-                    title: String(localized: "action.revealInFinder")
+                    title: String(localized: "action.revealInFinder"),
+                    shortcut: .commandReturn
                 ) { [reveal] in reveal(url) },
             ]
         )

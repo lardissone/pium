@@ -8,11 +8,21 @@ import Foundation
 struct ResultAction: Identifiable, Sendable {
     let id: String
     let title: String
+    /// The combination that runs this action, shown next to it and usable
+    /// directly from the result list. `nil` for actions reachable only from the
+    /// menu.
+    let shortcut: ActionShortcut?
     let perform: @Sendable @MainActor () -> Void
 
-    init(id: String, title: String, perform: @escaping @Sendable @MainActor () -> Void) {
+    init(
+        id: String,
+        title: String,
+        shortcut: ActionShortcut? = nil,
+        perform: @escaping @Sendable @MainActor () -> Void
+    ) {
         self.id = id
         self.title = title
+        self.shortcut = shortcut
         self.perform = perform
     }
 }
