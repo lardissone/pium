@@ -35,6 +35,23 @@
         }
       }
     },
+    "launcher.actions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actions"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acciones"
+          }
+        }
+      }
+    },
     "launcher.placeholder" : {
       "extractionState" : "stale",
       "localizations" : {
