@@ -2,6 +2,10 @@ import SwiftUI
 
 /// One row of the result list.
 struct ResultRowView: View {
+    /// Lets the UI tests find rows specifically, rather than any element that
+    /// happens to carry the selected trait.
+    static let accessibilityIdentifier = "result.row"
+
     let result: SearchResult
     let isSelected: Bool
 
@@ -36,6 +40,7 @@ struct ResultRowView: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(Self.accessibilityIdentifier)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 

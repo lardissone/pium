@@ -75,6 +75,42 @@ final class LauncherSmokeTests: XCTestCase {
         )
     }
 
+    func testTypingFindsAnApplication() {
+        openLauncherFromMenubar()
+
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText("safari")
+
+        // Safari ships with macOS, so it is a safe target on any machine.
+        XCTAssertTrue(
+            app.staticTexts["Safari"].waitForExistence(timeout: 10),
+            "Typing a known application name must show it in the results"
+        )
+    }
+
+    func testArrowKeysMoveTheSelection() {
+        openLauncherFromMenubar()
+
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText("a")
+        XCTAssertTrue(app.staticTexts.firstMatch.waitForExistence(timeout: 10))
+
+        let before = selectedRowTitle()
+        searchField.typeKey(.downArrow, modifierFlags: [])
+        XCTAssertNotEqual(before, selectedRowTitle(), "Down must move the selection")
+    }
+
+    /// A combined row exposes its title as the element's value, not its label.
+    private func selectedRowTitle() -> String? {
+        app.descendants(matching: .any)
+            .matching(identifier: "result.row")
+            .matching(NSPredicate(format: "selected == true"))
+            .firstMatch
+            .value as? String
+    }
+
     private var statusItem: XCUIElement {
         app.menuBars.statusItems.firstMatch
     }
