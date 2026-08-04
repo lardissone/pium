@@ -35,10 +35,25 @@ SwiftUI update that Instruments would also miss.
 
 ## Recorded results
 
+Applications, budget p95 ≤ 50 ms:
+
 | Date | Phase | p95 | Median | Samples | Machine | macOS |
 |---|---|---:|---:|---:|---|---|
 | 2026-08-04 | 2 | 3.8 ms | 2.4 ms | 32 | Apple M2 Max, 32 GB | 26.5.1 |
 | 2026-08-04 | 2.1 | 2.7 ms | 2.4 ms | 32 | Apple M2 Max, 32 GB | 26.5.1 |
+| 2026-08-04 | 3a | 2.7 ms | 2.4 ms | 32 | Apple M2 Max, 32 GB | 26.5.1 |
+
+Files, target p95 ≤ 300 ms, measured to the **first** batch:
+
+| Date | Phase | p95 | Median | Samples | Machine | macOS |
+|---|---|---:|---:|---:|---|---|
+| 2026-08-04 | 3a | 137.6 ms | 43.2 ms | 20 | Apple M2 Max, 32 GB | 26.5.1 |
+
+Two caveats specific to the file figure. It is measured with the debounce set to
+zero, so what a user perceives is this plus `SpotlightFileProvider.defaultDebounce`
+— 150 ms at the time of writing. And it depends on what this machine has
+indexed and how busy Spotlight is, so it is not a property of Pium alone; treat
+a regression as a prompt to investigate rather than as proof of one.
 
 Measured over one- and two-character queries against 284 installed
 applications, optimised build, first pass discarded as cold.

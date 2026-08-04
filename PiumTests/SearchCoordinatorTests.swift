@@ -2,22 +2,34 @@ import Testing
 import Foundation
 @testable import Pium
 
-/// A provider that returns fixed results after an optional delay, so ordering
+/// A provider that yields a fixed sequence of batches, so ordering, merging,
 /// and cancellation can be tested without real providers.
 private final class StubProvider: ResultProvider, @unchecked Sendable {
     let kind: ResultKind
-    private let results: [SearchResult]
+    private let batches: [[SearchResult]]
     private let delay: Duration
 
-    init(kind: ResultKind, results: [SearchResult], delay: Duration = .zero) {
+    convenience init(kind: ResultKind, results: [SearchResult], delay: Duration = .zero) {
+        self.init(kind: kind, batches: [results], delay: delay)
+    }
+
+    init(kind: ResultKind, batches: [[SearchResult]], delay: Duration = .zero) {
         self.kind = kind
-        self.results = results
+        self.batches = batches
         self.delay = delay
     }
 
-    func results(for query: NormalizedQuery) async -> [SearchResult] {
-        if delay > .zero { try? await Task.sleep(for: delay) }
-        return results
+    @MainActor
+    func results(for query: NormalizedQuery) -> AsyncStream<[SearchResult]> {
+        AsyncStream { continuation in
+            Task { [batches, delay] in
+                for batch in batches {
+                    if delay > .zero { try? await Task.sleep(for: delay) }
+                    continuation.yield(batch)
+                }
+                continuation.finish()
+            }
+        }
     }
 }
 
@@ -38,6 +50,12 @@ private func stubResult(
     )
 }
 
+private func collect(_ stream: AsyncStream<[SearchResult]>) async -> [[SearchResult]] {
+    var all: [[SearchResult]] = []
+    for await batch in stream { all.append(batch) }
+    return all
+}
+
 @Suite("Search coordinator")
 @MainActor
 struct SearchCoordinatorTests {
@@ -48,7 +66,7 @@ struct SearchCoordinatorTests {
                 stubResult("High", kind: .application, score: 0.9),
             ])
         ])
-        let results = await coordinator.search("x")
+        let results = await collect(coordinator.search("x")).last ?? []
         #expect(results.map(\.title) == ["High", "Low"])
     }
 
@@ -59,7 +77,7 @@ struct SearchCoordinatorTests {
             StubProvider(kind: .application, results: [stubResult("A", kind: .application, score: 0.5)]),
             StubProvider(kind: .plugin, results: [stubResult("P", kind: .plugin, score: 0.5)]),
         ])
-        let results = await coordinator.search("x")
+        let results = await collect(coordinator.search("x")).last ?? []
         #expect(results.map(\.title) == ["P", "A", "F"])
     }
 
@@ -69,13 +87,13 @@ struct SearchCoordinatorTests {
                 stubResult("Safari", kind: .application, score: 1)
             ])
         ])
-        #expect(await coordinator.search("").isEmpty)
-        #expect(await coordinator.search("   ").isEmpty)
+        #expect(await collect(coordinator.search("")).last?.isEmpty == true)
+        #expect(await collect(coordinator.search("   ")).last?.isEmpty == true)
     }
 
-    /// A slow provider's results must not overwrite a newer query's. This is
-    /// the bug that makes a launcher feel broken while typing fast.
-    @Test func aStaleQueryIsDiscarded() async {
+    /// A superseded query must stop publishing rather than overwrite fresher
+    /// results. This is the bug that makes a launcher feel broken while typing.
+    @Test func aStaleQueryStopsPublishing() async {
         let slow = StubProvider(
             kind: .application,
             results: [stubResult("Stale", kind: .application, score: 1)],
@@ -83,18 +101,102 @@ struct SearchCoordinatorTests {
         )
         let coordinator = SearchCoordinator(providers: [slow])
 
-        async let first = coordinator.search("old")
+        async let first = collect(coordinator.search("old"))
         try? await Task.sleep(for: .milliseconds(20))
-        let second = await coordinator.search("new")
+        let second = await collect(coordinator.search("new"))
 
-        #expect(await first.isEmpty, "The superseded query must yield nothing")
-        #expect(second.map(\.title) == ["Stale"])
+        #expect(await first.flatMap(\.self).isEmpty, "The superseded query must publish nothing")
+        #expect(second.last?.map(\.title) == ["Stale"])
     }
 
     @Test func eachSearchAdvancesTheGeneration() async {
         let coordinator = SearchCoordinator(providers: [])
         let before = coordinator.currentGeneration
-        _ = await coordinator.search("a")
+        _ = await collect(coordinator.search("a"))
         #expect(coordinator.currentGeneration > before)
+    }
+
+    /// The point of the whole change: a later batch must reach the list without
+    /// waiting for every provider to finish.
+    @Test func eachProviderBatchIsPublishedAsItArrives() async {
+        let coordinator = SearchCoordinator(providers: [
+            StubProvider(kind: .file, batches: [
+                [stubResult("One", kind: .file, score: 0.5)],
+                [
+                    stubResult("One", kind: .file, score: 0.5),
+                    stubResult("Two", kind: .file, score: 0.4),
+                ],
+            ])
+        ])
+        let published = await collect(coordinator.search("x"))
+        #expect(published.map(\.count) == [1, 2])
+    }
+
+    /// A batch replaces that provider's previous contribution. Spotlight
+    /// reports a growing set, not a delta, so appending would duplicate.
+    @Test func aNewBatchReplacesThatProvidersPreviousResults() async {
+        let coordinator = SearchCoordinator(providers: [
+            StubProvider(kind: .file, batches: [
+                [stubResult("Old", kind: .file, score: 0.5)],
+                [stubResult("New", kind: .file, score: 0.5)],
+            ])
+        ])
+        let published = await collect(coordinator.search("x"))
+        #expect(published.last?.map(\.title) == ["New"])
+    }
+
+    /// The stubs above prove the merge; this proves a slow real provider's
+    /// batch actually reaches a consumer through the coordinator.
+    @Test func aRealFileProviderBatchReachesTheConsumer() async throws {
+        let name = "pium-coord-\(UUID().uuidString.prefix(8))"
+        // Deliberately not `~/Documents`: macOS privacy controls hide that
+        // folder's contents from Spotlight results unless the app has been
+        // granted access, so a test pointed there passes or fails depending on
+        // what the developer once clicked. See PIUM-41.
+        let folder = URL(filePath: NSHomeDirectory()).appending(path: "pium-test-scratch")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).txt")
+        try "pium integration test".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let coordinator = SearchCoordinator(providers: [
+            SpotlightFileProvider(
+                isEnabled: { true },
+                scope: { .home },
+                debounce: .zero,
+                open: { _ in },
+                reveal: { _ in }
+            )
+        ])
+
+        var found = false
+        for _ in 0..<15 where !found {
+            for await batch in coordinator.search(name) {
+                if batch.contains(where: { $0.title == "\(name).txt" }) {
+                    found = true
+                    break
+                }
+            }
+            if !found { try? await Task.sleep(for: .seconds(2)) }
+        }
+
+        #expect(found, "A real file must reach the consumer through the coordinator")
+    }
+
+    /// One provider's results must not wait behind another's.
+    @Test func aFastProviderIsPublishedBeforeASlowOne() async {
+        let coordinator = SearchCoordinator(providers: [
+            StubProvider(
+                kind: .file,
+                results: [stubResult("Slow", kind: .file, score: 0.9)],
+                delay: .milliseconds(150)
+            ),
+            StubProvider(kind: .application, results: [
+                stubResult("Fast", kind: .application, score: 0.5)
+            ]),
+        ])
+        let published = await collect(coordinator.search("x"))
+        #expect(published.first?.map(\.title) == ["Fast"])
+        #expect(published.last?.map(\.title) == ["Slow", "Fast"])
     }
 }

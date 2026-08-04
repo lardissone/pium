@@ -65,15 +65,16 @@ final class LauncherPanelController: NSObject {
     }
 
     /// Applications and plugins search from the first character, so there is no
-    /// debounce here. Phase 3 adds one for Spotlight only.
+    /// debounce here. The file provider debounces itself.
     private func runSearch(_ text: String) {
         searchTask?.cancel()
         searchTask = Task { [weak self] in
             guard let self else { return }
-            let results = await coordinator.search(text)
-            guard !Task.isCancelled else { return }
-            state.setResults(results)
-            resizePanelToContent()
+            for await results in coordinator.search(text) {
+                guard !Task.isCancelled else { return }
+                state.setResults(results)
+                resizePanelToContent()
+            }
         }
     }
 

@@ -14,6 +14,8 @@ final class Preferences {
         static let shortcut = "pium.shortcut"
         static let hasCompletedOnboarding = "pium.hasCompletedOnboarding"
         static let preferredLanguage = "pium.preferredLanguage"
+        static let isFileSearchEnabled = "pium.isFileSearchEnabled"
+        static let fileSearchScope = "pium.fileSearchScope"
         /// Read by macOS at launch to pick the application's language.
         static let appleLanguages = "AppleLanguages"
     }
@@ -46,6 +48,34 @@ final class Preferences {
     var hasCompletedOnboarding: Bool {
         get { defaults.bool(forKey: Key.hasCompletedOnboarding) }
         set { defaults.set(newValue, forKey: Key.hasCompletedOnboarding) }
+    }
+
+    /// Whether Spotlight is consulted at all. Off means no query is issued,
+    /// rather than results discarded after the fact, so this is also how a user
+    /// opts out of Spotlight traffic entirely.
+    var isFileSearchEnabled: Bool {
+        get {
+            // `bool(forKey:)` reports false for a missing key and the product
+            // default is on, so the absence has to be checked explicitly.
+            guard defaults.object(forKey: Key.isFileSearchEnabled) != nil else { return true }
+            return defaults.bool(forKey: Key.isFileSearchEnabled)
+        }
+        set { defaults.set(newValue, forKey: Key.isFileSearchEnabled) }
+    }
+
+    /// Where file search looks. The PRD defaults this to the home directory;
+    /// every indexed volume is opt-in.
+    var fileSearchScope: FileSearchScope {
+        get {
+            guard
+                let raw = defaults.string(forKey: Key.fileSearchScope),
+                let scope = FileSearchScope(rawValue: raw)
+            else {
+                return .home
+            }
+            return scope
+        }
+        set { defaults.set(newValue.rawValue, forKey: Key.fileSearchScope) }
     }
 
     /// Language override for Pium's own interface. Takes effect on next launch.

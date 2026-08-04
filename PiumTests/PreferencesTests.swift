@@ -65,6 +65,55 @@ struct PreferencesTests {
         #expect(preferences.preferredLanguage == .system)
     }
 
+    /// File search is a headline feature, so it is on out of the box.
+    @Test func fileSearchIsOnByDefault() {
+        let (preferences, _, suite) = makeIsolatedPreferences()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        #expect(preferences.isFileSearchEnabled)
+    }
+
+    /// The default being `true` is the reason this cannot lean on
+    /// `bool(forKey:)`, which reports false for a key that was never written.
+    @Test func fileSearchCanBeTurnedOffAndSurvivesAReload() {
+        let (preferences, defaults, suite) = makeIsolatedPreferences()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        preferences.isFileSearchEnabled = false
+        #expect(Preferences(defaults: defaults).isFileSearchEnabled == false)
+    }
+
+    /// The PRD defaults the scope to the user's home directory; searching every
+    /// indexed volume is opt-in.
+    @Test func scopeDefaultsToTheHomeDirectory() {
+        let (preferences, _, suite) = makeIsolatedPreferences()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        #expect(preferences.fileSearchScope == .home)
+    }
+
+    @Test func scopeSurvivesAWriteAndReload() {
+        let (preferences, defaults, suite) = makeIsolatedPreferences()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        preferences.fileSearchScope = .allIndexedLocal
+        #expect(Preferences(defaults: defaults).fileSearchScope == .allIndexedLocal)
+    }
+
+    /// An unreadable value must not wedge search; the default takes over.
+    @Test func anUnknownScopeFallsBackToTheDefault() {
+        let (_, defaults, suite) = makeIsolatedPreferences()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        defaults.set("nonsense", forKey: "pium.fileSearchScope")
+        #expect(Preferences(defaults: defaults).fileSearchScope == .home)
+    }
+
+    @Test func eachScopeMapsToASpotlightScope() {
+        #expect(FileSearchScope.home.metadataScope == NSMetadataQueryUserHomeScope)
+        #expect(FileSearchScope.allIndexedLocal.metadataScope == NSMetadataQueryLocalComputerScope)
+    }
+
     /// Choosing a language writes `AppleLanguages` into Pium's own domain,
     /// which is how macOS overrides language for a single application.
     ///
