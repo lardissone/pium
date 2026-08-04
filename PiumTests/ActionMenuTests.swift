@@ -21,6 +21,13 @@ struct ActionMenuTests {
         return state
     }
 
+    private func safariActions() -> [ResultAction] {
+        [
+            ResultAction(id: "open", title: "Open", shortcut: .returnKey) {},
+            ResultAction(id: "reveal", title: "Reveal in Finder", shortcut: .commandReturn) {},
+        ]
+    }
+
     @Test func theMenuStartsClosed() {
         #expect(stateWithResult(actions: []).isActionMenuPresented == false)
     }
@@ -59,5 +66,52 @@ struct ActionMenuTests {
         state.presentActionMenu()
         state.prepareForPresentation()
         #expect(state.isActionMenuPresented == false)
+    }
+
+    /// Opening the menu puts the highlight on the primary action, so `Return`
+    /// does the same thing whether or not the menu is open.
+    @Test func openingTheMenuHighlightsTheFirstAction() {
+        let state = stateWithResult(actions: safariActions())
+        state.presentActionMenu()
+        #expect(state.highlightedAction?.id == "open")
+    }
+
+    @Test func theHighlightWalksTheActionsAndClampsAtBothEnds() {
+        let state = stateWithResult(actions: safariActions())
+        state.presentActionMenu()
+
+        state.moveActionHighlight(by: 1)
+        #expect(state.highlightedAction?.id == "reveal")
+        state.moveActionHighlight(by: 5)
+        #expect(state.highlightedAction?.id == "reveal")
+        state.moveActionHighlight(by: -9)
+        #expect(state.highlightedAction?.id == "open")
+    }
+
+    @Test func closingTheMenuClearsTheHighlight() {
+        let state = stateWithResult(actions: safariActions())
+        state.presentActionMenu()
+        state.dismissActionMenu()
+        #expect(state.highlightedAction == nil)
+    }
+
+    /// The whole point of data-driven routing: the view asks which action a
+    /// combination runs instead of branching on the key itself.
+    @Test func aCombinationFindsItsAction() {
+        let state = stateWithResult(actions: safariActions())
+        #expect(state.action(matching: .return, modifiers: [])?.id == "open")
+        #expect(state.action(matching: .return, modifiers: [.command])?.id == "reveal")
+    }
+
+    @Test func anUnboundCombinationFindsNothing() {
+        let state = stateWithResult(actions: safariActions())
+        #expect(state.action(matching: .character("j"), modifiers: [.command]) == nil)
+    }
+
+    /// With no selection there is nothing to run, and a stray `Return` must not
+    /// reach into a stale result.
+    @Test func noSelectionMeansNoActionForAnyCombination() {
+        let state = LauncherState()
+        #expect(state.action(matching: .return, modifiers: []) == nil)
     }
 }
