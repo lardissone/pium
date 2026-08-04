@@ -4,7 +4,7 @@ import SwiftUI
 /// moves, and treats a double click as activation.
 struct ResultListView: View {
     @Bindable var state: LauncherState
-    let onActivate: (SearchResult) -> Void
+    let onActivate: (SearchResult, ResultAction) -> Void
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -13,7 +13,13 @@ struct ResultListView: View {
                     ForEach(state.results) { result in
                         ResultRowView(result: result, isSelected: result.id == state.selectedID)
                             .id(result.id)
-                            .onTapGesture(count: 2) { onActivate(result) }
+                            // A row with no actions has nothing to activate,
+                            // and a double click on one must not be recorded as
+                            // a selection either.
+                            .onTapGesture(count: 2) {
+                                guard let action = result.primaryAction else { return }
+                                onActivate(result, action)
+                            }
                             // Simultaneous, not chained: a plain second
                             // `onTapGesture` would wait out the double-click
                             // window before selecting, which reads as a hang.

@@ -8,6 +8,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let hotkeyController = GlobalHotkeyController()
     private let applicationIndex: ApplicationIndex
+    /// Built once and shared: the coordinator reads it to rank, the panel writes
+    /// to it on selection, and Settings erases it.
+    private let frecency: FrecencyStore
     private let panelController: LauncherPanelController
     private let onboardingController = OnboardingWindowController()
     private let settingsController = SettingsWindowController()
@@ -19,11 +22,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     override init() {
         let index = ApplicationIndex()
         applicationIndex = index
+        let frecency = FrecencyStore()
+        self.frecency = frecency
         panelController = LauncherPanelController(
-            coordinator: SearchCoordinator(providers: [
-                ApplicationProvider(index: index),
-                SpotlightFileProvider(),
-            ])
+            coordinator: SearchCoordinator(
+                providers: [
+                    ApplicationProvider(index: index),
+                    SpotlightFileProvider(),
+                ],
+                frecency: frecency
+            ),
+            frecency: frecency
         )
         super.init()
     }

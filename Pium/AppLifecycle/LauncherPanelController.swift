@@ -7,12 +7,16 @@ final class LauncherPanelController: NSObject {
     private let panel: LauncherPanel
     private let state = LauncherState()
     private let coordinator: SearchCoordinator
+    /// The same store the coordinator ranks against, so what is recorded here
+    /// is what the next search sees.
+    private let frecency: any FrecencyStoring
     private var searchTask: Task<Void, Never>?
 
     var isVisible: Bool { panel.isVisible }
 
-    init(coordinator: SearchCoordinator) {
+    init(coordinator: SearchCoordinator, frecency: any FrecencyStoring) {
         self.coordinator = coordinator
+        self.frecency = frecency
         let size = CGSize(
             width: Tokens.Size.panelWidth,
             height: Tokens.Size.searchFieldHeight
@@ -25,7 +29,7 @@ final class LauncherPanelController: NSObject {
                 state: state,
                 onDismiss: { [weak self] in self?.hide() },
                 onQueryChanged: { [weak self] text in self?.runSearch(text) },
-                onActivate: { [weak self] result in self?.activate(result) }
+                onPerform: { [weak self] result, _ in self?.record(result) }
             )
         )
         // `NSWindow.delegate` is weak, so this does not retain the controller.
@@ -78,10 +82,13 @@ final class LauncherPanelController: NSObject {
         }
     }
 
-    private func activate(_ result: SearchResult) {
-        // `Return` runs the primary action and closes the launcher.
-        hide()
-        result.primaryAction?.perform()
+    /// Only selections are learned from — never an abandoned query.
+    private func record(_ result: SearchResult) {
+        frecency.record(
+            resultID: result.id,
+            query: TextNormalizer.query(state.query),
+            at: Date()
+        )
     }
 
     /// The panel grows and shrinks with the result list, keeping its top edge
