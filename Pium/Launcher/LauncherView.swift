@@ -122,10 +122,17 @@ struct LauncherView: View {
             return .ignored
         }
 
-        switch press.key {
-        case .delete:
+        // Delete arrives as backspace or as DEL depending on the path, and
+        // matching `KeyEquivalent.delete` alone misses one of them — the key
+        // then falls through to the field, which deletes from the search query
+        // instead. Always handled while the menu is open, even with an empty
+        // filter, so it can never reach the query behind it.
+        if press.key.character == "\u{8}" || press.key.character == "\u{7F}" {
             state.deleteLastActionQueryCharacter()
             return .handled
+        }
+
+        switch press.key {
         case .upArrow, .downArrow, .return, .escape, .tab:
             return .ignored
         default:
