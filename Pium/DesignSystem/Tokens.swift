@@ -16,12 +16,16 @@ enum Tokens {
     enum Radius {
         static let panel: CGFloat = 14
         static let row: CGFloat = 8
+        static let badge: CGFloat = 4
+        static let menu: CGFloat = 10
     }
 
     enum Size {
         static let panelWidth: CGFloat = 680
         static let searchFieldHeight: CGFloat = 56
         static let resultRowHeight: CGFloat = 44
+        static let footerHeight: CGFloat = 38
+        static let actionMenuWidth: CGFloat = 260
         /// Cap for the expanded result list, applied from Phase 2 onward.
         static let maxResultListHeight: CGFloat = 420
     }
@@ -30,6 +34,8 @@ enum Tokens {
         static let query = Font.system(size: 24, weight: .regular)
         static let resultTitle = Font.system(size: 14, weight: .medium)
         static let resultSubtitle = Font.system(size: 12, weight: .regular)
+        static let footerLabel = Font.system(size: 12, weight: .medium)
+        static let shortcutBadge = Font.system(size: 11, weight: .medium)
     }
 
     enum Motion {

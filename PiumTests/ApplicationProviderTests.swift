@@ -62,6 +62,16 @@ struct ApplicationProviderTests {
         #expect(results.first?.actions.map(\.id) == ["open", "reveal"])
     }
 
+    /// The footer and the menu both render from this, so an application's two
+    /// actions must carry the combinations the PRD fixes.
+    @Test func applicationActionsCarryTheirCombinations() async {
+        let provider = makeProvider(["Safari"])
+        let results = await provider.results(for: TextNormalizer.query("safari"))
+        let actions = results.first?.actions ?? []
+        #expect(actions.first?.shortcut == .returnKey)
+        #expect(actions.last?.shortcut == .commandReturn)
+    }
+
     /// The action must open the bundle it belongs to, which is the whole point.
     @Test func theOpenActionOpensThatApplication() async {
         nonisolated(unsafe) var opened: URL?

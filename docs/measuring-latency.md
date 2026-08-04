@@ -35,9 +35,10 @@ SwiftUI update that Instruments would also miss.
 
 ## Recorded results
 
-| Date | p95 | Median | Samples | Machine | macOS |
-|---|---:|---:|---:|---|---|
-| 2026-08-04 | 3.8 ms | 2.4 ms | 32 | Apple M2 Max, 32 GB | 26.5.1 |
+| Date | Phase | p95 | Median | Samples | Machine | macOS |
+|---|---|---:|---:|---:|---|---|
+| 2026-08-04 | 2 | 3.8 ms | 2.4 ms | 32 | Apple M2 Max, 32 GB | 26.5.1 |
+| 2026-08-04 | 2.1 | 2.7 ms | 2.4 ms | 32 | Apple M2 Max, 32 GB | 26.5.1 |
 
 Measured over one- and two-character queries against 284 installed
 applications, optimised build, first pass discarded as cold.
