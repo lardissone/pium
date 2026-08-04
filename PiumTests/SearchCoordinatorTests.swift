@@ -183,6 +183,28 @@ struct SearchCoordinatorTests {
         #expect(found, "A real file must reach the consumer through the coordinator")
     }
 
+    /// Ordering is the ranker's job now, so the coordinator has to be handing
+    /// it the usage history rather than sorting by text score alone.
+    @Test func theCoordinatorAppliesUsageHistory() async {
+        let store = FrecencyStore(
+            fileURL: URL.temporaryDirectory.appending(path: "\(UUID().uuidString).json")
+        )
+        store.record(resultID: "application:Used", query: TextNormalizer.query("x"), at: .now)
+
+        let coordinator = SearchCoordinator(
+            providers: [
+                StubProvider(kind: .application, results: [
+                    stubResult("Fresh", kind: .application, score: 0.5),
+                    stubResult("Used", kind: .application, score: 0.5),
+                ])
+            ],
+            frecency: store
+        )
+
+        let ranked = await collect(coordinator.search("x")).last ?? []
+        #expect(ranked.map(\.title) == ["Used", "Fresh"])
+    }
+
     /// One provider's results must not wait behind another's.
     @Test func aFastProviderIsPublishedBeforeASlowOne() async {
         let coordinator = SearchCoordinator(providers: [
