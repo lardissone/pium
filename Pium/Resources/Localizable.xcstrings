@@ -52,6 +52,23 @@
         }
       }
     },
+    "launcher.searchActions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search for actions…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar acciones…"
+          }
+        }
+      }
+    },
     "launcher.placeholder" : {
       "extractionState" : "stale",
       "localizations" : {

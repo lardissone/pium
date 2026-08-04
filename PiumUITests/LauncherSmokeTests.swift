@@ -103,11 +103,15 @@ final class LauncherSmokeTests: XCTestCase {
         let searchField = app.textFields["Search"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 10))
         searchField.typeText("a")
-        XCTAssertTrue(app.staticTexts.firstMatch.waitForExistence(timeout: 10))
 
         let before = selectedRowTitle()
+        XCTAssertNotNil(before, "A result must be selected before the arrows can move it")
         searchField.typeKey(.downArrow, modifierFlags: [])
-        XCTAssertNotEqual(before, selectedRowTitle(), "Down must move the selection")
+        XCTAssertNotEqual(
+            before,
+            waitForChange(from: before, reading: selectedRowTitle),
+            "Down must move the selection"
+        )
     }
 
     func testFooterShowsThePrimaryAction() {
@@ -140,7 +144,11 @@ final class LauncherSmokeTests: XCTestCase {
 
         let before = highlightedActionTitle()
         searchField.typeKey(.downArrow, modifierFlags: [])
-        XCTAssertNotEqual(before, highlightedActionTitle(), "Down must move the highlight")
+        XCTAssertNotEqual(
+            before,
+            waitForChange(from: before, reading: highlightedActionTitle),
+            "Down must move the highlight"
+        )
 
         // The first Esc closes the menu and returns to search.
         searchField.typeKey(.escape, modifierFlags: [])
@@ -148,22 +156,43 @@ final class LauncherSmokeTests: XCTestCase {
         XCTAssertTrue(searchField.exists, "The launcher must still be open")
     }
 
-    /// A combined row exposes its title as the element's value, not its label.
     private func highlightedActionTitle() -> String? {
-        app.descendants(matching: .any)
-            .matching(identifier: "action.row")
-            .matching(NSPredicate(format: "selected == true"))
-            .firstMatch
-            .value as? String
+        selectedTitle(ofRowsIdentified: "action.row")
     }
 
-    /// A combined row exposes its title as the element's value, not its label.
     private func selectedRowTitle() -> String? {
-        app.descendants(matching: .any)
-            .matching(identifier: "result.row")
+        selectedTitle(ofRowsIdentified: "result.row")
+    }
+
+    /// The title of the selected row, once one exists.
+    ///
+    /// Waits rather than reading straight away: results arrive from an async
+    /// search, and reading `value` off a query with no matches raises "failed
+    /// to get matching snapshot" instead of returning nil. A combined row
+    /// exposes its title as the element's value, not its label.
+    private func selectedTitle(ofRowsIdentified identifier: String) -> String? {
+        let selectedRow = app.descendants(matching: .any)
+            .matching(identifier: identifier)
             .matching(NSPredicate(format: "selected == true"))
             .firstMatch
-            .value as? String
+        guard selectedRow.waitForExistence(timeout: 10) else { return nil }
+        return selectedRow.value as? String
+    }
+
+    /// Polls until the reading changes, so a keystroke that has not been
+    /// rendered yet does not read as a keystroke that did nothing.
+    private func waitForChange(
+        from previous: String?,
+        reading read: () -> String?,
+        timeout: TimeInterval = 5
+    ) -> String? {
+        let deadline = Date().addingTimeInterval(timeout)
+        var current = read()
+        while current == previous, Date() < deadline {
+            usleep(100_000)
+            current = read()
+        }
+        return current
     }
 
     private var statusItem: XCUIElement {

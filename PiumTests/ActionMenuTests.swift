@@ -61,24 +61,88 @@ struct ActionMenuTests {
         #expect(state.isActionMenuPresented == false)
     }
 
-    /// Typing behind an open menu used to append to the query, turning "safari"
-    /// into "safariopen" and losing every result. See PIUM-32.
-    @Test func typingIsIgnoredWhileTheMenuIsOpen() {
+    /// Typing behind an open menu used to append to the main query, turning
+    /// "safari" into "safariopen" and losing every result. It now filters the
+    /// menu instead, and the search underneath is left alone.
+    @Test func typingFiltersTheMenuAndLeavesTheSearchAlone() {
         let state = stateWithResult(actions: safariActions())
-        state.updateQuery("safari")
+        state.query = "safari"
         state.presentActionMenu()
 
-        state.updateQuery("safariopen")
+        state.appendToActionQuery("reveal")
+
         #expect(state.query == "safari")
+        #expect(state.actionQuery == "reveal")
+        #expect(state.visibleActions.map(\.id) == ["reveal"])
     }
 
-    @Test func typingResumesOnceTheMenuCloses() {
+    /// The matcher is the same one the result list uses, so a word from the
+    /// middle of the title finds it.
+    @Test func filteringMatchesAWordInsideTheTitle() {
         let state = stateWithResult(actions: safariActions())
         state.presentActionMenu()
-        state.dismissActionMenu()
+        state.appendToActionQuery("finder")
+        #expect(state.visibleActions.map(\.id) == ["reveal"])
+    }
 
-        state.updateQuery("mail")
-        #expect(state.query == "mail")
+    @Test func anUnfilteredMenuShowsEveryAction() {
+        let state = stateWithResult(actions: safariActions())
+        state.presentActionMenu()
+        #expect(state.visibleActions.map(\.id) == ["open", "reveal"])
+    }
+
+    /// The highlight must follow the filter, or `Return` runs nothing.
+    @Test func filteringMovesTheHighlightOntoAVisibleAction() {
+        let state = stateWithResult(actions: safariActions())
+        state.presentActionMenu()
+        #expect(state.highlightedAction?.id == "open")
+
+        state.appendToActionQuery("reveal")
+        #expect(state.highlightedAction?.id == "reveal")
+    }
+
+    @Test func deletingRestoresTheFilteredOutActions() {
+        let state = stateWithResult(actions: safariActions())
+        state.presentActionMenu()
+        state.appendToActionQuery("reveal")
+
+        for _ in 0..<"reveal".count { state.deleteLastActionQueryCharacter() }
+
+        #expect(state.actionQuery.isEmpty)
+        #expect(state.visibleActions.map(\.id) == ["open", "reveal"])
+        #expect(state.highlightedAction?.id == "reveal")
+    }
+
+    /// A filter matching nothing leaves an empty menu rather than a stale
+    /// highlight that `Return` would run.
+    @Test func aFilterMatchingNothingHighlightsNothing() {
+        let state = stateWithResult(actions: safariActions())
+        state.presentActionMenu()
+        state.appendToActionQuery("zzzzz")
+
+        #expect(state.visibleActions.isEmpty)
+        #expect(state.highlightedAction == nil)
+    }
+
+    /// Reopening starts clean; a filter left from last time would hide actions
+    /// for no visible reason.
+    @Test func reopeningTheMenuClearsTheFilter() {
+        let state = stateWithResult(actions: safariActions())
+        state.presentActionMenu()
+        state.appendToActionQuery("reveal")
+        state.dismissActionMenu()
+        #expect(state.actionQuery.isEmpty)
+
+        state.presentActionMenu()
+        #expect(state.actionQuery.isEmpty)
+        #expect(state.visibleActions.map(\.id) == ["open", "reveal"])
+    }
+
+    /// Typing only reaches the filter while the menu is open.
+    @Test func theFilterIgnoresTypingWhileTheMenuIsClosed() {
+        let state = stateWithResult(actions: safariActions())
+        state.appendToActionQuery("reveal")
+        #expect(state.actionQuery.isEmpty)
     }
 
     /// Every keystroke runs a search, so a batch arriving just after `⌘ K` must

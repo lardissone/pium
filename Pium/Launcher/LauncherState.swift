@@ -27,19 +27,13 @@ final class LauncherState {
     /// result selection is: the list it indexes into can change underneath.
     private(set) var highlightedActionID: String?
 
+    /// What the user has typed into the open menu. Separate from `query`:
+    /// typing behind an open menu filters its actions rather than changing the
+    /// search underneath it.
+    private(set) var actionQuery = ""
+
     var selectedResult: SearchResult? {
         results.first { $0.id == selectedID }
-    }
-
-    /// Applies typing to the query, unless the action menu is open.
-    ///
-    /// ponytail: swallowing the keystrokes is a stopgap. Raycast filters the
-    /// menu's own actions as you type, which is what PIUM-32 builds; until then
-    /// the important part is that typing cannot silently corrupt the query
-    /// behind an open menu.
-    func updateQuery(_ text: String) {
-        guard !isActionMenuPresented else { return }
-        query = text
     }
 
     /// Every opening starts with an empty query, no results, and focused input.
@@ -70,6 +64,7 @@ final class LauncherState {
     /// Opens the contextual menu, but only when there is something to show.
     func presentActionMenu() {
         guard let selected = selectedResult, !selected.actions.isEmpty else { return }
+        actionQuery = ""
         highlightedActionID = selected.actions.first?.id
         isActionMenuPresented = true
     }
@@ -77,28 +72,63 @@ final class LauncherState {
     func dismissActionMenu() {
         isActionMenuPresented = false
         highlightedActionID = nil
+        actionQuery = ""
+    }
+
+    /// The actions the menu is showing, narrowed by whatever has been typed
+    /// into it. Scored with the same matcher the result list uses, so "reveal"
+    /// and "finder" both find Reveal in Finder.
+    var visibleActions: [ResultAction] {
+        guard let actions = selectedResult?.actions else { return [] }
+        let query = TextNormalizer.query(actionQuery)
+        guard !query.isEmpty else { return actions }
+        return actions.filter {
+            FuzzyMatcher.bestScore(
+                query,
+                againstAnyOf: [TextNormalizer.candidate($0.title)]
+            ) > FuzzyMatcher.rejectionThreshold
+        }
     }
 
     var highlightedAction: ResultAction? {
         guard isActionMenuPresented else { return nil }
-        return selectedResult?.actions.first { $0.id == highlightedActionID }
+        return visibleActions.first { $0.id == highlightedActionID }
     }
 
     /// Moves the menu highlight, clamping at both ends for the same reason the
     /// result list does not wrap.
     func moveActionHighlight(by offset: Int) {
-        guard let actions = selectedResult?.actions, !actions.isEmpty else { return }
+        let actions = visibleActions
+        guard !actions.isEmpty else { return }
         let current = actions.firstIndex { $0.id == highlightedActionID } ?? 0
         let next = min(max(current + offset, 0), actions.count - 1)
         highlightedActionID = actions[next].id
     }
 
     func highlightAction(id: String?) {
-        guard
-            let id,
-            selectedResult?.actions.contains(where: { $0.id == id }) == true
-        else { return }
+        guard let id, visibleActions.contains(where: { $0.id == id }) else { return }
         highlightedActionID = id
+    }
+
+    func appendToActionQuery(_ characters: String) {
+        guard isActionMenuPresented else { return }
+        actionQuery += characters
+        highlightFirstVisibleAction()
+    }
+
+    func deleteLastActionQueryCharacter() {
+        guard isActionMenuPresented, !actionQuery.isEmpty else { return }
+        actionQuery.removeLast()
+        highlightFirstVisibleAction()
+    }
+
+    /// After the filter changes the highlight may point at something no longer
+    /// shown, which would make `Return` do nothing.
+    private func highlightFirstVisibleAction() {
+        let actions = visibleActions
+        if !actions.contains(where: { $0.id == highlightedActionID }) {
+            highlightedActionID = actions.first?.id
+        }
     }
 
     /// The action a pressed combination runs, if any. Key routing asks this

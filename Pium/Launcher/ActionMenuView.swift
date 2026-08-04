@@ -10,6 +10,9 @@ struct ActionMenuView: View {
 
     let title: String
     let actions: [ResultAction]
+    /// What has been typed into the menu. Shown at the bottom so the user can
+    /// see why the list narrowed.
+    let filter: String
     let highlightedID: String?
     let onHighlight: (String) -> Void
     let onPerform: (ResultAction) -> Void
@@ -26,6 +29,17 @@ struct ActionMenuView: View {
             ForEach(actions) { action in
                 row(for: action)
             }
+
+            Divider()
+                .padding(.top, Tokens.Spacing.tight)
+
+            Text(filter.isEmpty ? String(localized: "launcher.searchActions") : filter)
+                .font(Tokens.TypeScale.footerLabel)
+                .foregroundStyle(filter.isEmpty ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+                .lineLimit(1)
+                .padding(.horizontal, Tokens.Spacing.normal)
+                .padding(.top, Tokens.Spacing.tight)
+                .accessibilityLabel(String(localized: "launcher.searchActions"))
         }
         .padding(.vertical, Tokens.Spacing.tight)
         .frame(width: Tokens.Size.actionMenuWidth)
