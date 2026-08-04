@@ -61,6 +61,26 @@ struct ActionMenuTests {
         #expect(state.isActionMenuPresented == false)
     }
 
+    /// Typing behind an open menu used to append to the query, turning "safari"
+    /// into "safariopen" and losing every result. See PIUM-32.
+    @Test func typingIsIgnoredWhileTheMenuIsOpen() {
+        let state = stateWithResult(actions: safariActions())
+        state.updateQuery("safari")
+        state.presentActionMenu()
+
+        state.updateQuery("safariopen")
+        #expect(state.query == "safari")
+    }
+
+    @Test func typingResumesOnceTheMenuCloses() {
+        let state = stateWithResult(actions: safariActions())
+        state.presentActionMenu()
+        state.dismissActionMenu()
+
+        state.updateQuery("mail")
+        #expect(state.query == "mail")
+    }
+
     /// Every keystroke runs a search, so a batch arriving just after `⌘ K` must
     /// not close the menu the user opened. It only closes when the result it
     /// describes is actually gone.

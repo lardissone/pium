@@ -60,7 +60,10 @@ struct LauncherView: View {
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
 
-            TextField(String(localized: "launcher.placeholder"), text: $state.query)
+            TextField(
+                String(localized: "launcher.placeholder"),
+                text: Binding(get: { state.query }, set: { state.updateQuery($0) })
+            )
                 .textFieldStyle(.plain)
                 .font(Tokens.TypeScale.query)
                 .focused($isQueryFocused)

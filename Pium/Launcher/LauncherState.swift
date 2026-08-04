@@ -31,6 +31,17 @@ final class LauncherState {
         results.first { $0.id == selectedID }
     }
 
+    /// Applies typing to the query, unless the action menu is open.
+    ///
+    /// ponytail: swallowing the keystrokes is a stopgap. Raycast filters the
+    /// menu's own actions as you type, which is what PIUM-32 builds; until then
+    /// the important part is that typing cannot silently corrupt the query
+    /// behind an open menu.
+    func updateQuery(_ text: String) {
+        guard !isActionMenuPresented else { return }
+        query = text
+    }
+
     /// Every opening starts with an empty query, no results, and focused input.
     func prepareForPresentation() {
         query = ""
