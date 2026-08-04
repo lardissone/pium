@@ -21,6 +21,8 @@ final class LauncherState {
     /// even when the query was already empty.
     private(set) var presentationToken = UUID()
 
+    private(set) var isActionMenuPresented = false
+
     var selectedResult: SearchResult? {
         results.first { $0.id == selectedID }
     }
@@ -35,6 +37,8 @@ final class LauncherState {
     func setResults(_ newResults: [SearchResult]) {
         let previousID = selectedID
         results = newResults
+        // A new search must not leave a menu hanging over stale results.
+        isActionMenuPresented = false
 
         // Keep the user's selection if it survived the update; otherwise fall
         // back to the top rather than leaving nothing selected.
@@ -43,6 +47,16 @@ final class LauncherState {
         } else {
             selectedID = newResults.first?.id
         }
+    }
+
+    /// Opens the contextual menu, but only when there is something to show.
+    func presentActionMenu() {
+        guard let selected = selectedResult, !selected.actions.isEmpty else { return }
+        isActionMenuPresented = true
+    }
+
+    func dismissActionMenu() {
+        isActionMenuPresented = false
     }
 
     func select(id: String?) {

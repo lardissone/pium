@@ -33,6 +33,16 @@ struct LauncherView: View {
         .onChange(of: state.query) { _, text in
             onQueryChanged(text)
         }
+        .popover(isPresented: Binding(
+            get: { state.isActionMenuPresented },
+            set: { if !$0 { state.dismissActionMenu() } }
+        )) {
+            ActionMenuView(actions: state.selectedResult?.actions ?? []) { action in
+                state.dismissActionMenu()
+                onDismiss()
+                action.perform()
+            }
+        }
     }
 
     private var searchField: some View {
@@ -48,7 +58,13 @@ struct LauncherView: View {
                 .focused($isQueryFocused)
                 .accessibilityLabel(String(localized: "launcher.search.accessibilityLabel"))
                 .onKeyPress(.escape) {
-                    onDismiss()
+                    // The PRD: with the menu open, the first Esc returns to
+                    // search rather than closing the launcher.
+                    if state.isActionMenuPresented {
+                        state.dismissActionMenu()
+                    } else {
+                        onDismiss()
+                    }
                     return .handled
                 }
                 .onKeyPress(.downArrow) {
@@ -59,9 +75,12 @@ struct LauncherView: View {
                     state.moveSelection(by: -1)
                     return .handled
                 }
-                .onKeyPress(.return) {
-                    guard let selected = state.selectedResult else { return .handled }
-                    onActivate(selected)
+                .onKeyPress(.return, phases: .down) { press in
+                    if press.modifiers.contains(.command) {
+                        state.presentActionMenu()
+                    } else if let selected = state.selectedResult {
+                        onActivate(selected)
+                    }
                     return .handled
                 }
         }
