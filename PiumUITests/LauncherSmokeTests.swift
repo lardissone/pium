@@ -156,6 +156,52 @@ final class LauncherSmokeTests: XCTestCase {
         XCTAssertTrue(searchField.exists, "The launcher must still be open")
     }
 
+    /// Files come from the live Spotlight index, so the test creates one and
+    /// waits for it to be indexed rather than assuming any particular file
+    /// exists on the machine.
+    func testTypingFindsAFile() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))"
+        // Deliberately not `~/Documents`: macOS privacy controls hide that
+        // folder's contents from Spotlight results unless the app has been
+        // granted access, and an XCUITest-launched app has not. See PIUM-41.
+        let folder = URL(filePath: NSHomeDirectory()).appending(path: "pium-uitest-scratch")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).txt")
+        try "pium ui test".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+
+        // A file row combines its title and its location into one accessibility
+        // element, so it is matched by containment rather than by an exact
+        // title.
+        let row = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier == %@ AND value CONTAINS %@",
+                "result.row", "\(name).txt"
+            )
+        ).firstMatch
+
+        // Spotlight can take tens of seconds to index a file that was just
+        // written, and the launcher only queries when the query changes —
+        // waiting alone would never surface it. Nudging the field re-issues the
+        // search, which is also what a real user would do.
+        let lastCharacter = String(name.suffix(1))
+        for _ in 0..<20 where !row.exists {
+            searchField.typeKey(.delete, modifierFlags: [])
+            searchField.typeText(lastCharacter)
+            _ = row.waitForExistence(timeout: 2)
+        }
+
+        XCTAssertTrue(
+            row.exists,
+            "A file in the home folder must appear in the results once indexed"
+        )
+    }
+
     /// Typing and backspace inside the menu must never reach the search query
     /// behind it. Both bugs shipped once: typing appended to the query, and
     /// later `Delete` fell through to the field and ate it a character at a

@@ -20,6 +20,19 @@ struct SpotlightQueryTests {
         #expect(!predicate.predicateFormat.hasPrefix(text))
     }
 
+    /// `mdfind` documents `== "*term*"cd` for wildcard matching, but that is a
+    /// different parser. Through `NSPredicate` and `NSMetadataQuery`, `==` with
+    /// wildcards matches nothing at all and `LIKE` is the operator that works.
+    /// `aFileInTheHomeFolderIsFoundOnceIndexed` is what proves it against a
+    /// live index; this pins the operator so nobody swaps it back.
+    @Test func nameMatchingUsesTheOperatorNSMetadataQueryUnderstands() {
+        let format = SpotlightQuery
+            .predicate(for: TextNormalizer.query("report"))
+            .predicateFormat
+        #expect(format.contains("LIKE[cd]"))
+        #expect(format.contains("*report*"))
+    }
+
     @Test func applicationsAreExcludedSoTheyDoNotDuplicateTheAppProvider() {
         let predicate = SpotlightQuery.predicate(for: TextNormalizer.query("safari"))
         #expect(predicate.predicateFormat.contains("com.apple.application-bundle"))

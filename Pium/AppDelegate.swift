@@ -21,7 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         applicationIndex = index
         panelController = LauncherPanelController(
             coordinator: SearchCoordinator(providers: [
-                ApplicationProvider(index: index)
+                ApplicationProvider(index: index),
+                SpotlightFileProvider(),
             ])
         )
         super.init()

@@ -9,6 +9,7 @@ import AppKit
 final class SpotlightFileProvider: ResultProvider {
     nonisolated let kind = ResultKind.file
 
+
     /// Long enough that a burst of typing issues one query, short enough that
     /// results do not feel late. Tunable per the PRD.
     static let defaultDebounce = Duration.milliseconds(150)

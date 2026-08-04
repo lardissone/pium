@@ -145,6 +145,44 @@ struct SearchCoordinatorTests {
         #expect(published.last?.map(\.title) == ["New"])
     }
 
+    /// The stubs above prove the merge; this proves a slow real provider's
+    /// batch actually reaches a consumer through the coordinator.
+    @Test func aRealFileProviderBatchReachesTheConsumer() async throws {
+        let name = "pium-coord-\(UUID().uuidString.prefix(8))"
+        // Deliberately not `~/Documents`: macOS privacy controls hide that
+        // folder's contents from Spotlight results unless the app has been
+        // granted access, so a test pointed there passes or fails depending on
+        // what the developer once clicked. See PIUM-41.
+        let folder = URL(filePath: NSHomeDirectory()).appending(path: "pium-test-scratch")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).txt")
+        try "pium integration test".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let coordinator = SearchCoordinator(providers: [
+            SpotlightFileProvider(
+                isEnabled: { true },
+                scope: { .home },
+                debounce: .zero,
+                open: { _ in },
+                reveal: { _ in }
+            )
+        ])
+
+        var found = false
+        for _ in 0..<15 where !found {
+            for await batch in coordinator.search(name) {
+                if batch.contains(where: { $0.title == "\(name).txt" }) {
+                    found = true
+                    break
+                }
+            }
+            if !found { try? await Task.sleep(for: .seconds(2)) }
+        }
+
+        #expect(found, "A real file must reach the consumer through the coordinator")
+    }
+
     /// One provider's results must not wait behind another's.
     @Test func aFastProviderIsPublishedBeforeASlowOne() async {
         let coordinator = SearchCoordinator(providers: [

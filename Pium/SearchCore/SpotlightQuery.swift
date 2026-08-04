@@ -19,6 +19,12 @@ enum SpotlightQuery {
     ]
 
     static func predicate(for query: NormalizedQuery) -> NSPredicate {
+        // `LIKE[cd]`, not `==[cd]`. `mdfind` documents `== "*term*"cd` as the
+        // wildcard form, but that is a different parser: through `NSPredicate`
+        // and `NSMetadataQuery`, `==` with wildcards matches nothing and `LIKE`
+        // is the operator that works. Verified against a live index — do not
+        // "fix" this to match the `mdfind` syntax.
+        //
         // `%@` carries the text as an argument, so quotes, wildcards, and
         // apostrophes cannot change the shape of the query.
         let matchesName = NSPredicate(
