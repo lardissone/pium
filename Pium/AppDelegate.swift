@@ -7,16 +7,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let logger = Logger(subsystem: Signposts.subsystem, category: "Lifecycle")
 
     private let hotkeyController = GlobalHotkeyController()
-    private let panelController = LauncherPanelController()
+    private let applicationIndex: ApplicationIndex
+    private let panelController: LauncherPanelController
     private let onboardingController = OnboardingWindowController()
     private let settingsController = SettingsWindowController()
     private var menuBarController: MenuBarController?
+
+    /// The panel is built here rather than lazily so the first press of the
+    /// shortcut does not pay for constructing its `NSHostingView`, which would
+    /// come straight out of the 100 ms budget for showing the launcher.
+    override init() {
+        let index = ApplicationIndex()
+        applicationIndex = index
+        panelController = LauncherPanelController(
+            coordinator: SearchCoordinator(providers: [
+                ApplicationProvider(index: index)
+            ])
+        )
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         menuBarController = MenuBarController(
             onOpenLauncher: { [weak self] in self?.panelController.show() },
             onOpenSettings: { [weak self] in self?.openSettings() }
         )
+
+        applicationIndex.refresh()
+        applicationIndex.startObserving()
 
         registerShortcut(Preferences.shared.shortcut)
 

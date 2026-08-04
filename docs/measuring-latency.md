@@ -20,6 +20,31 @@ Budget: p95 ≤ 100 ms. Debug builds are not representative — measure Release.
    completion notes. A miss is investigated with a time profile before any
    optimisation is written.
 
+# Measuring search latency
+
+Budget: p95 ≤ 50 ms, from query to merged results. `SearchCoordinator.search`
+brackets its work with the `query` interval of subsystem `app.pium.Pium`,
+category `Search`, so the Instruments procedure above applies unchanged — swap
+the category and interval, and type one- and two-character queries instead of
+pressing the shortcut.
+
+The same interval can be measured without a GUI session by driving
+`SearchCoordinator` directly in an optimised build against the real index. That
+is reproducible and needs nobody at the keyboard, at the cost of excluding the
+SwiftUI update that Instruments would also miss.
+
+## Recorded results
+
+| Date | p95 | Median | Samples | Machine | macOS |
+|---|---:|---:|---:|---|---|
+| 2026-08-04 | 3.8 ms | 2.4 ms | 32 | Apple M2 Max, 32 GB | 26.5.1 |
+
+Measured over one- and two-character queries against 284 installed
+applications, optimised build, first pass discarded as cold.
+
+The same caveat as the launcher figure applies: the interval measures Pium's
+own code path, not keystroke-to-pixels.
+
 # Running the tests
 
 Everything, including the UI smoke suite:

@@ -6,10 +6,13 @@ import SwiftUI
 final class LauncherPanelController: NSObject {
     private let panel: LauncherPanel
     private let state = LauncherState()
+    private let coordinator: SearchCoordinator
+    private var searchTask: Task<Void, Never>?
 
     var isVisible: Bool { panel.isVisible }
 
-    override init() {
+    init(coordinator: SearchCoordinator) {
+        self.coordinator = coordinator
         let size = CGSize(
             width: Tokens.Size.panelWidth,
             height: Tokens.Size.searchFieldHeight
@@ -18,7 +21,12 @@ final class LauncherPanelController: NSObject {
         super.init()
 
         panel.contentView = NSHostingView(
-            rootView: LauncherView(state: state) { [weak self] in self?.hide() }
+            rootView: LauncherView(
+                state: state,
+                onDismiss: { [weak self] in self?.hide() },
+                onQueryChanged: { [weak self] text in self?.runSearch(text) },
+                onActivate: { [weak self] result in self?.activate(result) }
+            )
         )
         // `NSWindow.delegate` is weak, so this does not retain the controller.
         // Using the delegate rather than a NotificationCenter observer avoids
@@ -38,6 +46,11 @@ final class LauncherPanelController: NSObject {
         // The view stays mounted while the panel is hidden, so the per-opening
         // reset has to be driven from here.
         state.prepareForPresentation()
+        // The panel may still be expanded from the previous opening, and
+        // placement is computed from its size, so shrink before positioning.
+        panel.setContentSize(
+            CGSize(width: Tokens.Size.panelWidth, height: Tokens.Size.searchFieldHeight)
+        )
         moveToTargetScreen()
         // An accessory app must activate for its panel to take key status, but
         // because the panel is non-activating this does not steal the user's
@@ -49,6 +62,44 @@ final class LauncherPanelController: NSObject {
     func hide() {
         guard panel.isVisible else { return }
         panel.orderOut(nil)
+    }
+
+    /// Applications and plugins search from the first character, so there is no
+    /// debounce here. Phase 3 adds one for Spotlight only.
+    private func runSearch(_ text: String) {
+        searchTask?.cancel()
+        searchTask = Task { [weak self] in
+            guard let self else { return }
+            let results = await coordinator.search(text)
+            guard !Task.isCancelled else { return }
+            state.setResults(results)
+            resizePanelToContent()
+        }
+    }
+
+    private func activate(_ result: SearchResult) {
+        // `Return` runs the primary action and closes the launcher.
+        hide()
+        result.primaryAction?.perform()
+    }
+
+    /// The panel grows and shrinks with the result list, keeping its top edge
+    /// fixed so the search field does not jump under the cursor.
+    private func resizePanelToContent() {
+        guard let contentView = panel.contentView else { return }
+        contentView.layoutSubtreeIfNeeded()
+        let fitting = contentView.fittingSize
+        guard fitting.height > 0 else { return }
+        let top = panel.frame.maxY
+        panel.setFrame(
+            NSRect(
+                x: panel.frame.minX,
+                y: top - fitting.height,
+                width: Tokens.Size.panelWidth,
+                height: fitting.height
+            ),
+            display: true
+        )
     }
 
     /// Positions the panel on the display holding the focused window, near the
