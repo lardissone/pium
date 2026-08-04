@@ -75,7 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func openSettings() {
-        settingsController.present { [weak self] shortcut in
+        settingsController.present(frecency: frecency) { [weak self] shortcut in
             self?.registerShortcut(shortcut)
         }
     }

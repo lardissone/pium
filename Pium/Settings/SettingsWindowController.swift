@@ -11,7 +11,10 @@ import SwiftUI
 final class SettingsWindowController {
     private var window: NSWindow?
 
-    func present(onShortcutChanged: @escaping (HotkeyShortcut) -> Void) {
+    func present(
+        frecency: any FrecencyStoring,
+        onShortcutChanged: @escaping (HotkeyShortcut) -> Void
+    ) {
         // Reuse the existing window so the menu item raises Settings rather
         // than stacking a second copy.
         if let window {
@@ -32,7 +35,10 @@ final class SettingsWindowController {
         window.title = String(localized: "settings.windowTitle")
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(
-            rootView: SettingsView(onShortcutChanged: onShortcutChanged)
+            rootView: SettingsView(
+                frecency: frecency,
+                onShortcutChanged: onShortcutChanged
+            )
         )
         window.center()
 

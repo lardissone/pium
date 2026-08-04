@@ -5,6 +5,7 @@ import SwiftUI
 /// The Plugins, Appearance, Updates, and Advanced sections arrive with the
 /// features they configure, in Phases 4 through 7.
 struct SettingsView: View {
+    let frecency: any FrecencyStoring
     let onShortcutChanged: (HotkeyShortcut) -> Void
 
     var body: some View {
@@ -17,7 +18,7 @@ struct SettingsView: View {
                     )
                 }
 
-            SearchSettingsView()
+            SearchSettingsView(frecency: frecency)
                 .tabItem {
                     Label(
                         String(localized: "settings.search.title"),
