@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor
 final class LauncherPanelController: NSObject {
     private let panel: LauncherPanel
+    private let state = LauncherState()
 
     var isVisible: Bool { panel.isVisible }
 
@@ -17,7 +18,7 @@ final class LauncherPanelController: NSObject {
         super.init()
 
         panel.contentView = NSHostingView(
-            rootView: LauncherView { [weak self] in self?.hide() }
+            rootView: LauncherView(state: state) { [weak self] in self?.hide() }
         )
         // `NSWindow.delegate` is weak, so this does not retain the controller.
         // Using the delegate rather than a NotificationCenter observer avoids
@@ -34,6 +35,9 @@ final class LauncherPanelController: NSObject {
         let interval = Signposts.launcher.beginInterval("show")
         defer { Signposts.launcher.endInterval("show", interval) }
 
+        // The view stays mounted while the panel is hidden, so the per-opening
+        // reset has to be driven from here.
+        state.prepareForPresentation()
         moveToTargetScreen()
         // An accessory app must activate for its panel to take key status, but
         // because the panel is non-activating this does not steal the user's

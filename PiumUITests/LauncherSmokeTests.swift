@@ -11,8 +11,13 @@ final class LauncherSmokeTests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         app = XCUIApplication()
-        // Lands in NSArgumentDomain, so onboarding does not block the tests.
-        app.launchArguments = ["-pium.hasCompletedOnboarding", "YES"]
+        app.launchArguments = [
+            // Lands in NSArgumentDomain, so onboarding does not block the tests.
+            "-pium.hasCompletedOnboarding", "YES",
+            // The menu titles below are English. Without this the suite fails
+            // whenever the developer has left Pium set to another language.
+            "-AppleLanguages", "(en)",
+        ]
         app.launch()
     }
 
@@ -21,15 +26,11 @@ final class LauncherSmokeTests: XCTestCase {
     }
 
     func testMenubarItemExists() {
-        let statusItem = app.menuBars.statusItems.firstMatch
         XCTAssertTrue(statusItem.waitForExistence(timeout: 10))
     }
 
     func testOpenPiumFromMenubarShowsAFocusedEmptySearchField() {
-        let statusItem = app.menuBars.statusItems.firstMatch
-        XCTAssertTrue(statusItem.waitForExistence(timeout: 10))
-        statusItem.click()
-        app.menuItems["Open Pium"].click()
+        openLauncherFromMenubar()
 
         let searchField = app.textFields["Search"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 10))
@@ -38,16 +39,52 @@ final class LauncherSmokeTests: XCTestCase {
     }
 
     func testEscapeDismissesTheLauncher() {
-        let statusItem = app.menuBars.statusItems.firstMatch
-        XCTAssertTrue(statusItem.waitForExistence(timeout: 10))
-        statusItem.click()
-        app.menuItems["Open Pium"].click()
+        openLauncherFromMenubar()
 
         let searchField = app.textFields["Search"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 10))
 
         searchField.typeKey(.escape, modifierFlags: [])
         XCTAssertTrue(searchField.waitForNonExistence(timeout: 10))
+    }
+
+    /// The panel is hidden with `orderOut` rather than destroyed, so the SwiftUI
+    /// view stays mounted between openings. Without an explicit per-opening
+    /// reset, only the first opening is cleared and focused — and an unfocused
+    /// field never receives the Escape key either.
+    func testSecondOpeningIsAlsoEmptyAndFocused() {
+        openLauncherFromMenubar()
+
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText("leftover")
+        XCTAssertEqual(searchField.value as? String, "leftover")
+
+        searchField.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(searchField.waitForNonExistence(timeout: 10))
+
+        openLauncherFromMenubar()
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        XCTAssertEqual(
+            searchField.value as? String, "",
+            "Every opening must start with an empty query"
+        )
+        XCTAssertTrue(
+            searchField.hasKeyboardFocus,
+            "Every opening must start with the input focused"
+        )
+    }
+
+    private var statusItem: XCUIElement {
+        app.menuBars.statusItems.firstMatch
+    }
+
+    private func openLauncherFromMenubar() {
+        XCTAssertTrue(statusItem.waitForExistence(timeout: 10))
+        statusItem.click()
+        let openItem = app.menuItems["Open Pium"]
+        XCTAssertTrue(openItem.waitForExistence(timeout: 10))
+        openItem.click()
     }
 }
 
