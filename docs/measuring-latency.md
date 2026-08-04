@@ -20,39 +20,47 @@ Budget: p95 ≤ 100 ms. Debug builds are not representative — measure Release.
    completion notes. A miss is investigated with a time profile before any
    optimisation is written.
 
-# Running the UI tests
+# Running the tests
 
-`PiumUITests` is excluded from CI and runs locally only. It needs more than a
-plain `xcodebuild` invocation:
-
-- **The runner must be code signed.** `CODE_SIGNING_ALLOWED=NO` — fine for the
-  unit tests — produces a runner macOS refuses to launch, reporting
-  `"PiumUITests-Runner.app" is damaged and can't be opened`. Nothing is
-  damaged; it is unsigned.
-- **The runner needs Accessibility permission.** XCUITest drives the UI through
-  the accessibility APIs. macOS prompts for this the first time, and a
-  headless `xcodebuild` run cannot show the prompt — the runner is killed
-  before it connects, reported as
-  `Early unexpected exit, operation never finished bootstrapping`.
-
-  This is a requirement of the *test runner*, not of Pium. Pium itself must
-  never require Accessibility permission, and the Phase 0–1 checklist verifies
-  that it does not appear in that list.
-
-So: **run the UI tests from Xcode** (⌘U with the `PiumUITests` target), accept
-the permission prompt once, and afterwards command-line runs work too:
+Everything, including the UI smoke suite:
 
 ```bash
-xcodebuild test -project Pium.xcodeproj -scheme Pium \
-  -destination 'platform=macOS' -only-testing:PiumUITests
+xcodegen generate
+xcodebuild test -project Pium.xcodeproj -scheme Pium -destination 'platform=macOS'
 ```
 
-The unit tests have no such requirement:
+Unit tests only, which is what CI runs:
 
 ```bash
 xcodebuild test -project Pium.xcodeproj -scheme Pium \
   -destination 'platform=macOS' -skip-testing:PiumUITests CODE_SIGNING_ALLOWED=NO
 ```
 
-Note that running the unit tests briefly registers Pium's real global shortcut,
-because the test host is the application itself.
+## Why the UI tests need signing
+
+`PiumUITests` is excluded from CI because XCUITest needs a real GUI session.
+Locally it needs consistent code signing, and two failure modes look alarming
+but are ordinary configuration problems:
+
+- **`"PiumUITests-Runner.app" is damaged and can't be opened`** — the runner is
+  unsigned. Nothing is damaged. Do not pass `CODE_SIGNING_ALLOWED=NO` when
+  running the UI tests; that flag is only safe for the unit tests.
+- **`mapping process and mapped file (non-platform) have different Team IDs`**,
+  surfacing as `Failed to load the test bundle` — the runner and the `.xctest`
+  bundle inside it were signed by different teams. This is why `project.yml`
+  sets `DEVELOPMENT_TEAM` for every target rather than leaving it unset.
+
+`DEVELOPMENT_TEAM` in `project.yml` is the *development* team, used so local
+builds and the test runner agree. Release signing uses the Developer ID team
+and is configured separately in Phase 7.
+
+## A note on the unit tests
+
+Running the unit tests briefly registers Pium's real global shortcut, because
+the test host is the application itself. That is also why the hotkey tests use
+`⌃⌥⇧⌘ F13`/`F14` rather than `⌥ Space` — registering the app's own shortcut a
+second time correctly fails with `eventHotKeyExistsErr`, which one test asserts
+on purpose.
+
+Pium itself never requires Accessibility permission, and the Phase 0–1
+checklist verifies it does not appear in that privacy list.

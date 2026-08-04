@@ -15,6 +15,12 @@ settings:
     # Every target needs one: the XCUITest runner cannot be code signed without
     # it, and an unsigned runner is rejected at launch as "damaged".
     GENERATE_INFOPLIST_FILE: YES
+    # All targets must sign with the same team, or the XCUITest runner refuses
+    # to load its own test bundle: "mapping process and mapped file have
+    # different Team IDs". Release signing uses the Developer ID team and is
+    # configured separately in Phase 7.
+    DEVELOPMENT_TEAM: NH85J8FXX5
+    CODE_SIGN_STYLE: Automatic
     # No App Sandbox: Pium must run local tools, read ~/.config, and search
     # user files. Omitting CODE_SIGN_ENTITLEMENTS entirely is what makes this
     # true — there is no entitlements file to remove.
