@@ -15,11 +15,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_26.app
-
-      - name: Show toolchain
-        run: xcodebuild -version && swift --version
+      # The runner image's default Xcode is used rather than a pinned path,
+      # because those paths change between images. The version is asserted so a
+      # drift below Xcode 26 fails here with a clear message instead of later
+      # as a confusing compile error.
+      - name: Select and verify Xcode
+        run: |
+          ls -d /Applications/Xcode*.app || true
+          sudo xcode-select -switch /Applications/Xcode.app
+          xcodebuild -version
+          swift --version
+          xcodebuild -version | grep -q '^Xcode 26' || {
+            echo "::error::Expected Xcode 26 on this runner. Available versions are listed above."
+            exit 1
+          }
 
       - name: Install XcodeGen
         run: brew install xcodegen
