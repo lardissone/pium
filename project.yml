@@ -6,6 +6,12 @@ options:
     macOS: "26.0"
   createIntermediateGroups: true
 
+# Project-wide, so every target signs with the same team. See the file itself
+# for why the team is not written here.
+configFiles:
+  Debug: Signing.xcconfig
+  Release: Signing.xcconfig
+
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -15,11 +21,8 @@ settings:
     # Every target needs one: the XCUITest runner cannot be code signed without
     # it, and an unsigned runner is rejected at launch as "damaged".
     GENERATE_INFOPLIST_FILE: YES
-    # All targets must sign with the same team, or the XCUITest runner refuses
-    # to load its own test bundle: "mapping process and mapped file have
-    # different Team IDs". Release signing uses the Developer ID team and is
-    # configured separately in Phase 7.
-    DEVELOPMENT_TEAM: NH85J8FXX5
+    # DEVELOPMENT_TEAM comes from Signing.xcconfig, not from here: a setting
+    # written into the generated project would override the xcconfig.
     CODE_SIGN_STYLE: Automatic
     # No App Sandbox: Pium must run local tools, read ~/.config, and search
     # user files. Omitting CODE_SIGN_ENTITLEMENTS entirely is what makes this
