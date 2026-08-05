@@ -1106,6 +1106,23 @@
         }
       }
     },
+    "settings.plugins.whatIsAplugin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A plugin is a command that runs on your Mac as you. Pium does not review what a plugin does — read a plugin before you install it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un plugin es un comando que corre en tu Mac con tu usuario. Pium no revisa lo que hace un plugin — leé un plugin antes de instalarlo."
+          }
+        }
+      }
+    },
     "settings.plugins.pluginFolder" : {
       "extractionState" : "manual",
       "localizations" : {

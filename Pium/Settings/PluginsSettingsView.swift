@@ -48,6 +48,11 @@ struct PluginsSettingsView: View {
                 }
 
                 orphans
+
+                Text(String(localized: "settings.plugins.whatIsAplugin"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(Tokens.Spacing.tight)
             }
             .frame(minWidth: 180)
 
