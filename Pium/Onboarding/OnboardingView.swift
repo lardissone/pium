@@ -16,7 +16,7 @@ struct OnboardingView: View {
             Text(String(localized: "onboarding.pluginsExplanation"))
                 .foregroundStyle(.secondary)
 
-            Text(String(localized: "settings.plugins.whatIsAplugin"))
+            Text(String(localized: "plugins.whatIsAplugin"))
                 .foregroundStyle(.secondary)
 
             HStack {

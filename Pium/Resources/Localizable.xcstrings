@@ -1140,7 +1140,7 @@
         }
       }
     },
-    "settings.plugins.whatIsAplugin" : {
+    "plugins.whatIsAplugin" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
