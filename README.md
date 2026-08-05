@@ -25,6 +25,17 @@ open Pium.xcodeproj
 Rerun `xcodegen generate` after editing `project.yml`. Changes made to the
 generated project are discarded on the next run.
 
+Signing uses your own team, which is not checked in. Create `Local.xcconfig`
+in the repository root:
+
+```
+DEVELOPMENT_TEAM = YOURTEAMID
+```
+
+The ID is in Xcode → Settings → Accounts. Without it the unit tests still run
+(`-only-testing:PiumTests CODE_SIGNING_ALLOWED=NO`), but `PiumUITests` and any
+signed build do not. See [Signing.xcconfig](Signing.xcconfig).
+
 From the command line:
 
 ```bash
