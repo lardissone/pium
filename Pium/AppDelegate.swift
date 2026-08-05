@@ -9,6 +9,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyController = GlobalHotkeyController()
     private let applicationIndex: ApplicationIndex
     private let pluginIndex: PluginIndex
+    private let pluginConfiguration = PluginConfigurationStore()
+    private let pluginSecrets = KeychainSecretStore()
     /// Built once and shared: the coordinator reads it to rank, the panel writes
     /// to it on selection, and Settings erases it.
     private let frecency: FrecencyStore
@@ -27,12 +29,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pluginIndex = plugins
         let frecency = FrecencyStore()
         self.frecency = frecency
+        let configuration = pluginConfiguration
+        let secrets = pluginSecrets
         panelController = LauncherPanelController(
             coordinator: SearchCoordinator(
                 providers: [
                     // Listed in the PRD's tie-break order. Ranking does not read
                     // this order, but a reader looking for it should find it.
-                    PluginProvider(index: plugins),
+                    PluginProvider(
+                        index: plugins,
+                        status: {
+                            PluginStatusResolver(
+                                configuration: configuration,
+                                secrets: secrets,
+                                disabledIDs: Preferences.shared.disabledPluginIDs
+                            )
+                        }
+                    ),
                     ApplicationProvider(index: index),
                     SpotlightFileProvider(),
                 ],

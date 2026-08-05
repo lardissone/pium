@@ -596,6 +596,23 @@
         }
       }
     },
+    "plugin.state.missingConfiguration %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Needs configuration: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falta configurar: %@"
+          }
+        }
+      }
+    },
     "plugin.template.unclosed %@" : {
       "extractionState" : "manual",
       "localizations" : {

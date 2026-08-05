@@ -12,15 +12,18 @@ final class PluginProvider: ResultProvider {
     static let fallbackSymbol = "terminal"
 
     private let index: PluginIndex
+    private let status: @MainActor () -> PluginStatusResolver
     private let reveal: @Sendable @MainActor (URL) -> Void
 
     init(
         index: PluginIndex,
+        status: @escaping @MainActor () -> PluginStatusResolver,
         reveal: @escaping @Sendable @MainActor (URL) -> Void = { url in
             NSWorkspace.shared.activateFileViewerSelecting([url])
         }
     ) {
         self.index = index
+        self.status = status
         self.reveal = reveal
     }
 
@@ -33,16 +36,22 @@ final class PluginProvider: ResultProvider {
 
     private func matches(for query: NormalizedQuery) -> [SearchResult] {
         guard !query.isEmpty else { return [] }
+        let status = status()
 
         return index.records
-            .compactMap { record in
+            .compactMap { record -> SearchResult? in
+                let state = status.state(of: record)
+                // A disabled plugin is not a result. Everything else is, so a
+                // problem is visible where the user is already looking.
+                guard state != .disabled else { return nil }
+
                 let score = FuzzyMatcher.bestScore(
                     query,
                     againstAnyOf: terms(of: record).map(TextNormalizer.candidate)
                 )
                 // The same hard text gate the other providers apply.
                 guard score > FuzzyMatcher.rejectionThreshold else { return nil }
-                return result(for: record, score: score)
+                return result(for: record, score: score, state: state)
             }
             .sorted { $0.textScore > $1.textScore }
     }
@@ -56,7 +65,7 @@ final class PluginProvider: ResultProvider {
         return [manifest.name] + manifest.aliases + manifest.keywords
     }
 
-    private func result(for record: PluginRecord, score: Double) -> SearchResult {
+    private func result(for record: PluginRecord, score: Double, state: PluginState) -> SearchResult {
         let url = record.fileURL
         let revealAction = ResultAction(
             id: "reveal",
@@ -79,11 +88,20 @@ final class PluginProvider: ResultProvider {
             )
         }
 
+        let subtitle: String?
+        if case .missingConfiguration(let fields) = state {
+            subtitle = String(
+                localized: "plugin.state.missingConfiguration \(fields.joined(separator: ", "))"
+            )
+        } else {
+            subtitle = manifest.description
+        }
+
         return SearchResult(
             id: manifest.id,
             kind: .plugin,
             title: manifest.name,
-            subtitle: manifest.description,
+            subtitle: subtitle,
             iconSource: .systemSymbol(symbol(for: manifest)),
             searchableTerms: terms(of: record),
             textScore: score,
