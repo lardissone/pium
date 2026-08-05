@@ -296,13 +296,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plugins are local commands described by a JSON file. Pium never runs one until you have reviewed it."
+            "value" : "Plugins are local commands described by a JSON file."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los plugins son comandos locales descritos por un archivo JSON. Pium nunca ejecuta uno hasta que lo hayas revisado."
+            "value" : "Los plugins son comandos locales descritos por un archivo JSON."
           }
         }
       }
