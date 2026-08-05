@@ -30,9 +30,17 @@ struct PluginsSettingsView: View {
 
     var body: some View {
         HSplitView {
-            List(index.records, selection: $selectedID) { record in
-                row(for: record)
-                    .tag(record.id)
+            // Orphaned secrets are a property of the folder, not of whichever
+            // plugin happens to be selected, so they live below the plugin
+            // rows here rather than in the detail pane, where they would
+            // appear and disappear with the selection.
+            List(selection: $selectedID) {
+                ForEach(index.records) { record in
+                    row(for: record)
+                        .tag(record.id)
+                }
+
+                orphans
             }
             .frame(minWidth: 180)
 
@@ -86,6 +94,40 @@ struct PluginsSettingsView: View {
                     )
                 }
 
+                if let manifest = record.manifest {
+                    Section {
+                        LabeledContent(
+                            String(localized: "settings.plugins.executable"),
+                            value: manifest.command.executable
+                        )
+                        if !manifest.command.arguments.isEmpty {
+                            LabeledContent(
+                                String(localized: "settings.plugins.arguments"),
+                                value: manifest.command.arguments.joined(separator: " ")
+                            )
+                        }
+                        LabeledContent(
+                            String(localized: "settings.plugins.workingDirectory"),
+                            value: manifest.command.workingDirectory
+                                ?? String(localized: "settings.plugins.pluginFolder")
+                        )
+                        if !manifest.configuration.isEmpty {
+                            LabeledContent(
+                                String(localized: "settings.plugins.environment"),
+                                value: manifest.configuration
+                                    .map(\.environmentVariable)
+                                    .joined(separator: ", ")
+                            )
+                        }
+                    } header: {
+                        Text(String(localized: "settings.plugins.command"))
+                    } footer: {
+                        Text(String(localized: "settings.plugins.commandExplanation"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section {
                     LabeledContent(
                         String(localized: "settings.plugins.file"),
@@ -108,6 +150,43 @@ struct PluginsSettingsView: View {
     /// only thing its author knows it by.
     static func title(for record: PluginRecord) -> String {
         record.manifest?.name ?? record.fileURL.lastPathComponent
+    }
+
+    /// Plugin ids with stored secrets that no longer have a manifest in the
+    /// folder. Sorted so the list does not reshuffle between appearances.
+    static func orphanedPluginIDs(
+        storedIDs: Set<String>,
+        records: [PluginRecord]
+    ) -> [String] {
+        let present = Set(records.compactMap { $0.manifest?.id })
+        return storedIDs.subtracting(present).sorted()
+    }
+
+    @ViewBuilder
+    private var orphans: some View {
+        let ids = Self.orphanedPluginIDs(
+            storedIDs: secrets.storedPluginIDs(),
+            records: index.records
+        )
+        if !ids.isEmpty {
+            Section {
+                ForEach(ids, id: \.self) { id in
+                    HStack {
+                        Text(id)
+                        Spacer()
+                        Button(String(localized: "settings.plugins.eraseSecrets"), role: .destructive) {
+                            try? secrets.removeSecrets(pluginID: id)
+                        }
+                    }
+                }
+            } header: {
+                Text(String(localized: "settings.plugins.orphanedSecrets"))
+            } footer: {
+                Text(String(localized: "settings.plugins.orphanedExplanation"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 
     private func subtitle(for record: PluginRecord) -> String {

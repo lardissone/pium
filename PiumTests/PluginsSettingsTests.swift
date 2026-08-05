@@ -89,6 +89,39 @@ struct PluginsSettingsTests {
     @Test func avalidPluginIsTitledByItsName() {
         #expect(PluginsSettingsView.title(for: record(id: "web.yt", name: "YouTube")) == "YouTube")
     }
+
+    /// Credentials whose plugin is no longer in the folder. They are listed,
+    /// never deleted on their own: a file can vanish because of a branch
+    /// checkout, and a hand-pasted token does not come back.
+    @Test func orphanedSecretsAreThoseWithoutAplugin() {
+        let orphans = PluginsSettingsView.orphanedPluginIDs(
+            storedIDs: ["web.yt", "gone.plugin"],
+            records: [record(id: "web.yt", name: "YouTube")]
+        )
+        #expect(orphans == ["gone.plugin"])
+    }
+
+    @Test func nothingIsOrphanedWhenEveryPluginIsPresent() {
+        let orphans = PluginsSettingsView.orphanedPluginIDs(
+            storedIDs: ["web.yt"],
+            records: [record(id: "web.yt", name: "YouTube")]
+        )
+        #expect(orphans.isEmpty)
+    }
+
+    /// An invalid file still occupies its id as far as the folder is concerned,
+    /// but it has no manifest, so its secrets would look orphaned. They are not.
+    @Test func aninvalidPluginDoesNotOrphanItsOwnSecrets() {
+        let broken = PluginRecord(
+            fileURL: URL(filePath: "/tmp/web.yt.pium.json"),
+            manifest: nil,
+            diagnostic: .malformedJSON("x")
+        )
+        #expect(
+            PluginsSettingsView.orphanedPluginIDs(storedIDs: ["web.yt"], records: [broken])
+                == ["web.yt"]
+        )
+    }
 }
 
 @MainActor
