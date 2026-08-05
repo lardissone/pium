@@ -11,17 +11,14 @@ struct PluginConfigurationForm: View {
     let secrets: any PluginSecretStoring
 
     @State private var drafts: [String: String] = [:]
-    @State private var failure: String?
+    // Keyed by field, not shared: an unrelated field saving successfully must
+    // not clear another field's still-outstanding Keychain failure.
+    @State private var failures: [String: String] = [:]
 
     var body: some View {
         Section {
             ForEach(manifest.configuration, id: \.key) { field in
                 row(for: field)
-            }
-            if let failure {
-                Text(failure)
-                    .font(.caption)
-                    .foregroundStyle(.red)
             }
         } header: {
             Text(String(localized: "settings.plugins.configuration"))
@@ -36,8 +33,11 @@ struct PluginConfigurationForm: View {
     private func row(for field: PluginConfigurationField) -> some View {
         switch field.type {
         case .string:
-            TextField(label(for: field), text: draft(for: field))
-                .onSubmit { save(field) }
+            VStack(alignment: .leading, spacing: 4) {
+                TextField(label(for: field), text: draft(for: field))
+                    .onSubmit { save(field) }
+                failureText(for: field)
+            }
         case .secret:
             VStack(alignment: .leading, spacing: 4) {
                 SecureField(label(for: field), text: draft(for: field))
@@ -59,7 +59,19 @@ struct PluginConfigurationForm: View {
                         .buttonStyle(.link)
                     }
                 }
+                failureText(for: field)
             }
+        }
+    }
+
+    /// This field's own outstanding error, if it has one — beside its row
+    /// rather than in one shared spot, so it is clear which field failed.
+    @ViewBuilder
+    private func failureText(for field: PluginConfigurationField) -> some View {
+        if let failure = failures[field.key] {
+            Text(failure)
+                .font(.caption)
+                .foregroundStyle(.red)
         }
     }
 
@@ -93,11 +105,11 @@ struct PluginConfigurationForm: View {
             )
             // A saved secret is not echoed back into the field.
             if field.type == .secret { drafts[field.key] = "" }
-            failure = nil
+            failures[field.key] = nil
         } catch {
             // A Keychain failure has to be visible: silently not saving a token
             // is how a user spends an evening wondering why nothing works.
-            failure = String(localized: "settings.plugins.saveFailed \(field.label)")
+            failures[field.key] = String(localized: "settings.plugins.saveFailed \(field.label)")
         }
     }
 
