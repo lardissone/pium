@@ -138,6 +138,12 @@ struct PluginProviderTests {
         let result = try #require(await results(provider, "broken").first)
         #expect(result.subtitle?.contains("shel") == true)
         #expect(result.actions.map(\.id) == ["reveal"])
+        // A warning symbol rather than an ordinary one, so the row can be
+        // coloured without the view guessing from the symbol's name.
+        guard case .warningSymbol = result.iconSource else {
+            Issue.record("A broken plugin must be marked as a warning")
+            return
+        }
     }
 
     /// An invalid file has no name, so it is found by its filename — the only

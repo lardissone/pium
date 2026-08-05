@@ -65,32 +65,63 @@ struct LauncherView: View {
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
 
-            // Two fields rather than one: argument mode replaces the query with
-            // the plugin's own input, and the field that is on screen is the one
-            // that has focus and therefore receives the keys.
-            if let target = state.argumentTarget {
-                argumentField(for: target)
-            } else {
-                queryField
-            }
+            // Always a slot, so the field below keeps its position and with it
+            // its identity: anything that remounts the field costs the focus
+            // and empties the text it was holding.
+            pill
+
+            queryField
         }
         .padding(.horizontal, Tokens.Spacing.loose)
         .frame(height: Tokens.Size.searchFieldHeight)
-        // Whichever field is mounted takes the focus the other one had.
         .onChange(of: state.isInArgumentMode) { _, isOn in
-            isQueryFocused = true
             // Leaving restores the search the user was in the middle of, which
             // entering cleared.
             if !isOn { onQueryChanged(state.query) }
         }
     }
 
+    /// What the field edits: the search, or the selected plugin's argument.
+    private var fieldText: Binding<String> {
+        guard state.isInArgumentMode else { return $state.query }
+        return Binding(
+            get: { state.argumentText },
+            set: { state.setArgumentText($0) }
+        )
+    }
+
+    private var fieldPlaceholder: String {
+        guard let request = state.argumentTarget?.argument else {
+            return String(localized: "launcher.placeholder")
+        }
+        return request.placeholder ?? String(localized: "launcher.argument.placeholder")
+    }
+
+    private var fieldAccessibilityLabel: String {
+        guard let target = state.argumentTarget else {
+            return String(localized: "launcher.search.accessibilityLabel")
+        }
+        return String(localized: "launcher.argument.accessibilityLabel \(target.title)")
+    }
+
+    /// Names the plugin the typed text is going to. Present but empty outside
+    /// argument mode.
+    @ViewBuilder
+    private var pill: some View {
+        if let target = state.argumentTarget {
+            PluginPillView(title: target.title) { state.exitArgumentMode() }
+        }
+    }
+
+    /// One field throughout. Argument mode swaps what it is bound to rather
+    /// than what is on screen, so the text the user is editing changes without
+    /// the field itself ever going away.
     private var queryField: some View {
-        TextField(String(localized: "launcher.placeholder"), text: $state.query)
+        TextField(fieldPlaceholder, text: fieldText)
             .textFieldStyle(.plain)
             .font(Tokens.TypeScale.query)
             .focused($isQueryFocused)
-            .accessibilityLabel(String(localized: "launcher.search.accessibilityLabel"))
+            .accessibilityLabel(fieldAccessibilityLabel)
             // Must come first: with the menu open, typing filters it, and
             // the characters have to be taken before the field inserts
             // them. Rejecting them from the binding is not enough — the
@@ -100,13 +131,16 @@ struct LauncherView: View {
                 handleMenuTyping(press)
             }
             .onKeyPress(phases: .down) { press in
-                handleArgumentEntry(press)
+                handleArgumentTyping(press)
             }
             .onKeyPress(.escape) {
-                // The PRD: with the menu open, the first Esc returns to
-                // search rather than closing the launcher.
+                // The PRD: with the menu open, the first Esc returns to search
+                // rather than closing the launcher. Argument mode gets the same
+                // courtesy before the launcher closes.
                 if state.isActionMenuPresented {
                     state.dismissActionMenu()
+                } else if state.isInArgumentMode {
+                    state.exitArgumentMode()
                 } else {
                     onDismiss()
                 }
@@ -128,48 +162,6 @@ struct LauncherView: View {
                 state.presentActionMenu()
                 return .handled
             }
-    }
-
-    /// The plugin's own input: a pill naming it, and what has been typed for it.
-    private func argumentField(for target: SearchResult) -> some View {
-        HStack(spacing: Tokens.Spacing.normal) {
-            PluginPillView(title: target.title) { state.exitArgumentMode() }
-
-            Text(
-                state.argumentText.isEmpty
-                    ? (target.argument?.placeholder
-                        ?? String(localized: "launcher.argument.placeholder"))
-                    : state.argumentText
-            )
-            .font(Tokens.TypeScale.query)
-            .foregroundStyle(
-                state.argumentText.isEmpty
-                    ? AnyShapeStyle(.secondary)
-                    : AnyShapeStyle(.primary)
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            String(localized: "launcher.argument.accessibilityLabel \(target.title)")
-        )
-        // There is no text field here, so this view has to be focusable itself
-        // or the keys would go nowhere.
-        .focusable()
-        .focusEffectDisabled()
-        .focused($isQueryFocused)
-        .onKeyPress(phases: .down) { press in
-            handleArgumentTyping(press)
-        }
-        .onKeyPress(.escape) {
-            state.exitArgumentMode()
-            return .handled
-        }
-        .onKeyPress(.return) {
-            // Running the command is Phase 5. Until then Return does nothing
-            // rather than something surprising.
-            .handled
-        }
     }
 
     /// Routes typing into the open menu's filter.
@@ -210,44 +202,32 @@ struct LauncherView: View {
         }
     }
 
-    /// A space on a selected plugin that takes input enters argument mode.
+    /// Enters argument mode, then routes typing into the plugin's argument.
     ///
-    /// Returns `.ignored` for everything else, so a space anywhere else is an
-    /// ordinary space in the query.
-    private func handleArgumentEntry(_ press: KeyPress) -> KeyPress.Result {
+    /// A space on a selected plugin that takes input enters; after that every
+    /// ordinary keystroke belongs to the plugin rather than to the query, and
+    /// is taken before the field can insert it. Returns `.ignored` otherwise,
+    /// so a space anywhere else is an ordinary space and the handlers below are
+    /// untouched.
+    private func handleArgumentTyping(_ press: KeyPress) -> KeyPress.Result {
         guard !state.isActionMenuPresented else { return .ignored }
         guard press.modifiers.isDisjoint(with: [.command, .control, .option]) else {
             return .ignored
         }
-        guard press.characters == " ", state.enterArgumentMode() else { return .ignored }
+
+        if !state.isInArgumentMode {
+            guard press.characters == " ", state.enterArgumentMode() else { return .ignored }
+            return .handled
+        }
+
+        // Typing goes to the field, which is bound to the argument — only the
+        // backspace that would delete nothing has to be taken, because that one
+        // means "leave" rather than "delete". Delete arrives as backspace or as
+        // DEL depending on the path.
+        let isDelete = press.key.character == "\u{8}" || press.key.character == "\u{7F}"
+        guard isDelete, state.argumentText.isEmpty else { return .ignored }
+        state.exitArgumentMode()
         return .handled
-    }
-
-    /// Routes typing into the plugin's argument.
-    ///
-    /// Every ordinary keystroke belongs to the plugin while argument mode is on.
-    /// Navigation keys are left to the handlers beside this one.
-    private func handleArgumentTyping(_ press: KeyPress) -> KeyPress.Result {
-        guard press.modifiers.isDisjoint(with: [.command, .control, .option]) else {
-            return .ignored
-        }
-
-        // Delete arrives as backspace or as DEL depending on the path, the same
-        // way it does for the action menu's filter.
-        if press.key.character == "\u{8}" || press.key.character == "\u{7F}" {
-            state.deleteLastArgumentCharacter()
-            return .handled
-        }
-
-        switch press.key {
-        case .upArrow, .downArrow, .return, .escape, .tab:
-            return .ignored
-        default:
-            let typed = press.characters.filter(\.isTypable)
-            guard !typed.isEmpty else { return .ignored }
-            state.appendToArgument(typed)
-            return .handled
-        }
     }
 
     /// The arrows drive whichever list is in front of the user.
@@ -263,6 +243,11 @@ struct LauncherView: View {
     /// closed, the combination is looked up among the selected result's actions
     /// rather than assumed, so a new action needs no change here.
     private func handleReturn(modifiers: ActionShortcut.Modifiers) -> KeyPress.Result {
+        if state.isInArgumentMode {
+            // Running the command is Phase 5. Until then Return does nothing
+            // rather than something surprising.
+            return .handled
+        }
         guard let selected = state.selectedResult else { return .handled }
 
         if state.isActionMenuPresented {

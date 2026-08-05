@@ -105,6 +105,13 @@ final class LauncherState {
         argumentText += characters
     }
 
+    /// Replaces the argument wholesale, which is what the search field's binding
+    /// does while argument mode is on.
+    func setArgumentText(_ text: String) {
+        guard isInArgumentMode else { return }
+        argumentText = text
+    }
+
     /// Deletes one character, or leaves argument mode when there is nothing left.
     ///
     /// Returns whether anything was deleted, so the caller can tell the two

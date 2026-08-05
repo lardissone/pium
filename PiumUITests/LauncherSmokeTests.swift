@@ -268,13 +268,54 @@ final class LauncherSmokeTests: XCTestCase {
     /// assertion unwinds through an Objective-C exception, which skips Swift's
     /// `defer` and leaves the fixture behind. A leaked manifest is a plugin in
     /// the user's own launcher that then outranks everything in later tests.
+    /// Argument mode end to end, which the state tests cannot reach: entering
+    /// swaps the search field for a focusable view of its own, and leaving has
+    /// to hand the focus back or every keystroke afterwards is a beep.
+    func testArgumentModeTakesTypingAndGivesTheFieldBack() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        try writePluginManifest(named: name, inputMode: "required")
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+
+        // Space on a plugin that takes input enters argument mode.
+        searchField.typeText(" ")
+        let pill = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", name)
+        ).firstMatch
+        XCTAssertTrue(pill.waitForExistence(timeout: 10), "A pill must name the plugin")
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(identifier: "result.row").count, 0,
+            "Applications and files must disappear while an argument is typed"
+        )
+
+        // Backspace to empty, then once more to leave.
+        app.typeText("swift")
+        for _ in 0..<"swift".count { app.typeKey(.delete, modifierFlags: []) }
+        app.typeKey(.delete, modifierFlags: [])
+        XCTAssertTrue(pill.waitForNonExistence(timeout: 10), "Backspace on empty must leave")
+
+        // The field has to be usable again, which is what the beep meant it
+        // was not.
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText("z")
+        XCTAssertEqual(
+            searchField.value as? String, "\(name)z",
+            "Typing must reach the search field again after leaving argument mode"
+        )
+    }
+
     @discardableResult
-    private func writePluginManifest(named name: String) throws -> URL {
+    private func writePluginManifest(named name: String, inputMode: String = "none") throws -> URL {
         let folder = realHome.appending(path: ".config/pium/plugins")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appending(path: "\(name).pium.json")
         try """
         { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "\(inputMode)" },
           "command": { "executable": "true" } }
         """.write(to: url, atomically: true, encoding: .utf8)
         addTeardownBlock { try? FileManager.default.removeItem(at: url) }

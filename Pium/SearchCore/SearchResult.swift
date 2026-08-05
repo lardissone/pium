@@ -22,6 +22,9 @@ enum ResultKind: String, Sendable, CaseIterable {
 enum IconSource: Sendable, Equatable {
     case applicationBundle(URL)
     case systemSymbol(String)
+    /// A symbol for a row that reports a problem. Separate from `systemSymbol`
+    /// so the row can colour it without inferring intent from a symbol name.
+    case warningSymbol(String)
 }
 
 /// A result that takes a free-form argument before it can run.

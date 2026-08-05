@@ -72,7 +72,7 @@ final class PluginProvider: ResultProvider {
                 kind: .plugin,
                 title: url.lastPathComponent,
                 subtitle: record.diagnostic?.message,
-                iconSource: .systemSymbol("exclamationmark.triangle"),
+                iconSource: .warningSymbol("exclamationmark.triangle.fill"),
                 searchableTerms: [url.lastPathComponent],
                 textScore: score,
                 actions: [revealAction]
