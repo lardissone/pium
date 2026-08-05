@@ -13,6 +13,8 @@ struct PluginDiagnosticTests {
         #expect(PluginDiagnostic.conflictingAlias("yt").message.contains("yt"))
         #expect(PluginDiagnostic.invalidIdentifier("Web YT").message.contains("Web YT"))
         #expect(PluginDiagnostic.secretInArguments(key: "token").message.contains("token"))
+        #expect(PluginDiagnostic.invalidConfigurationKey("Token Key").message.contains("Token Key"))
+        #expect(PluginDiagnostic.duplicateConfigurationKey("token").message.contains("token"))
     }
 
     @Test func noDiagnosticMessageIsEmpty() {
@@ -24,6 +26,8 @@ struct PluginDiagnosticTests {
             .wrongType(path: "timeoutSeconds", expected: "integer"),
             .unsupportedSchemaVersion(99),
             .invalidIdentifier("X"),
+            .invalidConfigurationKey("X"),
+            .duplicateConfigurationKey("x"),
             .invalidTemplate("unclosed {{"),
             .secretInArguments(key: "token"),
             .invalidTimeout(0),
