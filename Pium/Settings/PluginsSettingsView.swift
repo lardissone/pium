@@ -31,11 +31,18 @@ struct PluginsSettingsView: View {
     var body: some View {
         HSplitView {
             // Orphaned secrets are a property of the folder, not of whichever
-            // plugin happens to be selected, so they live below the plugin
-            // rows here rather than in the detail pane, where they would
-            // appear and disappear with the selection.
-            List(selection: $selectedID) {
-                ForEach(index.records) { record in
+            // plugin happens to be selected, so `orphans` lives beside the
+            // list rather than inside the detail pane, where it would appear
+            // and disappear with the selection.
+            //
+            // It is also kept out of the List itself: SwiftUI infers a
+            // selection tag from a ForEach's `id:` when its type matches the
+            // List's selection type, so `ForEach(ids, id: \.self)` over
+            // `[String]` would silently double as a `selectedID: String?`
+            // tag. An orphaned id matches no `PluginRecord`, so clicking that
+            // row would blank the detail pane instead of doing nothing.
+            VStack(spacing: 0) {
+                List(index.records, selection: $selectedID) { record in
                     row(for: record)
                         .tag(record.id)
                 }
