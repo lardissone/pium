@@ -32,6 +32,23 @@ final class LauncherState {
     /// search underneath it.
     private(set) var actionQuery = ""
 
+    /// The plugin the next keystrokes belong to. `nil` in ordinary search.
+    private(set) var argumentTarget: SearchResult?
+
+    /// What has been typed for that plugin. Separate from `query`: it is the
+    /// plugin's input, not a search, and it is never recorded as usage history.
+    private(set) var argumentText = ""
+
+    var isInArgumentMode: Bool { argumentTarget != nil }
+
+    /// Whether the target could run with what has been typed. A required
+    /// argument that is empty or only whitespace is not an argument.
+    var isArgumentSatisfied: Bool {
+        guard let request = argumentTarget?.argument else { return false }
+        guard request.isRequired else { return true }
+        return !argumentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var selectedResult: SearchResult? {
         results.first { $0.id == selectedID }
     }
@@ -39,6 +56,7 @@ final class LauncherState {
     /// Every opening starts with an empty query, no results, and focused input.
     func prepareForPresentation() {
         query = ""
+        exitArgumentMode()
         setResults([])
         presentationToken = UUID()
     }
@@ -59,6 +77,47 @@ final class LauncherState {
             // just opened.
             dismissActionMenu()
         }
+    }
+
+    /// Enters argument mode on the selected result, if it takes one.
+    ///
+    /// Returns whether it did, so the key handler can fall through and let a
+    /// space be an ordinary space when it did not.
+    @discardableResult
+    func enterArgumentMode() -> Bool {
+        guard let selected = selectedResult, selected.argument != nil else { return false }
+        dismissActionMenu()
+        // PRD §10.3: applications and files disappear, so the plugin is the only
+        // thing in front of the user while they type its argument.
+        setResults([])
+        argumentTarget = selected
+        argumentText = ""
+        return true
+    }
+
+    func exitArgumentMode() {
+        argumentTarget = nil
+        argumentText = ""
+    }
+
+    func appendToArgument(_ characters: String) {
+        guard isInArgumentMode else { return }
+        argumentText += characters
+    }
+
+    /// Deletes one character, or leaves argument mode when there is nothing left.
+    ///
+    /// Returns whether anything was deleted, so the caller can tell the two
+    /// outcomes apart.
+    @discardableResult
+    func deleteLastArgumentCharacter() -> Bool {
+        guard isInArgumentMode else { return false }
+        guard !argumentText.isEmpty else {
+            exitArgumentMode()
+            return false
+        }
+        argumentText.removeLast()
+        return true
     }
 
     /// Opens the contextual menu, but only when there is something to show.

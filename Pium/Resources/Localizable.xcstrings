@@ -52,6 +52,57 @@
         }
       }
     },
+    "launcher.argument.accessibilityLabel %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Argument for %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Argumento para %@"
+          }
+        }
+      }
+    },
+    "launcher.argument.leave %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave %@ and return to search"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir de %@ y volver a la búsqueda"
+          }
+        }
+      }
+    },
+    "launcher.argument.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type an argument"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribí un argumento"
+          }
+        }
+      }
+    },
     "launcher.actions" : {
       "extractionState" : "manual",
       "localizations" : {
