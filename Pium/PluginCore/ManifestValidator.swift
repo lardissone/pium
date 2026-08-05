@@ -81,8 +81,8 @@ enum ManifestValidator {
     }
 
     /// Lowercase letters, digits, dots, and hyphens, starting and ending
-    /// alphanumeric. The id keys trust and usage history, so two ids that look
-    /// alike must not be two different plugins.
+    /// alphanumeric. The id keys usage history, so two ids that look alike
+    /// must not be two different plugins.
     private static func isValidIdentifier(_ identifier: String) -> Bool {
         guard let first = identifier.first, let last = identifier.last else { return false }
         guard first.isASCIILowercaseOrDigit, last.isASCIILowercaseOrDigit else { return false }

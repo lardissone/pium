@@ -52,8 +52,8 @@ struct ManifestValidatorTests {
         #expect(ManifestValidator.validate(manifest(id: "a")) == nil)
     }
 
-    /// The id is the trust key in 4b and the frecency key today. Spaces, case,
-    /// and unicode would make two ids that look the same behave differently.
+    /// The id is the frecency key. Spaces, case, and unicode would make two
+    /// ids that look the same behave differently.
     @Test func anIdWithSpacesOrCapitalsIsRejected() {
         #expect(ManifestValidator.validate(manifest(id: "Web YT")) == .invalidIdentifier("Web YT"))
         #expect(ManifestValidator.validate(manifest(id: "WebYT")) == .invalidIdentifier("WebYT"))
