@@ -47,6 +47,15 @@ struct KeychainSecretStoreTests {
         #expect(try store.secret(pluginID: "web.yt", key: "token") == nil)
     }
 
+    @Test func anEmptyStringRemovesTheSecret() throws {
+        let store = makeStore()
+        try store.setSecret("hunter2", pluginID: "web.yt", key: "token")
+        try store.setSecret("", pluginID: "web.yt", key: "token")
+
+        #expect(!store.hasSecret(pluginID: "web.yt", key: "token"))
+        #expect(try store.secret(pluginID: "web.yt", key: "token") == nil)
+    }
+
     /// What Preferences lists as orphaned credentials.
     @Test func storedPluginIDsReportsEveryPluginWithASecret() throws {
         let store = makeStore()
@@ -86,5 +95,20 @@ struct KeychainSecretStoreTests {
         store.reconcile()
         #expect(store.hasSecret(pluginID: "a.one", key: "token"))
         #expect(!store.hasSecret(pluginID: "ghost.plugin", key: "token"))
+    }
+}
+
+@Suite("In-memory secret store")
+@MainActor
+struct InMemorySecretStoreTests {
+    /// Every other unit's tests rely on this double matching
+    /// `KeychainSecretStore`'s empty-string-removes-secret behavior.
+    @Test func anEmptyStringRemovesTheSecret() throws {
+        let store = InMemorySecretStore()
+        try store.setSecret("hunter2", pluginID: "web.yt", key: "token")
+        try store.setSecret("", pluginID: "web.yt", key: "token")
+
+        #expect(!store.hasSecret(pluginID: "web.yt", key: "token"))
+        #expect(try store.secret(pluginID: "web.yt", key: "token") == nil)
     }
 }

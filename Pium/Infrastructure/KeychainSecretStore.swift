@@ -63,6 +63,9 @@ final class KeychainSecretStore: PluginSecretStoring {
         // Delete then add rather than update: an update on a missing item
         // fails, and branching on that is more code than removing first.
         try delete(account: account)
+        // Reflect the deletion immediately: if SecItemAdd below fails, the
+        // index must not keep claiming the old item is still there.
+        record(account: account, present: false)
         var attributes = query(account: account)
         attributes[kSecValueData as String] = Data(value.utf8)
         // After first unlock: Pium can launch at login and read its own
@@ -160,7 +163,12 @@ final class InMemorySecretStore: PluginSecretStoring {
     }
 
     func setSecret(_ value: String?, pluginID: String, key: String) throws {
-        secrets["\(pluginID)/\(key)"] = value
+        let account = "\(pluginID)/\(key)"
+        guard let value, !value.isEmpty else {
+            secrets[account] = nil
+            return
+        }
+        secrets[account] = value
     }
 
     func secret(pluginID: String, key: String) throws -> String? {
