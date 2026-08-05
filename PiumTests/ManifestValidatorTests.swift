@@ -109,10 +109,37 @@ struct ManifestValidatorTests {
         #expect(
             ManifestValidator.validate(
                 manifest(
-                    arguments: ["--url={{baseURL}}"],
-                    configuration: [field("baseURL", type: .string)]
+                    arguments: ["--url={{base-url}}"],
+                    configuration: [field("base-url", type: .string)]
                 )
             ) == nil
+        )
+    }
+
+    /// A duplicate key collides on the same storage slot: `ForEach(id: \.key)`
+    /// gets two rows with the same identity, and whichever field saves last
+    /// silently overwrites the other's stored value.
+    @Test func aduplicateConfigurationKeyIsRejected() {
+        #expect(
+            ManifestValidator.validate(
+                manifest(configuration: [
+                    field("token", type: .secret),
+                    field("token", type: .string),
+                ])
+            ) == .duplicateConfigurationKey("token")
+        )
+    }
+
+    /// A key becomes part of a `UserDefaults` key and a Keychain account, so it
+    /// needs the same grammar `id` does, for the same reason.
+    @Test func aninvalidConfigurationKeyIsRejected() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("Token Key", type: .string)]))
+                == .invalidConfigurationKey("Token Key")
+        )
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("", type: .string)]))
+                == .invalidConfigurationKey("")
         )
     }
 

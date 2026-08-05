@@ -426,6 +426,40 @@
         }
       }
     },
+    "plugin.diagnostic.invalidConfigurationKey %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is not a valid configuration key. Use lowercase letters, digits, dots, and hyphens."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no es una clave de configuración válida. Usá minúsculas, dígitos, puntos y guiones."
+          }
+        }
+      }
+    },
+    "plugin.diagnostic.duplicateConfigurationKey %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuration key “%@” is declared more than once."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave de configuración «%@» está declarada más de una vez."
+          }
+        }
+      }
+    },
     "plugin.diagnostic.invalidTemplate %@" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -13,6 +13,10 @@ enum ManifestValidator {
             return .invalidIdentifier(manifest.id)
         }
 
+        if let problem = firstConfigurationKeyProblem(in: manifest.configuration) {
+            return problem
+        }
+
         if let seconds = manifest.timeoutSeconds,
            !(minimumTimeout...maximumTimeout).contains(seconds) {
             return .invalidTimeout(seconds)
@@ -27,6 +31,26 @@ enum ManifestValidator {
         }
 
         return firstArgumentProblem(in: manifest)
+    }
+
+    /// A key becomes part of a `UserDefaults` key and a Keychain account, and
+    /// is what a configuration row's `ForEach` uses for identity — the same
+    /// grammar `id` needs, for the same reasons, plus uniqueness: two fields
+    /// sharing a key read and write the same storage slot, so the second
+    /// silently shadows the first.
+    private static func firstConfigurationKeyProblem(
+        in fields: [PluginConfigurationField]
+    ) -> PluginDiagnostic? {
+        var seen = Set<String>()
+        for field in fields {
+            guard isValidIdentifier(field.key) else {
+                return .invalidConfigurationKey(field.key)
+            }
+            guard seen.insert(field.key).inserted else {
+                return .duplicateConfigurationKey(field.key)
+            }
+        }
+        return nil
     }
 
     /// Every argument must parse, and none may interpolate a secret.
