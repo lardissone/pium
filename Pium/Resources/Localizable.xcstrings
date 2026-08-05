@@ -35,6 +35,23 @@
         }
       }
     },
+    "action.revealJSON" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reveal JSON in Finder"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar JSON en Finder"
+          }
+        }
+      }
+    },
     "launcher.actions" : {
       "extractionState" : "manual",
       "localizations" : {
