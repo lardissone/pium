@@ -10,9 +10,23 @@ struct PluginsSettingsView: View {
     let index: PluginIndex
     let configuration: any PluginConfigurationStoring
     let secrets: any PluginSecretStoring
+    let preferences: Preferences
 
     @State private var selectedID: String?
-    @State private var disabledIDs = Preferences.shared.disabledPluginIDs
+    @State private var disabledIDs: Set<String>
+
+    init(
+        index: PluginIndex,
+        configuration: any PluginConfigurationStoring,
+        secrets: any PluginSecretStoring,
+        preferences: Preferences = .shared
+    ) {
+        self.index = index
+        self.configuration = configuration
+        self.secrets = secrets
+        self.preferences = preferences
+        _disabledIDs = State(initialValue: preferences.disabledPluginIDs)
+    }
 
     var body: some View {
         HSplitView {
@@ -108,10 +122,23 @@ struct PluginsSettingsView: View {
     private func binding(for id: String) -> Binding<Bool> {
         Binding(
             get: { !disabledIDs.contains(id) },
-            set: { isEnabled in
-                if isEnabled { disabledIDs.remove(id) } else { disabledIDs.insert(id) }
-                Preferences.shared.disabledPluginIDs = disabledIDs
-            }
+            set: { isEnabled in disabledIDs = setEnabled(isEnabled, pluginID: id, in: disabledIDs) }
         )
+    }
+
+    /// The write-through behind the toggle: computes the next disabled set
+    /// and writes it into `preferences` in the same step, returning it so the
+    /// caller can also update its own copy.
+    ///
+    /// Takes the current set as a parameter and returns the next one, rather
+    /// than reading and writing `disabledIDs` itself, so the round trip into
+    /// `preferences` can be asserted directly — `@State` only persists a
+    /// mutation once a view is installed in a real SwiftUI hierarchy, which a
+    /// unit test never is.
+    func setEnabled(_ isEnabled: Bool, pluginID: String, in currentDisabledIDs: Set<String>) -> Set<String> {
+        var next = currentDisabledIDs
+        if isEnabled { next.remove(pluginID) } else { next.insert(pluginID) }
+        preferences.disabledPluginIDs = next
+        return next
     }
 }

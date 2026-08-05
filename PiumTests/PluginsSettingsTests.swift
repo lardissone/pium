@@ -38,7 +38,41 @@ struct PluginsSettingsTests {
             watcher: NullSettingsWatcher()
         )
         index.refresh()
+
+        let preferences = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        preferences.disabledPluginIDs = ["web.yt"]
+
         #expect(index.records.count == 1)
+        let state = PluginStatusResolver(
+            configuration: PluginConfigurationStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            secrets: InMemorySecretStore(),
+            disabledIDs: preferences.disabledPluginIDs
+        ).state(of: index.records[0])
+        #expect(state == .disabled)
+    }
+
+    /// The toggle's write-through: enabling and disabling both round-trip
+    /// into the injected `Preferences`, not the singleton.
+    @Test func togglingWritesThroughToPreferences() {
+        let preferences = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let view = PluginsSettingsView(
+            index: PluginIndex(
+                root: URL(filePath: "/tmp/unused"),
+                loader: { _ in [] },
+                watcher: NullSettingsWatcher()
+            ),
+            configuration: PluginConfigurationStore(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+            secrets: InMemorySecretStore(),
+            preferences: preferences
+        )
+
+        let afterDisabling = view.setEnabled(false, pluginID: "web.yt", in: [])
+        #expect(afterDisabling == ["web.yt"])
+        #expect(preferences.disabledPluginIDs == ["web.yt"])
+
+        let afterEnabling = view.setEnabled(true, pluginID: "web.yt", in: afterDisabling)
+        #expect(afterEnabling.isEmpty)
+        #expect(preferences.disabledPluginIDs.isEmpty)
     }
 
     /// The row's title for a file that never decoded: it has no name, so the
