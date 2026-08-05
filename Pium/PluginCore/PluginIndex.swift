@@ -19,7 +19,7 @@ final class PluginIndex {
     init(
         root: URL = PluginLoader.defaultRoot,
         loader: @escaping @Sendable (URL) -> [PluginRecord] = { PluginLoader.load(from: $0) },
-        watcher: any PluginDirectoryWatching = UnwatchedDirectory()
+        watcher: any PluginDirectoryWatching = FileSystemEventWatcher()
     ) {
         self.root = root
         self.loader = loader
@@ -63,11 +63,4 @@ final class PluginIndex {
             return record
         }
     }
-}
-
-/// Replaced by `FileSystemEventWatcher` in Task 7.
-@MainActor
-final class UnwatchedDirectory: PluginDirectoryWatching {
-    func start(root: URL, onChange: @escaping @MainActor () -> Void) {}
-    func stop() {}
 }
