@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "demo.say-hello",
+  "name": "Say hello",
+  "description": "Speaks a greeting out loud",
+  "icon": "speaker.wave.2.fill",
+  "input": { "mode": "optional", "placeholder": "Name" },
+  "command": { "executable": "say", "arguments": ["Hello {{input}}"] },
+  "output": { "mode": "silent" }
+}

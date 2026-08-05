@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "web.youtube-search",
+  "name": "YouTube",
+  "description": "Search YouTube",
+  "keywords": ["video", "buscar"],
+  "aliases": ["yt"],
+  "icon": "play.rectangle.fill",
+  "input": { "mode": "required", "placeholder": "Search terms" },
+  "command": {
+    "executable": "open",
+    "arguments": ["https://www.youtube.com/results?search_query={{input|url_encode}}"]
+  },
+  "output": { "mode": "silent" }
+}

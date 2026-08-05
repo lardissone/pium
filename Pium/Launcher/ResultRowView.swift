@@ -56,6 +56,13 @@ struct ResultRowView: View {
                 .resizable()
                 .scaledToFit()
                 .foregroundStyle(.secondary)
+        case .warningSymbol(let name):
+            // Coloured because this row is the only place a broken plugin
+            // reports itself until Preferences grows a Plugins section.
+            Image(systemName: name)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(.orange)
         }
     }
 }

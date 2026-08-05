@@ -164,11 +164,17 @@ final class LauncherSmokeTests: XCTestCase {
         // Deliberately not `~/Documents`: macOS privacy controls hide that
         // folder's contents from Spotlight results unless the app has been
         // granted access, and an XCUITest-launched app has not. See PIUM-41.
-        let folder = URL(filePath: NSHomeDirectory()).appending(path: "pium-uitest-scratch")
+        //
+        // `realHome` rather than `NSHomeDirectory()`: this runner is sandboxed,
+        // so the latter would write into its container, where Pium — which is
+        // not sandboxed — would never see the file. See PIUM-62.
+        let folder = realHome.appending(path: "pium-uitest-scratch")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appending(path: "\(name).txt")
         try "pium ui test".write(to: url, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: folder) }
+        // Not `defer`: a failed assertion unwinds through an Objective-C
+        // exception, which skips it and leaves the scratch folder behind.
+        addTeardownBlock { try? FileManager.default.removeItem(at: folder) }
 
         openLauncherFromMenubar()
         let searchField = app.textFields["Search"]
@@ -200,6 +206,143 @@ final class LauncherSmokeTests: XCTestCase {
             row.exists,
             "A file in the home folder must appear in the results once indexed"
         )
+    }
+
+    /// The phase in one test: a JSON file written to the plugins folder becomes
+    /// a searchable row without restarting Pium.
+    func testAPluginPresentAtLaunchIsSearchable() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        try writePluginManifest(named: name)
+
+        // Written before the app reads the folder, which it does at launch.
+        // Separate from the live-reload test so a failure here is about
+        // searching plugins and a failure only there is about the watcher.
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+
+        XCTAssertTrue(
+            pluginRow(named: name).waitForExistence(timeout: 10),
+            "A plugin on disk at launch must be searchable. \(resultListDiagnostics())"
+        )
+    }
+
+    func testAPluginAppearsWithoutRestarting() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        // Written while Pium is already running: the folder watcher's job,
+        // not the launch-time load the test above covers.
+        try writePluginManifest(named: name)
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+
+        XCTAssertTrue(
+            pluginRow(named: name).waitForExistence(timeout: 10),
+            "A plugin written to the folder must appear without restarting. "
+                + resultListDiagnostics()
+        )
+    }
+
+    /// The real home, not the container the test runner reports.
+    ///
+    /// `PiumUITests-Runner` is sandboxed, so `NSHomeDirectory()` here is
+    /// `~/Library/Containers/app.pium.PiumUITests.xctrunner/Data`. Pium is not
+    /// sandboxed and reads the real home, so anything a test writes to the
+    /// runner's home is something the app can never see. `getpwuid` reports the
+    /// account's own directory and is not redirected. See PIUM-62.
+    private var realHome: URL {
+        guard let entry = getpwuid(getuid()) else { return URL(filePath: NSHomeDirectory()) }
+        return URL(filePath: String(cString: entry.pointee.pw_dir))
+    }
+
+    /// Writes a manifest into the user's real plugins folder and removes it
+    /// afterwards.
+    ///
+    /// Cleaned up with `addTeardownBlock` rather than `defer`: a failed
+    /// assertion unwinds through an Objective-C exception, which skips Swift's
+    /// `defer` and leaves the fixture behind. A leaked manifest is a plugin in
+    /// the user's own launcher that then outranks everything in later tests.
+    /// Argument mode end to end, which the state tests cannot reach: entering
+    /// swaps the search field for a focusable view of its own, and leaving has
+    /// to hand the focus back or every keystroke afterwards is a beep.
+    func testArgumentModeTakesTypingAndGivesTheFieldBack() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        try writePluginManifest(named: name, inputMode: "required")
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+
+        // Space on a plugin that takes input enters argument mode.
+        searchField.typeText(" ")
+        let pill = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", name)
+        ).firstMatch
+        XCTAssertTrue(pill.waitForExistence(timeout: 10), "A pill must name the plugin")
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(identifier: "result.row").count, 0,
+            "Applications and files must disappear while an argument is typed"
+        )
+
+        // Backspace to empty, then once more to leave.
+        app.typeText("swift")
+        for _ in 0..<"swift".count { app.typeKey(.delete, modifierFlags: []) }
+        app.typeKey(.delete, modifierFlags: [])
+        XCTAssertTrue(pill.waitForNonExistence(timeout: 10), "Backspace on empty must leave")
+
+        // The field has to be usable again, which is what the beep meant it
+        // was not.
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText("z")
+        XCTAssertEqual(
+            searchField.value as? String, "\(name)z",
+            "Typing must reach the search field again after leaving argument mode"
+        )
+    }
+
+    @discardableResult
+    private func writePluginManifest(named name: String, inputMode: String = "none") throws -> URL {
+        let folder = realHome.appending(path: ".config/pium/plugins")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "\(inputMode)" },
+          "command": { "executable": "true" } }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        return url
+    }
+
+    /// A plugin row with no description combines into a single accessibility
+    /// element whose text can land in either `label` or `value`, so both are
+    /// accepted rather than guessed at.
+    private func pluginRow(named name: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier == %@ AND (value CONTAINS %@ OR label CONTAINS %@)",
+                "result.row", name, name
+            )
+        ).firstMatch
+    }
+
+    /// What the list actually held, so one failing run says why rather than
+    /// only that it failed.
+    private func resultListDiagnostics() -> String {
+        let rows = app.descendants(matching: .any).matching(identifier: "result.row")
+        let described = (0..<rows.count).map { index in
+            let row = rows.element(boundBy: index)
+            return "[label: \(row.label), value: \(String(describing: row.value))]"
+        }
+        return "Rows present: \(rows.count) \(described.joined(separator: " "))"
     }
 
     /// Typing and backspace inside the menu must never reach the search query

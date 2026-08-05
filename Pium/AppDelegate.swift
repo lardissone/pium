@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let hotkeyController = GlobalHotkeyController()
     private let applicationIndex: ApplicationIndex
+    private let pluginIndex: PluginIndex
     /// Built once and shared: the coordinator reads it to rank, the panel writes
     /// to it on selection, and Settings erases it.
     private let frecency: FrecencyStore
@@ -22,11 +23,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     override init() {
         let index = ApplicationIndex()
         applicationIndex = index
+        let plugins = PluginIndex()
+        pluginIndex = plugins
         let frecency = FrecencyStore()
         self.frecency = frecency
         panelController = LauncherPanelController(
             coordinator: SearchCoordinator(
                 providers: [
+                    // Listed in the PRD's tie-break order. Ranking does not read
+                    // this order, but a reader looking for it should find it.
+                    PluginProvider(index: plugins),
                     ApplicationProvider(index: index),
                     SpotlightFileProvider(),
                 ],
@@ -40,11 +46,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         menuBarController = MenuBarController(
             onOpenLauncher: { [weak self] in self?.panelController.show() },
-            onOpenSettings: { [weak self] in self?.openSettings() }
+            onOpenSettings: { [weak self] in self?.openSettings() },
+            onOpenPluginsFolder: {
+                NSWorkspace.shared.activateFileViewerSelecting([PluginLoader.defaultRoot])
+            },
+            onReloadPlugins: { [weak self] in self?.pluginIndex.refresh() }
         )
 
         applicationIndex.refresh()
         applicationIndex.startObserving()
+
+        // Created at launch so "Open Plugins Folder" always has somewhere to go,
+        // and onboarding's promise that the folder exists is kept.
+        PluginLoader.createRootIfNeeded()
+        pluginIndex.refresh()
+        pluginIndex.startObserving()
 
         registerShortcut(Preferences.shared.shortcut)
 

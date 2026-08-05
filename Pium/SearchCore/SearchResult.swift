@@ -22,6 +22,20 @@ enum ResultKind: String, Sendable, CaseIterable {
 enum IconSource: Sendable, Equatable {
     case applicationBundle(URL)
     case systemSymbol(String)
+    /// A symbol for a row that reports a problem. Separate from `systemSymbol`
+    /// so the row can colour it without inferring intent from a symbol name.
+    case warningSymbol(String)
+}
+
+/// A result that takes a free-form argument before it can run.
+///
+/// On `SearchResult` rather than on a plugin type so the launcher's argument
+/// mode does not have to know what a plugin is — the same way actions are
+/// values the menu renders without knowing what they do.
+struct ArgumentRequest: Sendable, Equatable {
+    let placeholder: String?
+    /// When true, the result cannot run without one.
+    let isRequired: Bool
 }
 
 /// One row in the unified result list.
@@ -38,6 +52,32 @@ struct SearchResult: Identifiable, Sendable {
     let searchableTerms: [String]
     let textScore: Double
     let actions: [ResultAction]
+
+    /// Present when this result takes an argument. `nil` for everything that
+    /// simply runs.
+    let argument: ArgumentRequest?
+
+    init(
+        id: String,
+        kind: ResultKind,
+        title: String,
+        subtitle: String?,
+        iconSource: IconSource,
+        searchableTerms: [String],
+        textScore: Double,
+        actions: [ResultAction],
+        argument: ArgumentRequest? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.title = title
+        self.subtitle = subtitle
+        self.iconSource = iconSource
+        self.searchableTerms = searchableTerms
+        self.textScore = textScore
+        self.actions = actions
+        self.argument = argument
+    }
 
     /// What `Return` runs. By convention the first action.
     var primaryAction: ResultAction? { actions.first }
