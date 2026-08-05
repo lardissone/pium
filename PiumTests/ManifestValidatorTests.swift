@@ -130,8 +130,9 @@ struct ManifestValidatorTests {
         )
     }
 
-    /// A key becomes part of a `UserDefaults` key and a Keychain account, so it
-    /// needs the same grammar `id` does, for the same reason.
+    /// A key becomes part of a `UserDefaults` key and a Keychain account, but
+    /// it is a field name, not a plugin id: whitespace and emptiness still
+    /// break storage and identity, so they are still rejected.
     @Test func aninvalidConfigurationKeyIsRejected() {
         #expect(
             ManifestValidator.validate(manifest(configuration: [field("Token Key", type: .string)]))
@@ -140,6 +141,45 @@ struct ManifestValidatorTests {
         #expect(
             ManifestValidator.validate(manifest(configuration: [field("", type: .string)]))
                 == .invalidConfigurationKey("")
+        )
+    }
+
+    /// A configuration key is a field name, and PIUM-ARCH's own sample
+    /// manifest declares one as `baseURL`. The id grammar (lowercase only)
+    /// would reject that; a field-name grammar must not.
+    @Test func acamelCaseConfigurationKeyIsAccepted() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("baseURL", type: .string)])) == nil
+        )
+    }
+
+    /// Underscores and a digit after the first character are ordinary in a
+    /// field name.
+    @Test func aconfigurationKeyMayUseUnderscoresAndDigits() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("api_key", type: .string)])) == nil
+        )
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("apiKey2", type: .string)])) == nil
+        )
+    }
+
+    /// The stored key is assembled as `pium.plugin.<pluginID>.config.<field>`.
+    /// A dot inside the field could forge that `.config.` boundary and land on
+    /// a different plugin id/field pair, so dots are rejected even though they
+    /// are otherwise an ordinary character.
+    @Test func aconfigurationKeyWithADotIsRejected() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("base.url", type: .string)]))
+                == .invalidConfigurationKey("base.url")
+        )
+    }
+
+    /// A leading digit or symbol is not a field name.
+    @Test func aconfigurationKeyMustStartWithALetter() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("2fa", type: .string)]))
+                == .invalidConfigurationKey("2fa")
         )
     }
 

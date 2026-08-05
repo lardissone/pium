@@ -89,6 +89,61 @@ struct PluginSchemaAgreementTests {
         let node = try object(try schema(), at: ["schemaVersion"])
         #expect(node["const"] as? Int == PluginManifest.currentSchemaVersion)
     }
+
+    /// A key set alone does not catch a schema whose `pattern` is looser or
+    /// stricter than what `ManifestValidator` accepts — an author's editor
+    /// would call such a file valid while Pium rejects it, or the reverse.
+    /// Checked by running the same candidates through both: the schema's
+    /// regex, and `ManifestValidator` on a manifest built with that key.
+    @Test func theConfigurationKeyPatternAgreesWithTheValidator() throws {
+        let node = try object(try schema(), at: ["configuration"])
+        let properties = try #require(node["properties"] as? [String: Any])
+        let keyNode = try #require(properties["key"] as? [String: Any])
+        let pattern = try #require(keyNode["pattern"] as? String)
+        let regex = try NSRegularExpression(pattern: pattern)
+
+        let candidates = [
+            "baseURL", "token", "api_key", "apiKey2", "base-url",
+            "", "Token Key", "base.url", "2fa", "clé",
+        ]
+        for candidate in candidates {
+            let range = NSRange(candidate.startIndex..., in: candidate)
+            let schemaAccepts = regex.firstMatch(in: candidate, range: range)?.range == range
+            let validatorAccepts = ManifestValidator.validate(
+                manifestWithConfigurationKey(candidate)
+            ) == nil
+            #expect(
+                schemaAccepts == validatorAccepts,
+                "\(candidate.debugDescription): schema accepts \(schemaAccepts), validator accepts \(validatorAccepts)"
+            )
+        }
+    }
+
+    private func manifestWithConfigurationKey(_ key: String) -> PluginManifest {
+        PluginManifest(
+            schemaVersion: 1,
+            id: "web.youtube",
+            name: "YouTube",
+            description: nil,
+            keywords: [],
+            aliases: [],
+            icon: nil,
+            input: PluginInput(mode: .optional, placeholder: nil),
+            command: PluginCommand(executable: "open", arguments: [], workingDirectory: nil),
+            configuration: [
+                PluginConfigurationField(
+                    key: key,
+                    label: "Label",
+                    type: .string,
+                    required: true,
+                    environmentVariable: "PIUM_KEY"
+                ),
+            ],
+            output: PluginOutput(mode: .silent),
+            timeoutSeconds: nil,
+            confirmBeforeRun: nil
+        )
+    }
 }
 
 /// Locates the bundle the resource ships in. `Bundle.main` is the app because

@@ -34,16 +34,16 @@ enum ManifestValidator {
     }
 
     /// A key becomes part of a `UserDefaults` key and a Keychain account, and
-    /// is what a configuration row's `ForEach` uses for identity — the same
-    /// grammar `id` needs, for the same reasons, plus uniqueness: two fields
-    /// sharing a key read and write the same storage slot, so the second
-    /// silently shadows the first.
+    /// is what a configuration row's `ForEach` uses for identity, so it needs
+    /// a grammar that keeps storage and identity sound — plus uniqueness: two
+    /// fields sharing a key read and write the same storage slot, so the
+    /// second silently shadows the first.
     private static func firstConfigurationKeyProblem(
         in fields: [PluginConfigurationField]
     ) -> PluginDiagnostic? {
         var seen = Set<String>()
         for field in fields {
-            guard isValidIdentifier(field.key) else {
+            guard isValidConfigurationKey(field.key) else {
                 return .invalidConfigurationKey(field.key)
             }
             guard seen.insert(field.key).inserted else {
@@ -88,10 +88,33 @@ enum ManifestValidator {
         guard first.isASCIILowercaseOrDigit, last.isASCIILowercaseOrDigit else { return false }
         return identifier.allSatisfy { $0.isASCIILowercaseOrDigit || $0 == "." || $0 == "-" }
     }
+
+    /// A field name, not a plugin id: it starts with an ASCII letter, and
+    /// after that allows ASCII letters, digits, underscores, and hyphens —
+    /// `baseURL`, `api_key`, and `base-url` are all sound field names.
+    ///
+    /// Dots are rejected even though they would otherwise be a safe
+    /// character. `PluginConfigurationStore` assembles the stored key as
+    /// `pium.plugin.<pluginID>.config.<field>`; a dot inside the field could
+    /// reproduce that `.config.` boundary and land on a different plugin
+    /// id/field pair's storage slot. Excluding dots removes that class of
+    /// collision entirely.
+    private static func isValidConfigurationKey(_ key: String) -> Bool {
+        guard let first = key.first, first.isASCIILetter else { return false }
+        return key.allSatisfy { $0.isASCIILetterOrDigit || $0 == "_" || $0 == "-" }
+    }
 }
 
 private extension Character {
     var isASCIILowercaseOrDigit: Bool {
         ("a"..."z").contains(self) || ("0"..."9").contains(self)
+    }
+
+    var isASCIILetter: Bool {
+        ("a"..."z").contains(self) || ("A"..."Z").contains(self)
+    }
+
+    var isASCIILetterOrDigit: Bool {
+        isASCIILetter || ("0"..."9").contains(self)
     }
 }

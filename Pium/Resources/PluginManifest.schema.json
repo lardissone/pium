@@ -43,7 +43,11 @@
         "additionalProperties": false,
         "required": ["key", "label", "type", "environmentVariable"],
         "properties": {
-          "key": { "type": "string", "minLength": 1 },
+          "key": {
+            "type": "string",
+            "description": "A field name, not a plugin id: starts with a letter, then letters, digits, underscores, and hyphens. No dots — the stored key is pium.plugin.<pluginID>.config.<field>, and a dot here could collide with a different plugin's slot.",
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+          },
           "label": { "type": "string", "minLength": 1 },
           "type": { "type": "string", "enum": ["string", "secret"] },
           "required": { "type": "boolean" },

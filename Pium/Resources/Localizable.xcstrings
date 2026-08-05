@@ -432,13 +432,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” is not a valid configuration key. Use lowercase letters, digits, dots, and hyphens."
+            "value" : "“%@” is not a valid configuration key. Use letters, digits, underscores, and hyphens, starting with a letter."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "«%@» no es una clave de configuración válida. Usá minúsculas, dígitos, puntos y guiones."
+            "value" : "«%@» no es una clave de configuración válida. Usá letras, dígitos, guiones bajos y guiones, empezando con una letra."
           }
         }
       }
