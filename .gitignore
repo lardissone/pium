@@ -10,3 +10,6 @@ xcuserdata/
 
 # Generated from project.yml by XcodeGen. Edit project.yml, not this.
 Pium.xcodeproj/
+
+# Per-machine signing team. See Signing.xcconfig.
+Local.xcconfig

@@ -1,0 +1,26 @@
+// Signing settings, kept out of the repository.
+//
+// The signing team is a property of the account building Pium, not of Pium.
+// Hard-coding one here means every machine but the author's fails to build
+// with "No signing certificate ... matching team ID" — a confusing error for
+// something that is only ever a local setting.
+//
+// Create `Local.xcconfig` next to this file:
+//
+//     DEVELOPMENT_TEAM = YOURTEAMID
+//
+// Find the ID in Xcode → Settings → Accounts, or read it from an installed
+// certificate: `security find-certificate -c "Apple Development" -p \
+// ~/Library/Keychains/login.keychain-db | openssl x509 -noout -subject`
+// prints it as the `OU` field.
+//
+// `#include?` is the optional form: a clone without `Local.xcconfig` builds
+// rather than failing outright. Only the unit tests run unsigned, though —
+// `PiumUITests` needs a real team, because the XCUITest runner refuses to load
+// its own test bundle when the runner and the `.xctest` inside it were signed
+// differently ("mapping process and mapped file have different Team IDs").
+// That is also why this is set project-wide rather than per target.
+//
+// Release signing uses the Developer ID team and is configured separately in
+// Phase 7.
+#include? "Local.xcconfig"
