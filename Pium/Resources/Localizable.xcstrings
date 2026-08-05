@@ -613,6 +613,23 @@
         }
       }
     },
+    "plugin.type.nonEmptyText" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "text that is not empty"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "texto no vacío"
+          }
+        }
+      }
+    },
     "settings.general.title" : {
       "extractionState" : "manual",
       "localizations" : {
