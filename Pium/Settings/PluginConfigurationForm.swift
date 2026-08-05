@@ -14,6 +14,12 @@ struct PluginConfigurationForm: View {
     // Keyed by field, not shared: an unrelated field saving successfully must
     // not clear another field's still-outstanding Keychain failure.
     @State private var failures: [String: String] = [:]
+    // A field is dirty from the moment it is edited until it is saved, which
+    // is what lets focus loss and `onDisappear` tell an unsaved keystroke
+    // apart from a secret's draft already blanked by a prior successful save
+    // — re-saving that blank would erase the secret it just wrote.
+    @State private var dirtyFields: Set<String> = []
+    @FocusState private var focusedFieldKey: String?
 
     var body: some View {
         Section {
@@ -27,6 +33,15 @@ struct PluginConfigurationForm: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .onChange(of: focusedFieldKey) { previousKey, _ in
+            // Return is not the only way to leave a field — clicking the next
+            // one or the window's close button must commit just as surely.
+            flushIfDirty(previousKey)
+        }
+        .onDisappear {
+            // Settings can close on a field that never lost focus.
+            for field in manifest.configuration { flushIfDirty(field.key) }
+        }
     }
 
     @ViewBuilder
@@ -35,12 +50,14 @@ struct PluginConfigurationForm: View {
         case .string:
             VStack(alignment: .leading, spacing: 4) {
                 TextField(label(for: field), text: draft(for: field))
+                    .focused($focusedFieldKey, equals: field.key)
                     .onSubmit { save(field) }
                 failureText(for: field)
             }
         case .secret:
             VStack(alignment: .leading, spacing: 4) {
                 SecureField(label(for: field), text: draft(for: field))
+                    .focused($focusedFieldKey, equals: field.key)
                     .onSubmit { save(field) }
                 HStack {
                     Text(
@@ -90,11 +107,25 @@ struct PluginConfigurationForm: View {
                         ? configuration.value(pluginID: manifest.id, key: field.key) ?? ""
                         : "")
             },
-            set: { drafts[field.key] = $0 }
+            set: {
+                drafts[field.key] = $0
+                dirtyFields.insert(field.key)
+            }
         )
     }
 
+    /// Saves the field named by `key` if it still has an edit waiting — the
+    /// guard that keeps focus loss and `onDisappear` from resaving a field
+    /// nothing changed since its last commit.
+    private func flushIfDirty(_ key: String?) {
+        guard let key, dirtyFields.contains(key),
+              let field = manifest.configuration.first(where: { $0.key == key })
+        else { return }
+        save(field)
+    }
+
     private func save(_ field: PluginConfigurationField) {
+        dirtyFields.remove(field.key)
         do {
             try Self.save(
                 drafts[field.key] ?? "",
