@@ -32,7 +32,18 @@ enum PluginLoader {
     }
 
     static func load(from root: URL = defaultRoot) -> [PluginRecord] {
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
+        let names: [String]
+        do {
+            names = try FileManager.default.contentsOfDirectory(atPath: root.path)
+        } catch {
+            // An absent folder is ordinary — it is created at launch and the
+            // user may delete it. Anything else means every plugin silently
+            // disappeared, which is worth saying out loud even though there is
+            // no record to hang it on.
+            if !FileManager.default.fileExists(atPath: root.path) { return [] }
+            logger.error("Could not read \(root.path, privacy: .public): \(error)")
+            return []
+        }
 
         return names
             .filter { $0.hasSuffix(manifestSuffix) }

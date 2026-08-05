@@ -204,8 +204,49 @@ final class LauncherSmokeTests: XCTestCase {
 
     /// The phase in one test: a JSON file written to the plugins folder becomes
     /// a searchable row without restarting Pium.
+    func testAPluginPresentAtLaunchIsSearchable() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let url = try writePluginManifest(named: name)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        // Written before the app reads the folder, which it does at launch.
+        // Separate from the live-reload test so a failure here is about
+        // searching plugins and a failure only there is about the watcher.
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+
+        XCTAssertTrue(
+            pluginRow(named: name).waitForExistence(timeout: 10),
+            "A plugin on disk at launch must be searchable. \(resultListDiagnostics())"
+        )
+    }
+
     func testAPluginAppearsWithoutRestarting() throws {
         let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        // Written while Pium is already running: the folder watcher's job,
+        // not the launch-time load the test above covers.
+        let url = try writePluginManifest(named: name)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+
+        XCTAssertTrue(
+            pluginRow(named: name).waitForExistence(timeout: 10),
+            "A plugin written to the folder must appear without restarting. "
+                + resultListDiagnostics()
+        )
+    }
+
+    @discardableResult
+    private func writePluginManifest(named name: String) throws -> URL {
         let folder = URL(filePath: NSHomeDirectory())
             .appending(path: ".config/pium/plugins")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -214,26 +255,30 @@ final class LauncherSmokeTests: XCTestCase {
         { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
           "command": { "executable": "true" } }
         """.write(to: url, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: url) }
+        return url
+    }
 
-        openLauncherFromMenubar()
-        let searchField = app.textFields["Search"]
-        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
-        searchField.typeText(name)
-
-        // A plugin row with no description combines into a single accessibility
-        // element whose text can land in either `label` or `value`, so both are
-        // accepted rather than guessed at.
-        let row = app.descendants(matching: .any).matching(
+    /// A plugin row with no description combines into a single accessibility
+    /// element whose text can land in either `label` or `value`, so both are
+    /// accepted rather than guessed at.
+    private func pluginRow(named name: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(
             NSPredicate(
                 format: "identifier == %@ AND (value CONTAINS %@ OR label CONTAINS %@)",
                 "result.row", name, name
             )
         ).firstMatch
-        XCTAssertTrue(
-            row.waitForExistence(timeout: 10),
-            "A plugin written to the folder must appear without restarting"
-        )
+    }
+
+    /// What the list actually held, so one failing run says why rather than
+    /// only that it failed.
+    private func resultListDiagnostics() -> String {
+        let rows = app.descendants(matching: .any).matching(identifier: "result.row")
+        let described = (0..<rows.count).map { index in
+            let row = rows.element(boundBy: index)
+            return "[label: \(row.label), value: \(String(describing: row.value))]"
+        }
+        return "Rows present: \(rows.count) \(described.joined(separator: " "))"
     }
 
     /// Typing and backspace inside the menu must never reach the search query
