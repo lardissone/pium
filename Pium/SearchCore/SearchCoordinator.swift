@@ -8,10 +8,19 @@ import Foundation
 @MainActor
 final class SearchCoordinator {
     private let providers: [any ResultProvider]
+    private let frecency: any FrecencyStoring
+    /// Injected so a test can freeze the clock the decay is measured against.
+    private let now: @Sendable () -> Date
     private(set) var currentGeneration = 0
 
-    init(providers: [any ResultProvider]) {
+    init(
+        providers: [any ResultProvider],
+        frecency: any FrecencyStoring = FrecencyStore(),
+        now: @escaping @Sendable () -> Date = Date.init
+    ) {
         self.providers = providers
+        self.frecency = frecency
+        self.now = now
     }
 
     func search(_ text: String) -> AsyncStream<[SearchResult]> {
@@ -32,6 +41,10 @@ final class SearchCoordinator {
             publish.finish()
             return published
         }
+
+        // Taken once, so every batch of one search ranks against the same
+        // history even if the user picks something while it is still running.
+        let usage = frecency.snapshot()
 
         let signpost = Signposts.search.beginInterval("query")
         let (batches, reportBatch) = AsyncStream<(ResultKind, [SearchResult])>.makeStream()
@@ -63,7 +76,14 @@ final class SearchCoordinator {
                 // A newer query started while this one was running.
                 guard generation == currentGeneration else { break }
                 contributions[kind] = batch
-                publish.yield(Self.ranked(contributions))
+                publish.yield(
+                    ResultRanker.rank(
+                        contributions.values.flatMap(\.self),
+                        for: query,
+                        usage: usage,
+                        now: now()
+                    )
+                )
             }
             Signposts.search.endInterval("query", signpost)
             publish.finish()
@@ -76,15 +96,5 @@ final class SearchCoordinator {
         }
 
         return published
-    }
-
-    /// Descending text score, ties broken by the provider order the PRD fixes.
-    private static func ranked(
-        _ contributions: [ResultKind: [SearchResult]]
-    ) -> [SearchResult] {
-        contributions.values.flatMap(\.self).sorted { lhs, rhs in
-            if lhs.textScore != rhs.textScore { return lhs.textScore > rhs.textScore }
-            return lhs.kind.tieBreakRank < rhs.kind.tieBreakRank
-        }
     }
 }

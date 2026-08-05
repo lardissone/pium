@@ -2,8 +2,14 @@ import SwiftUI
 
 /// The Search settings section.
 struct SearchSettingsView: View {
+    /// The same store the launcher records into, so erasing takes effect
+    /// without a relaunch.
+    let frecency: any FrecencyStoring
+
     @State private var isFileSearchEnabled = Preferences.shared.isFileSearchEnabled
     @State private var scope = Preferences.shared.fileSearchScope
+    @State private var isConfirmingErase = false
+    @State private var hasErased = false
 
     var body: some View {
         Form {
@@ -27,6 +33,34 @@ struct SearchSettingsView: View {
                 }
             } footer: {
                 Text(String(localized: "settings.search.fileSearchExplanation"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                // Confirmed before erasing: this cannot be undone and the
+                // button sits among controls people click while exploring.
+                Button(String(localized: "settings.search.clearHistory"), role: .destructive) {
+                    isConfirmingErase = true
+                }
+                .confirmationDialog(
+                    String(localized: "settings.search.clearHistory"),
+                    isPresented: $isConfirmingErase
+                ) {
+                    Button(String(localized: "settings.search.clearHistory"), role: .destructive) {
+                        frecency.clear()
+                        hasErased = true
+                    }
+                }
+                if hasErased {
+                    Text(String(localized: "settings.search.historyErased"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text(String(localized: "settings.search.usageHistory"))
+            } footer: {
+                Text(String(localized: "settings.search.clearHistoryExplanation"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

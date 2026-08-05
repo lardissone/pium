@@ -6,7 +6,9 @@ struct LauncherView: View {
     @Bindable var state: LauncherState
     let onDismiss: () -> Void
     let onQueryChanged: (String) -> Void
-    let onActivate: (SearchResult) -> Void
+    /// Both halves of what happened, because the result is what usage history
+    /// learns from and the action alone does not name it.
+    let onPerform: (SearchResult, ResultAction) -> Void
 
     @FocusState private var isQueryFocused: Bool
 
@@ -15,7 +17,9 @@ struct LauncherView: View {
             searchField
             if !state.results.isEmpty {
                 Divider()
-                ResultListView(state: state, onActivate: onActivate)
+                ResultListView(state: state) { result, action in
+                    perform(action, on: result)
+                }
                 Divider()
                 FooterBarView(primaryAction: state.selectedResult?.primaryAction) {
                     state.presentActionMenu()
@@ -34,7 +38,7 @@ struct LauncherView: View {
                     filter: state.actionQuery,
                     highlightedID: state.highlightedActionID,
                     onHighlight: { state.highlightAction(id: $0) },
-                    onPerform: { perform($0) }
+                    onPerform: { perform($0, on: selected) }
                 )
                 .padding(.trailing, Tokens.Spacing.normal)
                 .padding(.bottom, Tokens.Size.footerHeight + Tokens.Spacing.tight)
@@ -156,23 +160,26 @@ struct LauncherView: View {
     /// closed, the combination is looked up among the selected result's actions
     /// rather than assumed, so a new action needs no change here.
     private func handleReturn(modifiers: ActionShortcut.Modifiers) -> KeyPress.Result {
+        guard let selected = state.selectedResult else { return .handled }
+
         if state.isActionMenuPresented {
             guard let highlighted = state.highlightedAction else { return .handled }
-            perform(highlighted)
+            perform(highlighted, on: selected)
             return .handled
         }
         guard let action = state.action(matching: .return, modifiers: modifiers) else {
             return .handled
         }
-        perform(action)
+        perform(action, on: selected)
         return .handled
     }
 
     /// Running any action closes the launcher, exactly as `Return` on a result
-    /// does.
-    private func perform(_ action: ResultAction) {
+    /// does, and reports the pair so the panel can record the selection.
+    private func perform(_ action: ResultAction, on result: SearchResult) {
         state.dismissActionMenu()
         onDismiss()
+        onPerform(result, action)
         action.perform()
     }
 }

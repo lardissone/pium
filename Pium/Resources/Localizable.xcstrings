@@ -290,6 +290,74 @@
         }
       }
     },
+    "settings.search.usageHistory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage history"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historial de uso"
+          }
+        }
+      }
+    },
+    "settings.search.clearHistory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erase usage history"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borrar historial de uso"
+          }
+        }
+      }
+    },
+    "settings.search.clearHistoryExplanation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pium learns which results you pick so they come back first. Erasing this cannot be undone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pium aprende qué resultados elegís para mostrarlos primero. Borrar esto no se puede deshacer."
+          }
+        }
+      }
+    },
+    "settings.search.historyErased" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage history erased."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historial de uso borrado."
+          }
+        }
+      }
+    },
     "settings.search.title" : {
       "extractionState" : "manual",
       "localizations" : {
