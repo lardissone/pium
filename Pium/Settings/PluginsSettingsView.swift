@@ -78,6 +78,14 @@ struct PluginsSettingsView: View {
                     }
                 }
 
+                if let manifest = record.manifest, !manifest.configuration.isEmpty {
+                    PluginConfigurationForm(
+                        manifest: manifest,
+                        configuration: configuration,
+                        secrets: secrets
+                    )
+                }
+
                 Section {
                     LabeledContent(
                         String(localized: "settings.plugins.file"),
