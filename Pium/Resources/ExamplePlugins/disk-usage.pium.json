@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "demo.disk-usage",
+  "name": "Disk usage",
+  "description": "Shows how much space is free",
+  "icon": "internaldrive",
+  "input": { "mode": "none" },
+  "command": { "executable": "df", "arguments": ["-h", "/"] },
+  "output": { "mode": "toast" },
+  "timeoutSeconds": 10
+}

@@ -87,47 +87,47 @@ struct LauncherView: View {
 
     private var queryField: some View {
         TextField(String(localized: "launcher.placeholder"), text: $state.query)
-                .textFieldStyle(.plain)
-                .font(Tokens.TypeScale.query)
-                .focused($isQueryFocused)
-                .accessibilityLabel(String(localized: "launcher.search.accessibilityLabel"))
-                // Must come first: with the menu open, typing filters it, and
-                // the characters have to be taken before the field inserts
-                // them. Rejecting them from the binding is not enough — the
-                // field keeps its own buffer while editing and would go on
-                // showing text the state no longer holds.
-                .onKeyPress(phases: .down) { press in
-                    handleMenuTyping(press)
+            .textFieldStyle(.plain)
+            .font(Tokens.TypeScale.query)
+            .focused($isQueryFocused)
+            .accessibilityLabel(String(localized: "launcher.search.accessibilityLabel"))
+            // Must come first: with the menu open, typing filters it, and
+            // the characters have to be taken before the field inserts
+            // them. Rejecting them from the binding is not enough — the
+            // field keeps its own buffer while editing and would go on
+            // showing text the state no longer holds.
+            .onKeyPress(phases: .down) { press in
+                handleMenuTyping(press)
+            }
+            .onKeyPress(phases: .down) { press in
+                handleArgumentEntry(press)
+            }
+            .onKeyPress(.escape) {
+                // The PRD: with the menu open, the first Esc returns to
+                // search rather than closing the launcher.
+                if state.isActionMenuPresented {
+                    state.dismissActionMenu()
+                } else {
+                    onDismiss()
                 }
-                .onKeyPress(phases: .down) { press in
-                    handleArgumentEntry(press)
-                }
-                .onKeyPress(.escape) {
-                    // The PRD: with the menu open, the first Esc returns to
-                    // search rather than closing the launcher.
-                    if state.isActionMenuPresented {
-                        state.dismissActionMenu()
-                    } else {
-                        onDismiss()
-                    }
-                    return .handled
-                }
-                .onKeyPress(.downArrow) {
-                    move(by: 1)
-                    return .handled
-                }
-                .onKeyPress(.upArrow) {
-                    move(by: -1)
-                    return .handled
-                }
-                .onKeyPress(.return, phases: .down) { press in
-                    handleReturn(modifiers: ActionShortcut.Modifiers(press.modifiers))
-                }
-                .onKeyPress(KeyEquivalent("k"), phases: .down) { press in
-                    guard press.modifiers.contains(.command) else { return .ignored }
-                    state.presentActionMenu()
-                    return .handled
-                }
+                return .handled
+            }
+            .onKeyPress(.downArrow) {
+                move(by: 1)
+                return .handled
+            }
+            .onKeyPress(.upArrow) {
+                move(by: -1)
+                return .handled
+            }
+            .onKeyPress(.return, phases: .down) { press in
+                handleReturn(modifiers: ActionShortcut.Modifiers(press.modifiers))
+            }
+            .onKeyPress(KeyEquivalent("k"), phases: .down) { press in
+                guard press.modifiers.contains(.command) else { return .ignored }
+                state.presentActionMenu()
+                return .handled
+            }
     }
 
     /// The plugin's own input: a pill naming it, and what has been typed for it.
@@ -142,7 +142,11 @@ struct LauncherView: View {
                     : state.argumentText
             )
             .font(Tokens.TypeScale.query)
-            .foregroundStyle(state.argumentText.isEmpty ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+            .foregroundStyle(
+                state.argumentText.isEmpty
+                    ? AnyShapeStyle(.secondary)
+                    : AnyShapeStyle(.primary)
+            )
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityElement(children: .combine)

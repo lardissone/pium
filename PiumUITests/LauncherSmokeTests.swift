@@ -202,6 +202,34 @@ final class LauncherSmokeTests: XCTestCase {
         )
     }
 
+    /// The phase in one test: a JSON file written to the plugins folder becomes
+    /// a searchable row without restarting Pium.
+    func testAPluginAppearsWithoutRestarting() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let folder = URL(filePath: NSHomeDirectory())
+            .appending(path: ".config/pium/plugins")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "command": { "executable": "true" } }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+
+        let row = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier == %@ AND value CONTAINS %@", "result.row", name)
+        ).firstMatch
+        XCTAssertTrue(
+            row.waitForExistence(timeout: 10),
+            "A plugin written to the folder must appear without restarting"
+        )
+    }
+
     /// Typing and backspace inside the menu must never reach the search query
     /// behind it. Both bugs shipped once: typing appended to the query, and
     /// later `Delete` fell through to the field and ate it a character at a

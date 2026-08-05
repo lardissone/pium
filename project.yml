@@ -35,6 +35,13 @@ targets:
     platform: macOS
     sources:
       - path: Pium
+        excludes:
+          - "Resources/ExamplePlugins"
+      # A folder reference rather than individual files: the examples have to
+      # stay in a directory of their own inside the bundle, so a test can read
+      # the whole set and a reader can be pointed at one place.
+      - path: Pium/Resources/ExamplePlugins
+        type: folder
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.pium.Pium

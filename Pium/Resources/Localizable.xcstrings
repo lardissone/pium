@@ -205,6 +205,40 @@
         }
       }
     },
+    "menubar.openPluginsFolder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Plugins Folder"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir carpeta de plugins"
+          }
+        }
+      }
+    },
+    "menubar.reloadPlugins" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reload Plugins"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recargar plugins"
+          }
+        }
+      }
+    },
     "menubar.quit" : {
       "extractionState" : "stale",
       "localizations" : {
