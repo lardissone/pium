@@ -70,3 +70,9 @@ targets:
       - path: PiumUITests
     dependencies:
       - target: Pium
+    settings:
+      base:
+        # The only entitlements file in the project, and deliberately so: the
+        # app has none. This one lets the sandboxed test runner write the
+        # fixtures Pium then reads from the real home. See the file itself.
+        CODE_SIGN_ENTITLEMENTS: PiumUITests/PiumUITests.entitlements

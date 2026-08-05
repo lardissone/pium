@@ -164,11 +164,17 @@ final class LauncherSmokeTests: XCTestCase {
         // Deliberately not `~/Documents`: macOS privacy controls hide that
         // folder's contents from Spotlight results unless the app has been
         // granted access, and an XCUITest-launched app has not. See PIUM-41.
-        let folder = URL(filePath: NSHomeDirectory()).appending(path: "pium-uitest-scratch")
+        //
+        // `realHome` rather than `NSHomeDirectory()`: this runner is sandboxed,
+        // so the latter would write into its container, where Pium — which is
+        // not sandboxed — would never see the file. See PIUM-62.
+        let folder = realHome.appending(path: "pium-uitest-scratch")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appending(path: "\(name).txt")
         try "pium ui test".write(to: url, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: folder) }
+        // Not `defer`: a failed assertion unwinds through an Objective-C
+        // exception, which skips it and leaves the scratch folder behind.
+        addTeardownBlock { try? FileManager.default.removeItem(at: folder) }
 
         openLauncherFromMenubar()
         let searchField = app.textFields["Search"]
@@ -206,8 +212,7 @@ final class LauncherSmokeTests: XCTestCase {
     /// a searchable row without restarting Pium.
     func testAPluginPresentAtLaunchIsSearchable() throws {
         let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
-        let url = try writePluginManifest(named: name)
-        defer { try? FileManager.default.removeItem(at: url) }
+        try writePluginManifest(named: name)
 
         // Written before the app reads the folder, which it does at launch.
         // Separate from the live-reload test so a failure here is about
@@ -230,8 +235,7 @@ final class LauncherSmokeTests: XCTestCase {
         let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
         // Written while Pium is already running: the folder watcher's job,
         // not the launch-time load the test above covers.
-        let url = try writePluginManifest(named: name)
-        defer { try? FileManager.default.removeItem(at: url) }
+        try writePluginManifest(named: name)
 
         openLauncherFromMenubar()
         let searchField = app.textFields["Search"]
@@ -245,16 +249,35 @@ final class LauncherSmokeTests: XCTestCase {
         )
     }
 
+    /// The real home, not the container the test runner reports.
+    ///
+    /// `PiumUITests-Runner` is sandboxed, so `NSHomeDirectory()` here is
+    /// `~/Library/Containers/app.pium.PiumUITests.xctrunner/Data`. Pium is not
+    /// sandboxed and reads the real home, so anything a test writes to the
+    /// runner's home is something the app can never see. `getpwuid` reports the
+    /// account's own directory and is not redirected. See PIUM-62.
+    private var realHome: URL {
+        guard let entry = getpwuid(getuid()) else { return URL(filePath: NSHomeDirectory()) }
+        return URL(filePath: String(cString: entry.pointee.pw_dir))
+    }
+
+    /// Writes a manifest into the user's real plugins folder and removes it
+    /// afterwards.
+    ///
+    /// Cleaned up with `addTeardownBlock` rather than `defer`: a failed
+    /// assertion unwinds through an Objective-C exception, which skips Swift's
+    /// `defer` and leaves the fixture behind. A leaked manifest is a plugin in
+    /// the user's own launcher that then outranks everything in later tests.
     @discardableResult
     private func writePluginManifest(named name: String) throws -> URL {
-        let folder = URL(filePath: NSHomeDirectory())
-            .appending(path: ".config/pium/plugins")
+        let folder = realHome.appending(path: ".config/pium/plugins")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appending(path: "\(name).pium.json")
         try """
         { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
           "command": { "executable": "true" } }
         """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
         return url
     }
 
