@@ -221,8 +221,14 @@ final class LauncherSmokeTests: XCTestCase {
         XCTAssertTrue(searchField.waitForExistence(timeout: 10))
         searchField.typeText(name)
 
+        // A plugin row with no description combines into a single accessibility
+        // element whose text can land in either `label` or `value`, so both are
+        // accepted rather than guessed at.
         let row = app.descendants(matching: .any).matching(
-            NSPredicate(format: "identifier == %@ AND value CONTAINS %@", "result.row", name)
+            NSPredicate(
+                format: "identifier == %@ AND (value CONTAINS %@ OR label CONTAINS %@)",
+                "result.row", name, name
+            )
         ).firstMatch
         XCTAssertTrue(
             row.waitForExistence(timeout: 10),
