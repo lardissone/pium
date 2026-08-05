@@ -494,6 +494,57 @@
         }
       }
     },
+    "plugin.template.unclosed %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” has an unclosed {{ placeholder."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» tiene un marcador {{ sin cerrar."
+          }
+        }
+      }
+    },
+    "plugin.template.unknownFilter %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is not a known filter. Use url_encode, or no filter at all."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no es un filtro conocido. Usá url_encode, o ningún filtro."
+          }
+        }
+      }
+    },
+    "plugin.template.unknownVariable %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is not a known variable. Only {{input}} is available."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» no es una variable conocida. Solo está disponible {{input}}."
+          }
+        }
+      }
+    },
     "settings.general.title" : {
       "extractionState" : "manual",
       "localizations" : {
