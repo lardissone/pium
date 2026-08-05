@@ -195,4 +195,17 @@ struct ManifestDecoderTests {
             return
         }
     }
+
+    /// An `input` object may supply a `placeholder` without a `mode`; the same
+    /// "absent means none" default applies whether `input` itself is missing
+    /// or just its `mode` key is.
+    @Test func anInputObjectWithoutAModeDefaultsToNone() throws {
+        let manifest = try manifest("""
+        { "schemaVersion": 1, "id": "a.b", "name": "A",
+          "command": { "executable": "true" },
+          "input": { "placeholder": "Search terms" } }
+        """)
+        #expect(manifest.input.mode == .none)
+        #expect(manifest.input.placeholder == "Search terms")
+    }
 }

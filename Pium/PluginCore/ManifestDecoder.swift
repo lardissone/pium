@@ -159,7 +159,9 @@ enum ManifestDecoder {
         guard let object = raw as? [String: Any] else {
             return .success(PluginInput(mode: .none, placeholder: nil))
         }
-        guard let mode = enumValue(object["mode"], PluginInputMode.self, default: .none) else {
+        guard
+            let mode = enumValue(object["mode"], PluginInputMode.self, default: PluginInputMode.none)
+        else {
             return .failure(.wrongType(
                 path: "input.mode",
                 expected: PluginInputMode.allCases.map(\.rawValue).joined(separator: ", ")
