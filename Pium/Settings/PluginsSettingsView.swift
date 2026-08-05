@@ -14,6 +14,13 @@ struct PluginsSettingsView: View {
 
     @State private var selectedID: String?
     @State private var disabledIDs: Set<String>
+    // `KeychainSecretStore` is a plain class, not `@Observable`, so nothing
+    // about it makes SwiftUI re-evaluate `body` on its own. This is the state
+    // that stands in for it: the orphan list and the Erase button both read
+    // it instead of asking `secrets` directly, and both are refreshed by hand
+    // whenever the presence index can have changed.
+    @State private var storedPluginIDs: Set<String>
+    @State private var eraseFailures: [String: String] = [:]
 
     init(
         index: PluginIndex,
@@ -26,6 +33,7 @@ struct PluginsSettingsView: View {
         self.secrets = secrets
         self.preferences = preferences
         _disabledIDs = State(initialValue: preferences.disabledPluginIDs)
+        _storedPluginIDs = State(initialValue: secrets.storedPluginIDs())
     }
 
     var body: some View {
@@ -61,8 +69,12 @@ struct PluginsSettingsView: View {
         }
         .onAppear {
             // The presence index can drift if someone removes an item in
-            // Keychain Access. Here is the only place the difference shows.
+            // Keychain Access. Here is the only place the difference shows —
+            // and reassigning `storedPluginIDs` afterward is what turns the
+            // rebuild into a visible one, since `reconcile()` alone touches
+            // only `UserDefaults`, not anything SwiftUI is watching.
             secrets.reconcile()
+            storedPluginIDs = secrets.storedPluginIDs()
         }
     }
 
@@ -88,6 +100,11 @@ struct PluginsSettingsView: View {
     @ViewBuilder
     private var detail: some View {
         if let record = index.records.first(where: { $0.id == selectedID }) {
+            // Tied to the record, not just mounted at a fixed position: without
+            // this, switching from one plugin to another with the same-shaped
+            // detail (both have configuration fields) reuses the previous
+            // form's `@State`, so a draft typed for one plugin leaks into the
+            // next until it is submitted into the wrong plugin's storage.
             Form {
                 if case .invalid(let diagnostic) = state(of: record) {
                     Section {
@@ -151,6 +168,7 @@ struct PluginsSettingsView: View {
                 }
             }
             .formStyle(.grouped)
+            .id(record.id)
         } else {
             Text(String(localized: "settings.plugins.noSelection"))
                 .foregroundStyle(.secondary)
@@ -176,18 +194,25 @@ struct PluginsSettingsView: View {
 
     @ViewBuilder
     private var orphans: some View {
-        let ids = Self.orphanedPluginIDs(
-            storedIDs: secrets.storedPluginIDs(),
-            records: index.records
-        )
+        let ids = Self.orphanedPluginIDs(storedIDs: storedPluginIDs, records: index.records)
         if !ids.isEmpty {
             Section {
                 ForEach(ids, id: \.self) { id in
-                    HStack {
-                        Text(id)
-                        Spacer()
-                        Button(String(localized: "settings.plugins.eraseSecrets"), role: .destructive) {
-                            try? secrets.removeSecrets(pluginID: id)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(id)
+                            Spacer()
+                            Button(
+                                String(localized: "settings.plugins.eraseSecrets"),
+                                role: .destructive
+                            ) {
+                                eraseSecrets(pluginID: id)
+                            }
+                        }
+                        if let failure = eraseFailures[id] {
+                            Text(failure)
+                                .font(.caption)
+                                .foregroundStyle(.red)
                         }
                     }
                 }
@@ -198,6 +223,19 @@ struct PluginsSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    /// Erases one orphan's secrets and refreshes the state the view renders
+    /// from either way, since `secrets` reflects the true outcome — full,
+    /// partial, or no removal — regardless of whether it threw.
+    private func eraseSecrets(pluginID: String) {
+        defer { storedPluginIDs = secrets.storedPluginIDs() }
+        do {
+            try secrets.removeSecrets(pluginID: pluginID)
+            eraseFailures[pluginID] = nil
+        } catch {
+            eraseFailures[pluginID] = String(localized: "settings.plugins.eraseFailed \(pluginID)")
         }
     }
 

@@ -1208,6 +1208,23 @@
         }
       }
     },
+    "settings.plugins.eraseFailed %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not erase the secrets for %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron borrar los secretos de %@."
+          }
+        }
+      }
+    },
     "settings.plugins.orphanedExplanation" : {
       "extractionState" : "manual",
       "localizations" : {
