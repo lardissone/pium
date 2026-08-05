@@ -134,4 +134,15 @@ struct PreferencesTests {
         let afterClear = UserDefaults.standard.persistentDomain(forName: suite)
         #expect(afterClear?["AppleLanguages"] == nil)
     }
+
+    @Test func noPluginIsDisabledByDefault() {
+        let preferences = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        #expect(preferences.disabledPluginIDs.isEmpty)
+    }
+
+    @Test func disabledPluginsSurviveAroundTrip() {
+        let preferences = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        preferences.disabledPluginIDs = ["web.yt", "demo.hello"]
+        #expect(preferences.disabledPluginIDs == ["web.yt", "demo.hello"])
+    }
 }
