@@ -249,6 +249,32 @@ final class LauncherSmokeTests: XCTestCase {
         )
     }
 
+    /// This task is where the app first builds a provider that knows about
+    /// state, so this is where a disabled plugin can first be proven to leave
+    /// the result list. The switch lives in Settings, which XCUITest cannot
+    /// reach here, so the preference is written through the argument domain —
+    /// what is under test is that search honours it.
+    func testAdisabledPluginIsNotOffered() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        try writePluginManifest(named: name)
+
+        app.terminate()
+        app.launchArguments += [
+            "-pium.disabledPluginIDs", "(uitest.\(name))",
+        ]
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+
+        XCTAssertFalse(
+            pluginRow(named: name).waitForExistence(timeout: 5),
+            "A disabled plugin must not appear in the results. \(resultListDiagnostics())"
+        )
+    }
+
     /// The real home, not the container the test runner reports.
     ///
     /// `PiumUITests-Runner` is sandboxed, so `NSHomeDirectory()` here is

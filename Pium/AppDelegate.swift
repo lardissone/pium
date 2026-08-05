@@ -104,8 +104,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func openSettings() {
-        settingsController.present(frecency: frecency) { [weak self] shortcut in
-            self?.registerShortcut(shortcut)
-        }
+        settingsController.present(
+            frecency: frecency,
+            onShortcutChanged: { [weak self] shortcut in
+                self?.registerShortcut(shortcut)
+            },
+            pluginIndex: pluginIndex,
+            configuration: pluginConfiguration,
+            secrets: pluginSecrets
+        )
     }
 }
