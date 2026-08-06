@@ -57,9 +57,15 @@ struct PluginsSettingsView: View {
 
                 orphans
 
+                // A footer, not a caption floating in the empty space under a
+                // short list: it explains the whole section rather than
+                // whichever plugin happens to be selected.
+                Divider()
                 Text(String(localized: "plugins.whatIsAplugin"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(Tokens.Spacing.tight)
             }
             .frame(minWidth: 180)
