@@ -141,12 +141,19 @@ struct PluginsSettingsView: View {
                                 ?? String(localized: "settings.plugins.pluginFolder")
                         )
                         if !manifest.configuration.isEmpty {
-                            LabeledContent(
-                                String(localized: "settings.plugins.environment"),
-                                value: manifest.configuration
-                                    .map(\.environmentVariable)
-                                    .joined(separator: ", ")
-                            )
+                            // Stacked rather than trailing: a plugin declaring
+                            // three variables overflows a `LabeledContent`'s
+                            // value and wraps against the window's edge.
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(String(localized: "settings.plugins.environment"))
+                                Text(
+                                    manifest.configuration
+                                        .map(\.environmentVariable)
+                                        .joined(separator: ", ")
+                                )
+                                .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     } header: {
                         Text(String(localized: "settings.plugins.command"))
