@@ -130,6 +130,25 @@ struct ManifestValidatorTests {
         )
     }
 
+    /// `input` is the argument's own name in a template, so a field claiming it
+    /// can never be interpolated — `{{input}}` resolves to what the user typed.
+    /// Worse, a secret by that name never becomes a `.configuration` token, so
+    /// the guard that keeps secrets out of the argument array never sees it.
+    @Test func aconfigurationKeyNamedInputIsRejected() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("input", type: .string)]))
+                == .reservedConfigurationKey("input")
+        )
+    }
+
+    @Test func asecretNamedInputCannotSlipIntoAnArgument() {
+        #expect(
+            ManifestValidator.validate(
+                manifest(arguments: ["{{input}}"], configuration: [field("input", type: .secret)])
+            ) == .reservedConfigurationKey("input")
+        )
+    }
+
     /// A key becomes part of a `UserDefaults` key and a Keychain account, but
     /// it is a field name, not a plugin id: whitespace and emptiness still
     /// break storage and identity, so they are still rejected.

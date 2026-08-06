@@ -105,6 +105,8 @@ struct PluginSchemaAgreementTests {
         let candidates = [
             "baseURL", "token", "api_key", "apiKey2", "base-url",
             "", "Token Key", "base.url", "2fa", "clé",
+            // Reserved: it is the name of the plugin's own input in a template.
+            "input",
         ]
         for candidate in candidates {
             let range = NSRange(candidate.startIndex..., in: candidate)

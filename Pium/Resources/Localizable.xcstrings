@@ -528,6 +528,23 @@
         }
       }
     },
+    "plugin.diagnostic.reservedConfigurationKey %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is reserved: it is the name of the plugin's own input in a template. Rename the field."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» está reservada: es el nombre de la entrada del propio plugin en una plantilla. Renombrá el campo."
+          }
+        }
+      }
+    },
     "plugin.diagnostic.rootObject": {
       "extractionState": "manual",
       "localizations": {

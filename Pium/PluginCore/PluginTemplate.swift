@@ -25,6 +25,13 @@ enum PluginTemplate {
     private static let closing = "}}"
     private static let variableName = "input"
 
+    /// Names a configuration field may not take. `{{input}}` is classified as
+    /// the plugin's own input before the declared keys are consulted, so a
+    /// field by that name is unreachable — and a secret by that name would
+    /// never become a `.configuration` token for the secret-in-arguments guard
+    /// to catch. Rejecting the name is what keeps that guard whole.
+    static let reservedVariableNames: Set<String> = [variableName]
+
     /// Arguments may also interpolate a value the manifest declares, so
     /// validation parses them with the configuration's keys in hand.
     static func parseAllowingConfiguration(

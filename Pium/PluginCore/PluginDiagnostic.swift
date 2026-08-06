@@ -14,6 +14,7 @@ enum PluginDiagnostic: Sendable, Equatable {
     case unsupportedSchemaVersion(Int)
     case invalidIdentifier(String)
     case invalidConfigurationKey(String)
+    case reservedConfigurationKey(String)
     case duplicateConfigurationKey(String)
     case invalidTemplate(String)
     case secretInArguments(key: String)
@@ -41,6 +42,8 @@ enum PluginDiagnostic: Sendable, Equatable {
             String(localized: "plugin.diagnostic.invalidIdentifier \(identifier)")
         case .invalidConfigurationKey(let key):
             String(localized: "plugin.diagnostic.invalidConfigurationKey \(key)")
+        case .reservedConfigurationKey(let key):
+            String(localized: "plugin.diagnostic.reservedConfigurationKey \(key)")
         case .duplicateConfigurationKey(let key):
             String(localized: "plugin.diagnostic.duplicateConfigurationKey \(key)")
         case .invalidTemplate(let detail):

@@ -46,6 +46,9 @@ enum ManifestValidator {
             guard isValidConfigurationKey(field.key) else {
                 return .invalidConfigurationKey(field.key)
             }
+            guard !PluginTemplate.reservedVariableNames.contains(field.key) else {
+                return .reservedConfigurationKey(field.key)
+            }
             guard seen.insert(field.key).inserted else {
                 return .duplicateConfigurationKey(field.key)
             }
