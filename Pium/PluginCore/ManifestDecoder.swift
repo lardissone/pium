@@ -117,6 +117,17 @@ enum ManifestDecoder {
             timeout = seconds
         }
 
+        let optionalKeys: [PluginDiagnostic?] = [
+            wrongType(object["description"], String.self, at: "description", expected: .text),
+            wrongType(object["keywords"], [String].self, at: "keywords", expected: .array),
+            wrongType(object["aliases"], [String].self, at: "aliases", expected: .array),
+            wrongType(object["icon"], String.self, at: "icon", expected: .text),
+            wrongType(
+                object["confirmBeforeRun"], String.self, at: "confirmBeforeRun", expected: .text
+            ),
+        ]
+        if let problem = optionalKeys.compactMap({ $0 }).first { return .failure(problem) }
+
         return .success(
             PluginManifest(
                 schemaVersion: version,
@@ -144,6 +155,17 @@ enum ManifestDecoder {
         }
         guard let executable = object["executable"] as? String else {
             return .failure(.missingKey("command.executable"))
+        }
+        if let problem = wrongType(
+            object["arguments"], [String].self, at: "command.arguments", expected: .array
+        ) {
+            return .failure(problem)
+        }
+        if let problem = wrongType(
+            object["workingDirectory"], String.self,
+            at: "command.workingDirectory", expected: .text
+        ) {
+            return .failure(problem)
         }
         return .success(
             PluginCommand(
@@ -220,6 +242,11 @@ enum ManifestDecoder {
                         .map(\.rawValue).joined(separator: ", ")
                 ))
             }
+            if let problem = wrongType(
+                object["required"], Bool.self, at: "configuration[].required", expected: .boolean
+            ) {
+                return .failure(problem)
+            }
             fields.append(
                 PluginConfigurationField(
                     key: key,
@@ -231,6 +258,36 @@ enum ManifestDecoder {
             )
         }
         return .success(fields)
+    }
+
+    /// What a key is allowed to hold, named so a diagnostic can say it in the
+    /// author's language.
+    private enum ExpectedType {
+        case text, array, boolean
+
+        var described: String {
+            switch self {
+            case .text: String(localized: "plugin.type.string")
+            case .array: String(localized: "plugin.type.array")
+            case .boolean: String(localized: "plugin.type.boolean")
+            }
+        }
+    }
+
+    /// `nil` when the key is absent or holds what it should.
+    ///
+    /// The same rule `enumValue` applies, extended to the optional keys that
+    /// used to fall back silently: `"arguments": "--flag"` decoded to no
+    /// arguments at all, which is exactly the command that never does what its
+    /// author wrote.
+    private static func wrongType<T>(
+        _ raw: Any?,
+        _ type: T.Type,
+        at path: String,
+        expected: ExpectedType
+    ) -> PluginDiagnostic? {
+        guard let raw, !(raw is T) else { return nil }
+        return .wrongType(path: path, expected: expected.described)
     }
 
     /// Absent takes the default; present but unrecognised is an error, because

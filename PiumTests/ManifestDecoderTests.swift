@@ -186,6 +186,49 @@ struct ManifestDecoderTests {
         #expect(path == "timeoutSeconds")
     }
 
+    /// The type's own rule: absent takes the default, present but wrong is an
+    /// error. A string where an array belongs would otherwise decode to an
+    /// empty array, and the command would run with none of the arguments its
+    /// author wrote.
+    @Test func argumentsWrittenAsAStringAreRejected() throws {
+        guard case .wrongType(let path, _) = try diagnostic("""
+        { "schemaVersion": 1, "id": "a.b", "name": "A",
+          "command": { "executable": "true", "arguments": "--flag value" } }
+        """) else {
+            Issue.record("Arguments that are not an array must be reported")
+            return
+        }
+        #expect(path == "command.arguments")
+    }
+
+    @Test func keywordsWrittenAsAStringAreRejected() throws {
+        guard case .wrongType(let path, _) = try diagnostic("""
+        { "schemaVersion": 1, "id": "a.b", "name": "A",
+          "command": { "executable": "true" }, "keywords": "video" }
+        """) else {
+            Issue.record("Keywords that are not an array must be reported")
+            return
+        }
+        #expect(path == "keywords")
+    }
+
+    /// Quoting the boolean turns a required field optional, which is the one
+    /// wrong type here that silently weakens a rule rather than losing data.
+    @Test func aQuotedRequiredFlagIsRejected() throws {
+        guard case .wrongType(let path, _) = try diagnostic("""
+        { "schemaVersion": 1, "id": "a.b", "name": "A",
+          "command": { "executable": "true" },
+          "configuration": [
+            { "key": "token", "label": "Token", "type": "secret",
+              "required": "true", "environmentVariable": "PIUM_TOKEN" }
+          ] }
+        """) else {
+            Issue.record("A required flag that is not a boolean must be reported")
+            return
+        }
+        #expect(path == "configuration[].required")
+    }
+
     @Test func anUnknownInputModeIsRejected() throws {
         guard case .wrongType = try diagnostic("""
         { "schemaVersion": 1, "id": "a.b", "name": "A",

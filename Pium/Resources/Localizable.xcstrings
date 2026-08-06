@@ -732,6 +732,23 @@
         }
       }
     },
+    "plugin.type.boolean": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "true or false"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "true o false"
+          }
+        }
+      }
+    },
     "plugin.type.integer": {
       "extractionState": "manual",
       "localizations": {
