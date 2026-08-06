@@ -118,11 +118,56 @@ struct ProcessRunner {
     private static let graceSeconds: Double = 2
 
     /// How long the drains may run once the process itself has been reaped,
-    /// before this run gives up on them and returns what they have. A
-    /// grandchild the process left behind — a script that starts a daemon in
-    /// the background — can keep holding a pipe's write end open long after
-    /// the process we spawned is gone, and EOF never arrives on its own.
+    /// before this run gives up waiting on them and returns what they have
+    /// kept so far. A grandchild the process left behind — a script that
+    /// starts a daemon in the background — can keep holding a pipe's write
+    /// end open long after the process we spawned is gone, and EOF never
+    /// arrives on its own.
     private static let drainGraceSeconds: Double = 1
+
+    /// What a drain has kept, readable at any time — including while the
+    /// drain itself is still running. `awaitDrains` needs this: giving up on
+    /// a drain that is taking too long still has to return what it kept, and
+    /// it cannot wait for the drain to finish first without defeating the
+    /// point of giving up.
+    private final class CapturedOutput: @unchecked Sendable {
+        private let lock = NSLock()
+        private var kept = Data()
+        private var truncated = false
+
+        fileprivate func append(_ chunk: Data) {
+            lock.lock()
+            defer { lock.unlock() }
+            let room = ProcessRunner.outputCap - kept.count
+            if room > 0 {
+                kept.append(chunk.prefix(room))
+            }
+            if chunk.count > room { truncated = true }
+        }
+
+        var snapshot: (String, Bool) {
+            lock.lock()
+            defer { lock.unlock() }
+            return (String(decoding: kept, as: UTF8.self), truncated)
+        }
+    }
+
+    /// Resumes its single waiter the moment it is first opened; further
+    /// calls are no-ops. `awaitDrains` uses this to race the drains against
+    /// a timer without the structured wait a task group would impose — the
+    /// loser here is allowed to never finish.
+    private actor OneShotGate {
+        private var continuation: CheckedContinuation<Void, Never>?
+
+        func wait() async {
+            await withCheckedContinuation { continuation = $0 }
+        }
+
+        func open() {
+            continuation?.resume()
+            continuation = nil
+        }
+    }
 
     func run(_ request: ExecutionRequest, cancellation: Cancellation) async -> ExecutionOutcome {
         let child: ChildProcess
@@ -159,8 +204,10 @@ struct ProcessRunner {
             )
         }
 
-        let outTask = Task { await Self.drain(child.standardOutput) }
-        let errTask = Task { await Self.drain(child.standardError) }
+        let outCaptured = CapturedOutput()
+        let errCaptured = CapturedOutput()
+        let outTask = Task { await Self.drain(child.standardOutput, into: outCaptured) }
+        let errTask = Task { await Self.drain(child.standardError, into: errCaptured) }
 
         // Whether the timeout fired is recorded by the task that fires it, not
         // inferred from which signal killed the process: a command can be
@@ -197,7 +244,7 @@ struct ProcessRunner {
         cancelEscalation.cancel()
         timeoutEscalation?.cancel()
 
-        let (output, error) = await Self.awaitDrains(outTask, errTask, child: child)
+        let (output, error) = await Self.awaitDrains(outTask, errTask, out: outCaptured, err: errCaptured)
         return Self.outcome(
             ending: ending,
             timedOut: expiry.hasExpired,
@@ -232,47 +279,62 @@ struct ProcessRunner {
         )
     }
 
-    /// Reads to EOF, keeping the first `outputCap` bytes and discarding the
-    /// rest. Discarding is not the same as not reading: the child blocks on a
-    /// full pipe, so draining continues either way.
-    private static func drain(_ handle: FileHandle) async -> (String, Bool) {
+    /// Reads to EOF, keeping the first `outputCap` bytes in `captured` and
+    /// discarding the rest. Discarding is not the same as not reading: the
+    /// child blocks on a full pipe, so draining continues either way.
+    ///
+    /// Never closes `handle`: this closure holds the only reference to it
+    /// that matters once `run` moves on, so `handle` stays open and this
+    /// loop stays safe to keep calling `availableData` on for as long as the
+    /// loop keeps running — see `awaitDrains` for why that matters.
+    private static func drain(_ handle: FileHandle, into captured: CapturedOutput) async {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .utility).async {
-                var kept = Data()
-                var truncated = false
                 while true {
                     let chunk = handle.availableData
                     if chunk.isEmpty { break }
-                    let room = outputCap - kept.count
-                    if room > 0 {
-                        kept.append(chunk.prefix(room))
-                    }
-                    if chunk.count > room { truncated = true }
+                    captured.append(chunk)
                 }
-                continuation.resume(returning: (String(decoding: kept, as: UTF8.self), truncated))
+                continuation.resume()
             }
         }
     }
 
     /// Waits for both drains, but not past `drainGraceSeconds` once the
-    /// process has already been reaped. A drain that is still short of EOF
-    /// after that is stuck on a grandchild holding the pipe open, not on the
-    /// process this run spawned — so the read ends are force-closed, which
-    /// unblocks `drain`'s blocking read and lets it return what it kept.
+    /// process has already been reaped: a grandchild the process left
+    /// running — still writing, not merely holding the pipe silently open —
+    /// can keep a drain short of EOF indefinitely.
+    ///
+    /// Past the bound, this run gives up on the *wait*, not on the pipe.
+    /// Closing the read end here was an earlier version of this fix, and it
+    /// was wrong twice over: `FileHandle.availableData` raises an
+    /// Objective-C exception on a closed descriptor, which Swift cannot
+    /// catch, so a close landing between two reads — not while `drain` is
+    /// parked inside one — aborts the whole app; and even a version that
+    /// survived the close would send the grandchild `SIGPIPE` on its next
+    /// write, killing a process nobody asked Pium to touch. Giving up
+    /// instead just stops looking: the abandoned drain keeps running quietly
+    /// in the background for as long as the pipe stays open, and this run
+    /// returns whatever `captured` already held at the moment it stopped
+    /// waiting.
     private static func awaitDrains(
-        _ outTask: Task<(String, Bool), Never>,
-        _ errTask: Task<(String, Bool), Never>,
-        child: ChildProcess
+        _ outTask: Task<Void, Never>,
+        _ errTask: Task<Void, Never>,
+        out: CapturedOutput,
+        err: CapturedOutput
     ) async -> ((String, Bool), (String, Bool)) {
-        let closer = Task {
-            try await Task.sleep(for: .seconds(drainGraceSeconds))
-            child.standardOutput.closeFile()
-            child.standardError.closeFile()
+        let gate = OneShotGate()
+        Task {
+            _ = await outTask.value
+            _ = await errTask.value
+            await gate.open()
         }
-        let output = await outTask.value
-        let error = await errTask.value
-        closer.cancel()
-        return (output, error)
+        Task {
+            try? await Task.sleep(for: .seconds(drainGraceSeconds))
+            await gate.open()
+        }
+        await gate.wait()
+        return (out.snapshot, err.snapshot)
     }
 
     private static func reap(_ child: ChildProcess) async -> ChildProcess.Ending {

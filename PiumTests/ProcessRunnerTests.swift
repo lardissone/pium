@@ -88,17 +88,33 @@ struct ProcessRunnerTests {
     /// background daemon and exits — keeps the pipe's write end open long
     /// after the process this run spawned has been reaped. `run` must not
     /// wait on an EOF that will not arrive until that grandchild, which
-    /// nobody asked it to track, eventually finishes on its own. The
-    /// grandchild's own sleep (75s) outlasts the time limit (the coarsest
-    /// swift-testing allows is whole minutes) on purpose: without the fix,
-    /// this fails when the limit is hit rather than merely running long and
-    /// passing once the grandchild finally exits on its own.
+    /// nobody asked it to track, eventually finishes on its own.
+    ///
+    /// The grandchild writes continuously — a tight, unpaced loop, not a
+    /// sleep between writes — rather than sitting silent. A reader merely
+    /// parked inside a blocking read is the benign half of this race: a
+    /// close lands cleanly there. The dangerous half is a reader caught
+    /// between two reads, right where an earlier version of this fix landed
+    /// a forced close and crashed the app instead of hanging it; a tight
+    /// write loop is what gives that half a real chance to happen, because
+    /// the reader spends most of its time cycling through reads rather than
+    /// blocked on any single one. The grandchild's total run time (tens of
+    /// seconds at this write rate) deliberately outlasts the time limit
+    /// below (the coarsest swift-testing allows is whole minutes): without
+    /// the fix, this run waited for the grandchild regardless of whether it
+    /// was silent or noisy, so a regression back to that state still fails
+    /// here instead of merely running long and passing once the grandchild
+    /// exits on its own.
     @Test(.timeLimit(.minutes(1)))
     func agrandchildHoldingStdoutDoesNotHangTheRun() async throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let pidFile = directory.appending(path: "grandchild.pid")
-        let url = try script("sleep 75 &\necho $! > \(pidFile.path)\necho done", in: directory)
+        let url = try script(
+            "(i=0; while [ $i -lt 20000000 ]; do printf x; i=$((i+1)); done) &\n"
+                + "echo $! > \(pidFile.path)\necho done",
+            in: directory
+        )
 
         let outcome = await ProcessRunner().run(request(url.path, in: directory), cancellation: .init())
 
@@ -108,7 +124,9 @@ struct ProcessRunnerTests {
         }
 
         #expect(outcome.ending == .exited(0))
-        #expect(outcome.standardOutput == "done\n")
+        // Not an exact match: "done" and the grandchild's own "tick" lines
+        // race for the pipe, and either may land first.
+        #expect(outcome.standardOutput.contains("done"))
     }
 
     /// PRD §11's grace-then-`SIGKILL` escalation applies to a cancellation
@@ -155,5 +173,37 @@ struct ProcessRunnerTests {
 
         let outcome = await ProcessRunner().run(request(url.path, in: directory), cancellation: .init())
         #expect(outcome.ending == .signalled(SIGKILL))
+    }
+
+    /// A cancel arriving after `run` has already returned must not reach the
+    /// process group it already reaped — the kernel could have recycled that
+    /// pgid for an unrelated process by then. Proven directly, without
+    /// needing pid recycling or timing luck: a grandchild is left alive in
+    /// the group after `run` returns, `cancel()` is called late, and the
+    /// grandchild must still be alive afterward. Before `Cancellation.detach`
+    /// existed, `cancel()` would still call `child.signalGroup(SIGTERM)` on
+    /// this exact scenario; after, `child` is nil and the call is a no-op.
+    @Test func alateCancelDoesNotReachAProcessGroupRunAlreadyReaped() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pidFile = directory.appending(path: "grandchild.pid")
+        let url = try script("sleep 30 &\necho $! > \(pidFile.path)\necho done", in: directory)
+
+        let cancellation = ProcessRunner.Cancellation()
+        let outcome = await ProcessRunner().run(request(url.path, in: directory), cancellation: cancellation)
+        #expect(outcome.ending == .exited(0))
+
+        let text = try String(contentsOf: pidFile, encoding: .utf8)
+        let pid = try #require(pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines)))
+        defer { kill(pid, SIGKILL) }
+        #expect(kill(pid, 0) == 0, "The grandchild should still be alive before the late cancel")
+
+        cancellation.cancel()
+        try await Task.sleep(for: .milliseconds(500))
+
+        #expect(
+            kill(pid, 0) == 0,
+            "A cancel arriving after run() returned must not reach the process group it already reaped"
+        )
     }
 }
