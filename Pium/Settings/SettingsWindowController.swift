@@ -9,6 +9,8 @@ import SwiftUI
 /// item silently did nothing. Owning the window removes that dependency.
 @MainActor
 final class SettingsWindowController {
+    private static let frameAutosaveName = "settings"
+
     private var window: NSWindow?
 
     func present(
@@ -31,14 +33,19 @@ final class SettingsWindowController {
         // AppKit, and the window collapses to an empty strip. The Plugins
         // tab's master–detail list does not fit in the 260-point height the
         // other tabs were happy with.
+        //
+        // Resizable because the content is the user's: a plugin's name, its
+        // declared command, and its environment variables are all as long as
+        // its author made them, and a fixed width clips them with no way out.
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 620, height: 420),
-            styleMask: [.titled, .closable],
+            styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = String(localized: "settings.windowTitle")
         window.isReleasedWhenClosed = false
+        window.contentMinSize = NSSize(width: 560, height: 360)
         window.contentView = NSHostingView(
             rootView: SettingsView(
                 frecency: frecency,
@@ -48,7 +55,12 @@ final class SettingsWindowController {
                 secrets: secrets
             )
         )
-        window.center()
+        // Whatever size the user settles on is the size they get next time;
+        // a first run has nothing saved and lands in the middle instead.
+        window.setFrameAutosaveName(Self.frameAutosaveName)
+        if !window.setFrameUsingName(Self.frameAutosaveName) {
+            window.center()
+        }
 
         self.window = window
         NSApp.activate()
