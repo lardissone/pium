@@ -42,6 +42,7 @@ enum ManifestValidator {
         in fields: [PluginConfigurationField]
     ) -> PluginDiagnostic? {
         var seen = Set<String>()
+        var variables = Set<String>()
         for field in fields {
             guard isValidConfigurationKey(field.key) else {
                 return .invalidConfigurationKey(field.key)
@@ -51,6 +52,12 @@ enum ManifestValidator {
             }
             guard seen.insert(field.key).inserted else {
                 return .duplicateConfigurationKey(field.key)
+            }
+            guard isValidEnvironmentVariable(field.environmentVariable) else {
+                return .invalidEnvironmentVariable(field.environmentVariable)
+            }
+            guard variables.insert(field.environmentVariable).inserted else {
+                return .duplicateEnvironmentVariable(field.environmentVariable)
             }
         }
         return nil
@@ -106,6 +113,18 @@ enum ManifestValidator {
         guard let first = key.first, first.isASCIILetter else { return false }
         return key.allSatisfy { $0.isASCIILetterOrDigit || $0 == "_" || $0 == "-" }
     }
+
+    /// Capitals, digits, and underscores, starting with a capital — the shape
+    /// the schema declares and the shape a shell can name.
+    ///
+    /// Phase 5 hands these to the child process, so a name carrying a space or
+    /// an `=` is not a stray character: it is another variable smuggled into
+    /// the environment, and `PATH` there redirects the executable the manifest
+    /// declares.
+    private static func isValidEnvironmentVariable(_ name: String) -> Bool {
+        guard let first = name.first, first.isASCIIUppercase else { return false }
+        return name.allSatisfy { $0.isASCIIUppercase || ("0"..."9").contains($0) || $0 == "_" }
+    }
 }
 
 private extension Character {
@@ -115,6 +134,10 @@ private extension Character {
 
     var isASCIILetter: Bool {
         ("a"..."z").contains(self) || ("A"..."Z").contains(self)
+    }
+
+    var isASCIIUppercase: Bool {
+        ("A"..."Z").contains(self)
     }
 
     var isASCIILetterOrDigit: Bool {

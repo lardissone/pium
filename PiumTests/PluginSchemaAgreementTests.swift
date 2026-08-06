@@ -121,6 +121,60 @@ struct PluginSchemaAgreementTests {
         }
     }
 
+    /// The same cross-check for the other declared pattern. It went unchecked
+    /// once already, and the schema's rule stayed a promise the code never kept.
+    @Test func theEnvironmentVariablePatternAgreesWithTheValidator() throws {
+        let node = try object(try schema(), at: ["configuration"])
+        let properties = try #require(node["properties"] as? [String: Any])
+        let variableNode = try #require(properties["environmentVariable"] as? [String: Any])
+        let pattern = try #require(variableNode["pattern"] as? String)
+        let regex = try NSRegularExpression(pattern: pattern)
+
+        let candidates = [
+            "PIUM_TOKEN", "P", "PIUM_2FA", "PIUM__X",
+            "", "pium_token", "PIUM TOKEN", "PIUM-TOKEN", "2PIUM", "PIUM=PATH",
+        ]
+        for candidate in candidates {
+            let range = NSRange(candidate.startIndex..., in: candidate)
+            let schemaAccepts = regex.firstMatch(in: candidate, range: range)?.range == range
+            let validatorAccepts = ManifestValidator.validate(
+                manifestWithEnvironmentVariable(candidate)
+            ) == nil
+            #expect(
+                schemaAccepts == validatorAccepts,
+                "\(candidate.debugDescription): schema accepts \(schemaAccepts), validator accepts \(validatorAccepts)"
+            )
+        }
+    }
+
+    private func manifestWithEnvironmentVariable(_ variable: String) -> PluginManifest {
+        var manifest = manifestWithConfigurationKey("token")
+        manifest = PluginManifest(
+            schemaVersion: manifest.schemaVersion,
+            id: manifest.id,
+            name: manifest.name,
+            description: manifest.description,
+            keywords: manifest.keywords,
+            aliases: manifest.aliases,
+            icon: manifest.icon,
+            input: manifest.input,
+            command: manifest.command,
+            configuration: [
+                PluginConfigurationField(
+                    key: "token",
+                    label: "Label",
+                    type: .string,
+                    required: true,
+                    environmentVariable: variable
+                ),
+            ],
+            output: manifest.output,
+            timeoutSeconds: manifest.timeoutSeconds,
+            confirmBeforeRun: manifest.confirmBeforeRun
+        )
+        return manifest
+    }
+
     private func manifestWithConfigurationKey(_ key: String) -> PluginManifest {
         PluginManifest(
             schemaVersion: 1,

@@ -16,6 +16,8 @@ enum PluginDiagnostic: Sendable, Equatable {
     case invalidConfigurationKey(String)
     case reservedConfigurationKey(String)
     case duplicateConfigurationKey(String)
+    case invalidEnvironmentVariable(String)
+    case duplicateEnvironmentVariable(String)
     case invalidTemplate(String)
     case secretInArguments(key: String)
     case invalidTimeout(Int)
@@ -46,6 +48,10 @@ enum PluginDiagnostic: Sendable, Equatable {
             String(localized: "plugin.diagnostic.reservedConfigurationKey \(key)")
         case .duplicateConfigurationKey(let key):
             String(localized: "plugin.diagnostic.duplicateConfigurationKey \(key)")
+        case .invalidEnvironmentVariable(let name):
+            String(localized: "plugin.diagnostic.invalidEnvironmentVariable \(name)")
+        case .duplicateEnvironmentVariable(let name):
+            String(localized: "plugin.diagnostic.duplicateEnvironmentVariable \(name)")
         case .invalidTemplate(let detail):
             String(localized: "plugin.diagnostic.invalidTemplate \(detail)")
         case .secretInArguments(let key):

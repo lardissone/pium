@@ -39,7 +39,9 @@ struct ManifestValidatorTests {
             label: key,
             type: type,
             required: true,
-            environmentVariable: "PIUM_\(key.uppercased())"
+            // A key may carry a hyphen; an environment variable may not, so the
+            // derived name is not simply the key shouted.
+            environmentVariable: "PIUM_\(key.uppercased().replacingOccurrences(of: "-", with: "_"))"
         )
     }
 
@@ -127,6 +129,40 @@ struct ManifestValidatorTests {
                     field("token", type: .string),
                 ])
             ) == .duplicateConfigurationKey("token")
+        )
+    }
+
+    /// The schema declares `^[A-Z][A-Z0-9_]*$` for it, and in Phase 5 these
+    /// names become the child process's environment — where `PATH` redirects
+    /// the very executable the manifest declares.
+    @Test func aninvalidEnvironmentVariableIsRejected() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [
+                PluginConfigurationField(
+                    key: "token",
+                    label: "Token",
+                    type: .secret,
+                    required: true,
+                    environmentVariable: "my token=PATH"
+                ),
+            ])) == .invalidEnvironmentVariable("my token=PATH")
+        )
+    }
+
+    /// Two fields writing one variable is the second one winning silently when
+    /// Phase 5 assembles the environment.
+    @Test func aduplicateEnvironmentVariableIsRejected() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [
+                PluginConfigurationField(
+                    key: "baseURL", label: "A", type: .string,
+                    required: true, environmentVariable: "PIUM_SHARED"
+                ),
+                PluginConfigurationField(
+                    key: "token", label: "B", type: .secret,
+                    required: true, environmentVariable: "PIUM_SHARED"
+                ),
+            ])) == .duplicateEnvironmentVariable("PIUM_SHARED")
         )
     }
 

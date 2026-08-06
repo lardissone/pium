@@ -409,6 +409,23 @@
         }
       }
     },
+    "plugin.diagnostic.duplicateEnvironmentVariable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Environment variable “%@” is declared by more than one field."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La variable de entorno «%@» está declarada por más de un campo."
+          }
+        }
+      }
+    },
     "plugin.diagnostic.duplicateIdentifier %@": {
       "extractionState": "manual",
       "localizations": {
@@ -439,6 +456,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "«%@» no es una clave de configuración válida. Usá letras, dígitos, guiones bajos y guiones, empezando con una letra."
+          }
+        }
+      }
+    },
+    "plugin.diagnostic.invalidEnvironmentVariable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not a valid environment variable name. Use capitals, digits, and underscores, starting with a capital."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es un nombre válido de variable de entorno. Usá mayúsculas, dígitos y guiones bajos, empezando con una mayúscula."
           }
         }
       }
