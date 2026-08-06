@@ -18,6 +18,13 @@ struct ExecutionOutcome: Sendable, Equatable {
         case exited(Int32)
         case cancelled
         case timedOut
+        /// Killed by a signal that was neither the cancellation's nor the
+        /// timeout's escalation — a self-signal, a crash, or a `kill` from
+        /// outside Pium altogether.
+        case signalled(Int32)
+        /// The process never started. Carries the reason `ChildProcess.spawn`
+        /// gave rather than collapsing it to a bare failure code.
+        case failed(ExecutionFailure)
     }
 
     let ending: Ending
@@ -46,9 +53,8 @@ struct ProcessRunner {
 
         func cancel() {
             lock.lock()
+            defer { lock.unlock() }
             isCancelled = true
-            let child = child
-            lock.unlock()
             child?.signalGroup(SIGTERM)
         }
 
@@ -58,6 +64,27 @@ struct ProcessRunner {
             guard !isCancelled else { return false }
             child = process
             return true
+        }
+
+        /// Stops tracking the child once `run` has reaped it, so a signal
+        /// arriving afterwards — a caller's late `cancel()`, or an escalation
+        /// task that raced past its last suspension point — finds nothing to
+        /// reach. Without this, `kill(-pid, …)` could land on a process group
+        /// the kernel has since recycled for someone else.
+        fileprivate func detach() {
+            lock.lock()
+            defer { lock.unlock() }
+            child = nil
+        }
+
+        /// Signals the tracked child, gated on the same lock `detach` uses:
+        /// a signal that starts before `detach` completes still reaches a
+        /// live child, and one that starts after finds none. There is no
+        /// window where a check succeeds but the signal itself arrives late.
+        fileprivate func signal(_ signal: Int32) {
+            lock.lock()
+            defer { lock.unlock() }
+            child?.signalGroup(signal)
         }
 
         fileprivate var wasCancelled: Bool {
@@ -86,8 +113,16 @@ struct ProcessRunner {
         }
     }
 
-    /// The grace `SIGTERM` gets before `SIGKILL`, per PRD §11.
+    /// The grace `SIGTERM` gets before `SIGKILL`, per PRD §11. Applies to both
+    /// a cancellation and a timeout, regardless of the other.
     private static let graceSeconds: Double = 2
+
+    /// How long the drains may run once the process itself has been reaped,
+    /// before this run gives up on them and returns what they have. A
+    /// grandchild the process left behind — a script that starts a daemon in
+    /// the background — can keep holding a pipe's write end open long after
+    /// the process we spawned is gone, and EOF never arrives on its own.
+    private static let drainGraceSeconds: Double = 1
 
     func run(_ request: ExecutionRequest, cancellation: Cancellation) async -> ExecutionOutcome {
         let child: ChildProcess
@@ -98,9 +133,19 @@ struct ProcessRunner {
                 workingDirectory: request.workingDirectory,
                 environment: request.environment
             )
-        } catch {
+        } catch let failure as ExecutionFailure {
             return ExecutionOutcome(
-                ending: .exited(-1), standardOutput: "", standardError: "", wasTruncated: false
+                ending: .failed(failure), standardOutput: "", standardError: "", wasTruncated: false
+            )
+        } catch {
+            // ChildProcess.spawn only ever throws ExecutionFailure; this
+            // branch exists so the catch is exhaustive without silently
+            // discarding whatever else somehow reached it.
+            return ExecutionOutcome(
+                ending: .failed(.spawnFailed(code: -1)),
+                standardOutput: "",
+                standardError: "",
+                wasTruncated: false
             )
         }
 
@@ -114,48 +159,48 @@ struct ProcessRunner {
             )
         }
 
-        async let out = Self.drain(child.standardOutput)
-        async let err = Self.drain(child.standardError)
+        let outTask = Task { await Self.drain(child.standardOutput) }
+        let errTask = Task { await Self.drain(child.standardError) }
 
         // Whether the timeout fired is recorded by the task that fires it, not
         // inferred from which signal killed the process: a command can be
         // cancelled and killed by the same signal, and guessing gets it wrong.
         let expiry = Expiry()
-        if let seconds = request.timeoutSeconds {
-            let timeout = Task {
-                try await Task.sleep(for: .seconds(seconds))
-                expiry.markExpired()
-                child.signalGroup(SIGTERM)
-                try await Task.sleep(for: .seconds(Self.graceSeconds))
-                child.signalGroup(SIGKILL)
-            }
-            let ending = await Self.reap(child)
-            timeout.cancel()
-            let (output, error) = await (out, err)
-            return Self.outcome(
-                ending: ending,
-                timedOut: expiry.hasExpired,
-                cancelled: cancellation.wasCancelled,
-                output: output,
-                error: error
-            )
-        }
 
-        // No timeout: the grace-then-kill escalation still applies to a
-        // cancellation, so a command that ignores `SIGTERM` cannot hang Pium.
-        let escalation = Task {
+        // Escalates a cancellation to SIGKILL after the grace period, whether
+        // or not a timeout was ever declared: PRD §11's grace-then-kill
+        // sequence is not conditional on §10.4's timeout being set.
+        let cancelEscalation = Task {
             while !cancellation.wasCancelled {
                 try await Task.sleep(for: .milliseconds(100))
             }
             try await Task.sleep(for: .seconds(Self.graceSeconds))
-            child.signalGroup(SIGKILL)
+            cancellation.signal(SIGKILL)
         }
+
+        // Escalates a timeout, independently of the cancellation escalation
+        // above: the two can both be armed at once, and either may fire first.
+        let timeoutEscalation: Task<Void, Error>? = request.timeoutSeconds.map { seconds in
+            Task {
+                try await Task.sleep(for: .seconds(seconds))
+                expiry.markExpired()
+                cancellation.signal(SIGTERM)
+                try await Task.sleep(for: .seconds(Self.graceSeconds))
+                cancellation.signal(SIGKILL)
+            }
+        }
+
         let ending = await Self.reap(child)
-        escalation.cancel()
-        let (output, error) = await (out, err)
+        // Nothing sent after this point can reach the pid we just reaped: see
+        // `Cancellation.detach`.
+        cancellation.detach()
+        cancelEscalation.cancel()
+        timeoutEscalation?.cancel()
+
+        let (output, error) = await Self.awaitDrains(outTask, errTask, child: child)
         return Self.outcome(
             ending: ending,
-            timedOut: false,
+            timedOut: expiry.hasExpired,
             cancelled: cancellation.wasCancelled,
             output: output,
             error: error
@@ -172,8 +217,12 @@ struct ProcessRunner {
         let resolved: ExecutionOutcome.Ending =
             if cancelled { .cancelled }
             else if timedOut { .timedOut }
-            else if case .exited(let code) = ending { .exited(code) }
-            else { .exited(-1) }
+            else {
+                switch ending {
+                case .exited(let code): .exited(code)
+                case .signalled(let signal): .signalled(signal)
+                }
+            }
 
         return ExecutionOutcome(
             ending: resolved,
@@ -203,6 +252,27 @@ struct ProcessRunner {
                 continuation.resume(returning: (String(decoding: kept, as: UTF8.self), truncated))
             }
         }
+    }
+
+    /// Waits for both drains, but not past `drainGraceSeconds` once the
+    /// process has already been reaped. A drain that is still short of EOF
+    /// after that is stuck on a grandchild holding the pipe open, not on the
+    /// process this run spawned — so the read ends are force-closed, which
+    /// unblocks `drain`'s blocking read and lets it return what it kept.
+    private static func awaitDrains(
+        _ outTask: Task<(String, Bool), Never>,
+        _ errTask: Task<(String, Bool), Never>,
+        child: ChildProcess
+    ) async -> ((String, Bool), (String, Bool)) {
+        let closer = Task {
+            try await Task.sleep(for: .seconds(drainGraceSeconds))
+            child.standardOutput.closeFile()
+            child.standardError.closeFile()
+        }
+        let output = await outTask.value
+        let error = await errTask.value
+        closer.cancel()
+        return (output, error)
     }
 
     private static func reap(_ child: ChildProcess) async -> ChildProcess.Ending {
