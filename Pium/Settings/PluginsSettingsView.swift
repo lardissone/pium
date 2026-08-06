@@ -66,9 +66,11 @@ struct PluginsSettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(Tokens.Spacing.tight)
+                    .padding(Tokens.Spacing.normal)
             }
-            .frame(minWidth: 180)
+            // A sidebar, not half the window: the detail pane is where the
+            // reading happens, and the list only ever holds short names.
+            .frame(minWidth: 180, idealWidth: 220, maxWidth: 260)
 
             detail
                 .frame(minWidth: 280, maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
