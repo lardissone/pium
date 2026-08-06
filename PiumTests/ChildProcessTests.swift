@@ -79,19 +79,15 @@ struct ChildProcessTests {
         let child = try spawn(url.path, in: directory)
         let output = String(decoding: child.standardOutput.readDataToEndOfFile(), as: UTF8.self)
         _ = child.waitForExit()
-        // Compared as paths with any trailing slash trimmed, not as URLs: `pwd`
-        // reports the kernel's physical path (through /private), and
-        // resolvingSymlinksInPath() only appends a trailing slash on the branch
-        // that did not need to collapse /private back to the alias — an
-        // inconsistency in that API, not a fact about the child's working directory.
-        func withoutTrailingSlash(_ path: String) -> String {
-            path.hasSuffix("/") ? String(path.dropLast()) : path
-        }
+        // Compared as `.path` strings, not as `URL`s: `pwd` reports the kernel's
+        // physical path (through /private), and resolvingSymlinksInPath() collapses
+        // that back to the /var alias `directory` already uses — the two land on
+        // the same `.path`. `URL` equality still disagrees, because one side keeps
+        // `hasDirectoryPath == true` from `directory`'s own construction and the
+        // other does not; that flag, not the path, is what differs.
         #expect(
-            withoutTrailingSlash(
-                URL(filePath: output.trimmingCharacters(in: .newlines)).resolvingSymlinksInPath().path
-            )
-                == withoutTrailingSlash(directory.resolvingSymlinksInPath().path)
+            URL(filePath: output.trimmingCharacters(in: .newlines)).resolvingSymlinksInPath().path
+                == directory.resolvingSymlinksInPath().path
         )
     }
 

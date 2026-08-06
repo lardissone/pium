@@ -34,9 +34,15 @@ final class ChildProcess: @unchecked Sendable {
         environment: [String: String]
     ) throws -> ChildProcess {
         var outPipe: [Int32] = [0, 0]
-        var errPipe: [Int32] = [0, 0]
-        guard pipe(&outPipe) == 0, pipe(&errPipe) == 0 else {
+        guard pipe(&outPipe) == 0 else {
             throw ExecutionFailure.spawnFailed(code: errno)
+        }
+        var errPipe: [Int32] = [0, 0]
+        guard pipe(&errPipe) == 0 else {
+            let code = errno
+            close(outPipe[0])
+            close(outPipe[1])
+            throw ExecutionFailure.spawnFailed(code: code)
         }
 
         var actions: posix_spawn_file_actions_t?
@@ -48,6 +54,11 @@ final class ChildProcess: @unchecked Sendable {
         // open.
         posix_spawn_file_actions_addclose(&actions, outPipe[0])
         posix_spawn_file_actions_addclose(&actions, errPipe[0])
+        // `adddup2` leaves the original write-end fd open alongside its dup at
+        // stdout/stderr; without closing it explicitly the child (and anything
+        // it forks before the parent's own copy closes) inherits both.
+        posix_spawn_file_actions_addclose(&actions, outPipe[1])
+        posix_spawn_file_actions_addclose(&actions, errPipe[1])
         posix_spawn_file_actions_addchdir(&actions, workingDirectory.path)
 
         var attributes: posix_spawnattr_t?
