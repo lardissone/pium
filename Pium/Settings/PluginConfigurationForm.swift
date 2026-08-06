@@ -44,21 +44,41 @@ struct PluginConfigurationForm: View {
         }
     }
 
+    /// The label sits above its field rather than beside it, and the field
+    /// carries a border and a prompt. A grouped `Form` otherwise puts an
+    /// unbordered edit area at the trailing edge of the label's row, where an
+    /// empty value is indistinguishable from no field at all.
     @ViewBuilder
     private func row(for field: PluginConfigurationField) -> some View {
         switch field.type {
         case .string:
             VStack(alignment: .leading, spacing: 4) {
-                TextField(label(for: field), text: draft(for: field))
-                    .focused($focusedFieldKey, equals: field.key)
-                    .onSubmit { save(field) }
+                Text(label(for: field))
+                TextField(
+                    text: draft(for: field),
+                    prompt: Text(String(localized: "settings.plugins.valuePrompt"))
+                ) {
+                    Text(field.label)
+                }
+                .labelsHidden()
+                .textFieldStyle(.roundedBorder)
+                .focused($focusedFieldKey, equals: field.key)
+                .onSubmit { save(field) }
                 failureText(for: field)
             }
         case .secret:
             VStack(alignment: .leading, spacing: 4) {
-                SecureField(label(for: field), text: draft(for: field))
-                    .focused($focusedFieldKey, equals: field.key)
-                    .onSubmit { save(field) }
+                Text(label(for: field))
+                SecureField(
+                    text: draft(for: field),
+                    prompt: Text(String(localized: "settings.plugins.secretPrompt"))
+                ) {
+                    Text(field.label)
+                }
+                .labelsHidden()
+                .textFieldStyle(.roundedBorder)
+                .focused($focusedFieldKey, equals: field.key)
+                .onSubmit { save(field) }
                 HStack {
                     Text(
                         secrets.hasSecret(pluginID: manifest.id, key: field.key)
