@@ -66,6 +66,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onReloadPlugins: { [weak self] in self?.pluginIndex.refresh() }
         )
 
+        // Done here rather than in `PiumApp`: the menu exists only once the app
+        // has finished launching, and it is `AppDelegate` that owns the window
+        // the item has to reach.
+        if let menu = NSApp.mainMenu {
+            let rewired = SettingsMenuItem.retarget(
+                in: menu, to: self, action: #selector(openSettingsFromMenu)
+            )
+            if !rewired {
+                logger.error("No ⌘, item in the main menu; Settings is reachable from the menubar")
+            }
+        }
+
         applicationIndex.refresh()
         applicationIndex.startObserving()
 
@@ -101,6 +113,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 "Could not register \(shortcut.displayString, privacy: .public): \(error)"
             )
         }
+    }
+
+    @objc private func openSettingsFromMenu() {
+        openSettings()
     }
 
     private func openSettings() {
