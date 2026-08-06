@@ -8,6 +8,7 @@ import OSLog
 /// filesystem events, never on a timer, because the PRD budgets approximately
 /// zero idle CPU.
 @MainActor
+@Observable
 final class PluginIndex {
     private let logger = Logger(subsystem: Signposts.subsystem, category: "Plugins")
     private let root: URL

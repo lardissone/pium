@@ -41,8 +41,15 @@ struct PluginSearchIntegrationTests {
         index.refresh()
         #expect(index.records.count == 1, "The manifest must load")
 
+        let resolver = PluginStatusResolver(
+            configuration: PluginConfigurationStore(
+                defaults: UserDefaults(suiteName: UUID().uuidString)!
+            ),
+            secrets: InMemorySecretStore(),
+            disabledIDs: []
+        )
         let coordinator = SearchCoordinator(
-            providers: [PluginProvider(index: index, reveal: { _ in })],
+            providers: [PluginProvider(index: index, status: { resolver }, reveal: { _ in })],
             frecency: FrecencyStore(fileURL: root.appending(path: "frecency.json"))
         )
 

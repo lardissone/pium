@@ -31,14 +31,32 @@ struct PluginProviderTests {
         )
     }
 
-    private func provider(_ records: [PluginRecord]) -> PluginProvider {
+    private func provider(
+        _ records: [PluginRecord],
+        disabled: Set<String> = [],
+        values: [String: String] = [:],
+        secrets: [String: String] = [:]
+    ) -> PluginProvider {
         let index = PluginIndex(
             root: URL(filePath: "/tmp/unused"),
             loader: { _ in records },
             watcher: NullWatcher()
         )
         index.refresh()
-        return PluginProvider(index: index, reveal: { _ in })
+
+        let configuration = PluginConfigurationStore(
+            defaults: UserDefaults(suiteName: UUID().uuidString)!
+        )
+        for (key, value) in values {
+            let parts = key.split(separator: "/")
+            configuration.setValue(value, pluginID: String(parts[0]), key: String(parts[1]))
+        }
+        let resolver = PluginStatusResolver(
+            configuration: configuration,
+            secrets: InMemorySecretStore(secrets: secrets),
+            disabledIDs: disabled
+        )
+        return PluginProvider(index: index, status: { resolver }, reveal: { _ in })
     }
 
     private func valid(_ manifest: PluginManifest) -> PluginRecord {
@@ -183,6 +201,54 @@ struct PluginProviderTests {
             valid(manifest(id: "b.two", name: "YouTube")),
         ])
         #expect(await results(provider, "yo").first?.title == "Yo")
+    }
+
+    /// Disabled means gone from the result list. Preferences is the way back.
+    @Test func adisabledPluginIsNotOffered() async {
+        let provider = provider(
+            [valid(manifest(id: "web.yt", name: "YouTube"))],
+            disabled: ["web.yt"]
+        )
+        #expect(await results(provider, "yout").isEmpty)
+    }
+
+    /// Still searchable, because hiding it would leave the user with a plugin
+    /// that vanished for a reason they cannot see.
+    @Test func apluginMissingRequiredConfigurationSaysSo() async throws {
+        let field = PluginConfigurationField(
+            key: "token",
+            label: "Access token",
+            type: .secret,
+            required: true,
+            environmentVariable: "PIUM_SECRET_TOKEN"
+        )
+        let manifest = PluginManifest(
+            schemaVersion: 1,
+            id: "web.yt",
+            name: "YouTube",
+            description: nil,
+            keywords: [],
+            aliases: [],
+            icon: nil,
+            input: PluginInput(mode: .none, placeholder: nil),
+            command: PluginCommand(executable: "true", arguments: [], workingDirectory: nil),
+            configuration: [field],
+            output: PluginOutput(mode: .silent),
+            timeoutSeconds: nil,
+            confirmBeforeRun: nil
+        )
+        let provider = provider([valid(manifest)])
+        let result = try #require(await results(provider, "yout").first)
+        #expect(result.subtitle?.contains("Access token") == true)
+    }
+
+    @Test func aconfiguredPluginKeepsItsOwnSubtitle() async throws {
+        let provider = provider(
+            [valid(manifest(id: "web.yt", name: "YouTube"))],
+            secrets: ["web.yt/token": "hunter2"]
+        )
+        let result = try #require(await results(provider, "yout").first)
+        #expect(result.subtitle == nil)
     }
 }
 

@@ -16,6 +16,7 @@ final class Preferences {
         static let preferredLanguage = "pium.preferredLanguage"
         static let isFileSearchEnabled = "pium.isFileSearchEnabled"
         static let fileSearchScope = "pium.fileSearchScope"
+        static let disabledPluginIDs = "pium.disabledPluginIDs"
         /// Read by macOS at launch to pick the application's language.
         static let appleLanguages = "AppleLanguages"
     }
@@ -97,6 +98,14 @@ final class Preferences {
                 defaults.removeObject(forKey: Key.appleLanguages)
             }
         }
+    }
+
+    /// Plugins the user switched off. Disabled means absent from search; the
+    /// Plugins section of Preferences is the way back, so a disabled plugin is
+    /// never hidden there.
+    var disabledPluginIDs: Set<String> {
+        get { Set(defaults.stringArray(forKey: Key.disabledPluginIDs) ?? []) }
+        set { defaults.set(newValue.sorted(), forKey: Key.disabledPluginIDs) }
     }
 }
 

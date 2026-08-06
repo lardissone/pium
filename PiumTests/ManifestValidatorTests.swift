@@ -39,7 +39,9 @@ struct ManifestValidatorTests {
             label: key,
             type: type,
             required: true,
-            environmentVariable: "PIUM_\(key.uppercased())"
+            // A key may carry a hyphen; an environment variable may not, so the
+            // derived name is not simply the key shouted.
+            environmentVariable: "PIUM_\(key.uppercased().replacingOccurrences(of: "-", with: "_"))"
         )
     }
 
@@ -52,8 +54,8 @@ struct ManifestValidatorTests {
         #expect(ManifestValidator.validate(manifest(id: "a")) == nil)
     }
 
-    /// The id is the trust key in 4b and the frecency key today. Spaces, case,
-    /// and unicode would make two ids that look the same behave differently.
+    /// The id is the frecency key. Spaces, case, and unicode would make two
+    /// ids that look the same behave differently.
     @Test func anIdWithSpacesOrCapitalsIsRejected() {
         #expect(ManifestValidator.validate(manifest(id: "Web YT")) == .invalidIdentifier("Web YT"))
         #expect(ManifestValidator.validate(manifest(id: "WebYT")) == .invalidIdentifier("WebYT"))
@@ -109,10 +111,130 @@ struct ManifestValidatorTests {
         #expect(
             ManifestValidator.validate(
                 manifest(
-                    arguments: ["--url={{baseURL}}"],
-                    configuration: [field("baseURL", type: .string)]
+                    arguments: ["--url={{base-url}}"],
+                    configuration: [field("base-url", type: .string)]
                 )
             ) == nil
+        )
+    }
+
+    /// A duplicate key collides on the same storage slot: `ForEach(id: \.key)`
+    /// gets two rows with the same identity, and whichever field saves last
+    /// silently overwrites the other's stored value.
+    @Test func aduplicateConfigurationKeyIsRejected() {
+        #expect(
+            ManifestValidator.validate(
+                manifest(configuration: [
+                    field("token", type: .secret),
+                    field("token", type: .string),
+                ])
+            ) == .duplicateConfigurationKey("token")
+        )
+    }
+
+    /// The schema declares `^[A-Z][A-Z0-9_]*$` for it, and in Phase 5 these
+    /// names become the child process's environment — where `PATH` redirects
+    /// the very executable the manifest declares.
+    @Test func aninvalidEnvironmentVariableIsRejected() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [
+                PluginConfigurationField(
+                    key: "token",
+                    label: "Token",
+                    type: .secret,
+                    required: true,
+                    environmentVariable: "my token=PATH"
+                ),
+            ])) == .invalidEnvironmentVariable("my token=PATH")
+        )
+    }
+
+    /// Two fields writing one variable is the second one winning silently when
+    /// Phase 5 assembles the environment.
+    @Test func aduplicateEnvironmentVariableIsRejected() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [
+                PluginConfigurationField(
+                    key: "baseURL", label: "A", type: .string,
+                    required: true, environmentVariable: "PIUM_SHARED"
+                ),
+                PluginConfigurationField(
+                    key: "token", label: "B", type: .secret,
+                    required: true, environmentVariable: "PIUM_SHARED"
+                ),
+            ])) == .duplicateEnvironmentVariable("PIUM_SHARED")
+        )
+    }
+
+    /// `input` is the argument's own name in a template, so a field claiming it
+    /// can never be interpolated — `{{input}}` resolves to what the user typed.
+    /// Worse, a secret by that name never becomes a `.configuration` token, so
+    /// the guard that keeps secrets out of the argument array never sees it.
+    @Test func aconfigurationKeyNamedInputIsRejected() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("input", type: .string)]))
+                == .reservedConfigurationKey("input")
+        )
+    }
+
+    @Test func asecretNamedInputCannotSlipIntoAnArgument() {
+        #expect(
+            ManifestValidator.validate(
+                manifest(arguments: ["{{input}}"], configuration: [field("input", type: .secret)])
+            ) == .reservedConfigurationKey("input")
+        )
+    }
+
+    /// A key becomes part of a `UserDefaults` key and a Keychain account, but
+    /// it is a field name, not a plugin id: whitespace and emptiness still
+    /// break storage and identity, so they are still rejected.
+    @Test func aninvalidConfigurationKeyIsRejected() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("Token Key", type: .string)]))
+                == .invalidConfigurationKey("Token Key")
+        )
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("", type: .string)]))
+                == .invalidConfigurationKey("")
+        )
+    }
+
+    /// A configuration key is a field name, and PIUM-ARCH's own sample
+    /// manifest declares one as `baseURL`. The id grammar (lowercase only)
+    /// would reject that; a field-name grammar must not.
+    @Test func acamelCaseConfigurationKeyIsAccepted() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("baseURL", type: .string)])) == nil
+        )
+    }
+
+    /// Underscores and a digit after the first character are ordinary in a
+    /// field name.
+    @Test func aconfigurationKeyMayUseUnderscoresAndDigits() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("api_key", type: .string)])) == nil
+        )
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("apiKey2", type: .string)])) == nil
+        )
+    }
+
+    /// The stored key is assembled as `pium.plugin.<pluginID>.config.<field>`.
+    /// A dot inside the field could forge that `.config.` boundary and land on
+    /// a different plugin id/field pair, so dots are rejected even though they
+    /// are otherwise an ordinary character.
+    @Test func aconfigurationKeyWithADotIsRejected() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("base.url", type: .string)]))
+                == .invalidConfigurationKey("base.url")
+        )
+    }
+
+    /// A leading digit or symbol is not a field name.
+    @Test func aconfigurationKeyMustStartWithALetter() {
+        #expect(
+            ManifestValidator.validate(manifest(configuration: [field("2fa", type: .string)]))
+                == .invalidConfigurationKey("2fa")
         )
     }
 

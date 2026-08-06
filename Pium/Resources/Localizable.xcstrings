@@ -1,1093 +1,1722 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "action.open" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open"
+  "sourceLanguage": "en",
+  "strings": {
+    "action.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir"
-          }
-        }
-      }
-    },
-    "action.revealInFinder" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reveal in Finder"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar en Finder"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir"
           }
         }
       }
     },
-    "action.revealJSON" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reveal JSON in Finder"
+    "action.revealInFinder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reveal in Finder"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar JSON en Finder"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar en Finder"
           }
         }
       }
     },
-    "launcher.argument.accessibilityLabel %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Argument for %@"
+    "action.revealJSON": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reveal JSON in Finder"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Argumento para %@"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar JSON en Finder"
           }
         }
       }
     },
-    "launcher.argument.leave %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leave %@ and return to search"
+    "launcher.actions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actions"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salir de %@ y volver a la búsqueda"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acciones"
           }
         }
       }
     },
-    "launcher.argument.placeholder" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Type an argument"
+    "launcher.argument.accessibilityLabel %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Argument for %@"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escribí un argumento"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Argumento para %@"
           }
         }
       }
     },
-    "launcher.actions" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Actions"
+    "launcher.argument.leave %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave %@ and return to search"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Acciones"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salir de %@ y volver a la búsqueda"
           }
         }
       }
     },
-    "launcher.searchActions" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search for actions…"
+    "launcher.argument.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type an argument"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar acciones…"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribí un argumento"
           }
         }
       }
     },
-    "launcher.placeholder" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search apps, files, and commands"
+    "launcher.placeholder": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search apps, files, and commands"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar apps, archivos y comandos"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar apps, archivos y comandos"
           }
         }
       }
     },
-    "launcher.search.accessibilityLabel" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search"
+    "launcher.search.accessibilityLabel": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar"
           }
         }
       }
     },
-    "menubar.accessibilityLabel" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pium"
+    "launcher.searchActions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search for actions…"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pium"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar acciones…"
           }
         }
       }
     },
-    "menubar.openPium" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Pium"
+    "menubar.accessibilityLabel": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir Pium"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium"
           }
         }
       }
     },
-    "menubar.openPluginsFolder" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Plugins Folder"
+    "menubar.openPium": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Pium"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir carpeta de plugins"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Pium"
           }
         }
       }
     },
-    "menubar.reloadPlugins" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reload Plugins"
+    "menubar.openPluginsFolder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Plugins Folder"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recargar plugins"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir carpeta de plugins"
           }
         }
       }
     },
-    "menubar.quit" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quit Pium"
+    "menubar.quit": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit Pium"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salir de Pium"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salir de Pium"
           }
         }
       }
     },
-    "menubar.settings" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Settings…"
+    "menubar.reloadPlugins": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reload Plugins"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajustes…"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recargar plugins"
           }
         }
       }
     },
-    "onboarding.finish" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Get Started"
+    "menubar.settings": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings…"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Empezar"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes…"
           }
         }
       }
     },
-    "onboarding.pluginsExplanation" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plugins are local commands described by a JSON file. Pium never runs one until you have reviewed it."
+    "onboarding.finish": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get Started"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Los plugins son comandos locales descritos por un archivo JSON. Pium nunca ejecuta uno hasta que lo hayas revisado."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empezar"
           }
         }
       }
     },
-    "onboarding.revealPluginsFolder" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Plugins Folder"
+    "onboarding.pluginsExplanation": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugins are local commands described by a JSON file."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir carpeta de plugins"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los plugins son comandos locales descritos por un archivo JSON."
           }
         }
       }
     },
-    "onboarding.shortcutIntro %@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press %@ from any app to open Pium. You can change this in Settings."
+    "onboarding.revealPluginsFolder": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Plugins Folder"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Presioná %@ desde cualquier app para abrir Pium. Podés cambiarlo en Ajustes."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir carpeta de plugins"
           }
         }
       }
     },
-    "onboarding.title" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pium"
+    "onboarding.shortcutIntro %@": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press %@ from any app to open Pium. You can change this in Settings."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pium"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presioná %@ desde cualquier app para abrir Pium. Podés cambiarlo en Ajustes."
           }
         }
       }
     },
-    "onboarding.windowTitle" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Welcome to Pium"
+    "onboarding.title": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bienvenido a Pium"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium"
           }
         }
       }
     },
-    "plugin.diagnostic.conflictingAlias %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Another plugin already uses the alias “%@”."
+    "onboarding.windowTitle": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome to Pium"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Otro plugin ya usa el alias «%@»."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bienvenido a Pium"
           }
         }
       }
     },
-    "plugin.diagnostic.duplicateIdentifier %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Another plugin already uses the id “%@”."
+    "plugin.diagnostic.conflictingAlias %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another plugin already uses the alias “%@”."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Otro plugin ya usa el id «%@»."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otro plugin ya usa el alias «%@»."
           }
         }
       }
     },
-    "plugin.diagnostic.invalidIdentifier %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“%@” is not a valid id. Use lowercase letters, digits, dots, and hyphens."
+    "plugin.diagnostic.duplicateConfigurationKey %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration key “%@” is declared more than once."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» no es un id válido. Usá minúsculas, dígitos, puntos y guiones."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clave de configuración «%@» está declarada más de una vez."
           }
         }
       }
     },
-    "plugin.diagnostic.invalidTemplate %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invalid argument template: %@"
+    "plugin.diagnostic.duplicateEnvironmentVariable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Environment variable “%@” is declared by more than one field."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plantilla de argumento inválida: %@"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La variable de entorno «%@» está declarada por más de un campo."
           }
         }
       }
     },
-    "plugin.diagnostic.invalidTimeout %lld" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "timeoutSeconds must be between 1 and 3600, not %lld."
+    "plugin.diagnostic.duplicateIdentifier %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another plugin already uses the id “%@”."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "timeoutSeconds tiene que estar entre 1 y 3600, no %lld."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otro plugin ya usa el id «%@»."
           }
         }
       }
     },
-    "plugin.diagnostic.malformedJSON %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This file is not valid JSON: %@"
+    "plugin.diagnostic.invalidConfigurationKey %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not a valid configuration key. Use letters, digits, underscores, and hyphens, starting with a letter."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este archivo no es JSON válido: %@"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es una clave de configuración válida. Usá letras, dígitos, guiones bajos y guiones, empezando con una letra."
           }
         }
       }
     },
-    "plugin.diagnostic.missingKey %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Missing required key “%@”."
+    "plugin.diagnostic.invalidEnvironmentVariable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not a valid environment variable name. Use capitals, digits, and underscores, starting with a capital."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Falta la clave obligatoria «%@»."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es un nombre válido de variable de entorno. Usá mayúsculas, dígitos y guiones bajos, empezando con una mayúscula."
           }
         }
       }
     },
-    "plugin.diagnostic.rootObject" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "the manifest"
+    "plugin.diagnostic.invalidIdentifier %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not a valid id. Use lowercase letters, digits, dots, and hyphens."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "el manifiesto"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es un id válido. Usá minúsculas, dígitos, puntos y guiones."
           }
         }
       }
     },
-    "plugin.diagnostic.secretInArguments %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Secret “%@” cannot be used in arguments. Secrets reach the command only as environment variables."
+    "plugin.diagnostic.invalidTemplate %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid argument template: %@"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El secreto «%@» no puede usarse en los argumentos. Los secretos llegan al comando solo como variables de entorno."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plantilla de argumento inválida: %@"
           }
         }
       }
     },
-    "plugin.diagnostic.unknownKey %@ %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unknown key “%1$@” in %2$@."
+    "plugin.diagnostic.invalidTimeout %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "timeoutSeconds must be between 1 and 3600, not %lld."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clave desconocida «%1$@» en %2$@."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "timeoutSeconds tiene que estar entre 1 y 3600, no %lld."
           }
         }
       }
     },
-    "plugin.diagnostic.unreadableFile" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This file could not be read."
+    "plugin.diagnostic.malformedJSON %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file is not valid JSON: %@"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se pudo leer este archivo."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este archivo no es JSON válido: %@"
           }
         }
       }
     },
-    "plugin.diagnostic.unsupportedSchemaVersion %lld %lld" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schema version %1$lld is not supported. This version of Pium reads version %2$lld."
+    "plugin.diagnostic.missingKey %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Missing required key “%@”."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La versión de esquema %1$lld no está soportada. Esta versión de Pium lee la versión %2$lld."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falta la clave obligatoria «%@»."
           }
         }
       }
     },
-    "plugin.diagnostic.wrongType %@ %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ must be %2$@."
+    "plugin.diagnostic.reservedConfigurationKey %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is reserved: it is the name of the plugin's own input in a template. Rename the field."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ tiene que ser %2$@."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» está reservada: es el nombre de la entrada del propio plugin en una plantilla. Renombrá el campo."
           }
         }
       }
     },
-    "plugin.template.unclosed %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“%@” has an unclosed {{ placeholder."
+    "plugin.diagnostic.rootObject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "the manifest"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» tiene un marcador {{ sin cerrar."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "el manifiesto"
           }
         }
       }
     },
-    "plugin.template.unknownFilter %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“%@” is not a known filter. Use url_encode, or no filter at all."
+    "plugin.diagnostic.secretInArguments %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secret “%@” cannot be used in arguments. Secrets reach the command only as environment variables."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» no es un filtro conocido. Usá url_encode, o ningún filtro."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El secreto «%@» no puede usarse en los argumentos. Los secretos llegan al comando solo como variables de entorno."
           }
         }
       }
     },
-    "plugin.template.unknownVariable %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "“%@” is not a known variable. Only {{input}} is available."
+    "plugin.diagnostic.unknownKey %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown key “%1$@” in %2$@."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» no es una variable conocida. Solo está disponible {{input}}."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clave desconocida «%1$@» en %2$@."
           }
         }
       }
     },
-    "plugin.type.array" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "an array"
+    "plugin.diagnostic.unreadableFile": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file could not be read."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "un arreglo"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo leer este archivo."
           }
         }
       }
     },
-    "plugin.type.integer" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "a whole number"
+    "plugin.diagnostic.unsupportedSchemaVersion %lld %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schema version %1$lld is not supported. This version of Pium reads version %2$lld."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "un número entero"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La versión de esquema %1$lld no está soportada. Esta versión de Pium lee la versión %2$lld."
           }
         }
       }
     },
-    "plugin.type.object" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "an object"
+    "plugin.diagnostic.wrongType %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ must be %2$@."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "un objeto"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ tiene que ser %2$@."
           }
         }
       }
     },
-    "plugin.type.string" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "text"
+    "plugin.state.missingConfiguration %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needs configuration: %@"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "texto"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falta configurar: %@"
           }
         }
       }
     },
-    "plugin.type.nonEmptyText" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "text that is not empty"
+    "plugin.template.unclosed %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” has an unclosed {{ placeholder."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "texto no vacío"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» tiene un marcador {{ sin cerrar."
           }
         }
       }
     },
-    "settings.general.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "General"
+    "plugin.template.unknownFilter %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not a known filter. Use url_encode, or no filter at all."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "General"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es un filtro conocido. Usá url_encode, o ningún filtro."
           }
         }
       }
     },
-    "settings.search.usageHistory" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usage history"
+    "plugin.template.unknownVariable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not a known variable. Only {{input}} is available."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Historial de uso"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es una variable conocida. Solo está disponible {{input}}."
           }
         }
       }
     },
-    "settings.search.clearHistory" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erase usage history"
+    "plugin.type.array": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "an array"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Borrar historial de uso"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "un arreglo"
           }
         }
       }
     },
-    "settings.search.clearHistoryExplanation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pium learns which results you pick so they come back first. Erasing this cannot be undone."
+    "plugin.type.boolean": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "true or false"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pium aprende qué resultados elegís para mostrarlos primero. Borrar esto no se puede deshacer."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "true o false"
           }
         }
       }
     },
-    "settings.search.historyErased" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usage history erased."
+    "plugin.type.integer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a whole number"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Historial de uso borrado."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "un número entero"
           }
         }
       }
     },
-    "settings.search.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search"
+    "plugin.type.nonEmptyText": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "text that is not empty"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Búsqueda"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "texto no vacío"
           }
         }
       }
     },
-    "settings.search.fileSearch" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search files"
+    "plugin.type.object": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "an object"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar archivos"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "un objeto"
           }
         }
       }
     },
-    "settings.search.fileSearchExplanation" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uses the existing Spotlight index. Turning this off stops Pium querying Spotlight at all."
+    "plugin.type.string": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "text"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usa el índice de Spotlight existente. Al desactivarlo, Pium deja de consultar Spotlight por completo."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "texto"
           }
         }
       }
     },
-    "settings.search.scope" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Look in"
+    "plugins.whatIsAplugin": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A plugin is a command that runs on your Mac as you. Pium does not review what a plugin does — read a plugin before you install it."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar en"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un plugin es un comando que corre en tu Mac con tu usuario. Pium no revisa lo que hace un plugin — leé un plugin antes de instalarlo."
           }
         }
       }
     },
-    "settings.search.scope.home" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Home folder"
+    "settings.general.language": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Carpeta personal"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma"
           }
         }
       }
     },
-    "settings.search.scope.allIndexedLocal" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All indexed volumes"
+    "settings.general.languageRestartNote": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language changes take effect the next time Pium starts."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todos los volúmenes indexados"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los cambios de idioma se aplican la próxima vez que se inicie Pium."
           }
         }
       }
     },
-    "settings.general.language" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Language"
+    "settings.general.launchAtLogin": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Launch at login"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Idioma"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir al iniciar sesión"
           }
         }
       }
     },
-    "settings.general.languageRestartNote" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Language changes take effect the next time Pium starts."
+    "settings.general.shortcut": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcut"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Los cambios de idioma se aplican la próxima vez que se inicie Pium."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atajo"
           }
         }
       }
     },
-    "settings.general.launchAtLogin" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Launch at login"
+    "settings.general.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir al iniciar sesión"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
           }
         }
       }
     },
-    "settings.general.shortcut" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shortcut"
+    "settings.language.english": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "English"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Atajo"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inglés"
           }
         }
       }
     },
-    "settings.language.english" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "English"
+    "settings.language.spanish": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spanish"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inglés"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Español"
           }
         }
       }
     },
-    "settings.language.spanish" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spanish"
+    "settings.language.system": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Español"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema"
           }
         }
       }
     },
-    "settings.language.system" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "System"
+    "settings.plugins.arguments": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arguments"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sistema"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Argumentos"
           }
         }
       }
     },
-    "settings.shortcut.accessibilityLabel" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Launcher shortcut"
+    "settings.plugins.clearSecret": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Atajo del lanzador"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar"
           }
         }
       }
     },
-    "settings.shortcut.recording" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press a shortcut…"
+    "settings.plugins.command": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command"
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Presioná un atajo…"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando"
           }
         }
       }
     },
-    "settings.windowTitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pium Settings"
+    "settings.plugins.commandExplanation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shown as the manifest declares it. Pium resolves the executable when it runs the command."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajustes de Pium"
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se muestra tal como lo declara el manifiesto. Pium resuelve el ejecutable cuando ejecuta el comando."
+          }
+        }
+      }
+    },
+    "settings.plugins.configuration": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuración"
+          }
+        }
+      }
+    },
+    "settings.plugins.enabled %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enable %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar %@"
+          }
+        }
+      }
+    },
+    "settings.plugins.environment": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Environment"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entorno"
+          }
+        }
+      }
+    },
+    "settings.plugins.eraseFailed %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not erase the secrets for %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron borrar los secretos de %@."
+          }
+        }
+      }
+    },
+    "settings.plugins.eraseSecrets": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erase"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar"
+          }
+        }
+      }
+    },
+    "settings.plugins.executable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Executable"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejecutable"
+          }
+        }
+      }
+    },
+    "settings.plugins.file": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivo"
+          }
+        }
+      }
+    },
+    "settings.plugins.noSelection": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a plugin"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegí un plugin"
+          }
+        }
+      }
+    },
+    "settings.plugins.orphanedExplanation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These plugins are no longer in the folder. Their secrets are kept in case the file comes back, and are erased only when you say so."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estos plugins ya no están en la carpeta. Sus secretos se conservan por si el archivo vuelve, y se borran solo cuando vos lo decidís."
+          }
+        }
+      }
+    },
+    "settings.plugins.orphanedSecrets": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved credentials"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Credenciales guardadas"
+          }
+        }
+      }
+    },
+    "settings.plugins.pluginFolder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plugin's folder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La carpeta del plugin"
+          }
+        }
+      }
+    },
+    "settings.plugins.problem": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Problem"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Problema"
+          }
+        }
+      }
+    },
+    "settings.plugins.requiredField %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (required)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (obligatorio)"
+          }
+        }
+      }
+    },
+    "settings.plugins.saveFailed %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not save %@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar %@."
+          }
+        }
+      }
+    },
+    "settings.plugins.secretMissing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not stored"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin guardar"
+          }
+        }
+      }
+    },
+    "settings.plugins.secretPrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste the secret"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegá el secreto"
+          }
+        }
+      }
+    },
+    "settings.plugins.secretStored": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stored in the Keychain"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardado en el Llavero"
+          }
+        }
+      }
+    },
+    "settings.plugins.secretsExplanation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secrets are kept in the macOS Keychain and reach the command only as environment variables, never as arguments."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los secretos se guardan en el Llavero de macOS y llegan al comando solo como variables de entorno, nunca como argumentos."
+          }
+        }
+      }
+    },
+    "settings.plugins.status.disabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disabled"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desactivado"
+          }
+        }
+      }
+    },
+    "settings.plugins.status.invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not loaded"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No cargado"
+          }
+        }
+      }
+    },
+    "settings.plugins.status.needsConfiguration": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needs configuration"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falta configurar"
+          }
+        }
+      }
+    },
+    "settings.plugins.status.ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listo"
+          }
+        }
+      }
+    },
+    "settings.plugins.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugins"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plugins"
+          }
+        }
+      }
+    },
+    "settings.plugins.valuePrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type a value"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribí un valor"
+          }
+        }
+      }
+    },
+    "settings.plugins.workingDirectory": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Working directory"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Directorio de trabajo"
+          }
+        }
+      }
+    },
+    "settings.search.clearHistory": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erase usage history"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar historial de uso"
+          }
+        }
+      }
+    },
+    "settings.search.clearHistoryExplanation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium learns which results you pick so they come back first. Erasing this cannot be undone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium aprende qué resultados elegís para mostrarlos primero. Borrar esto no se puede deshacer."
+          }
+        }
+      }
+    },
+    "settings.search.fileSearch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search files"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar archivos"
+          }
+        }
+      }
+    },
+    "settings.search.fileSearchExplanation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses the existing Spotlight index. Turning this off stops Pium querying Spotlight at all."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa el índice de Spotlight existente. Al desactivarlo, Pium deja de consultar Spotlight por completo."
+          }
+        }
+      }
+    },
+    "settings.search.historyErased": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage history erased."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historial de uso borrado."
+          }
+        }
+      }
+    },
+    "settings.search.scope": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Look in"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar en"
+          }
+        }
+      }
+    },
+    "settings.search.scope.allIndexedLocal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All indexed volumes"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos los volúmenes indexados"
+          }
+        }
+      }
+    },
+    "settings.search.scope.home": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home folder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carpeta personal"
+          }
+        }
+      }
+    },
+    "settings.search.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Búsqueda"
+          }
+        }
+      }
+    },
+    "settings.search.usageHistory": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage history"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historial de uso"
+          }
+        }
+      }
+    },
+    "settings.shortcut.accessibilityLabel": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Launcher shortcut"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atajo del lanzador"
+          }
+        }
+      }
+    },
+    "settings.shortcut.recording": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press a shortcut…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presioná un atajo…"
+          }
+        }
+      }
+    },
+    "settings.windowTitle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium Settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes de Pium"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

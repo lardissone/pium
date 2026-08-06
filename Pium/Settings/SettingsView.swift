@@ -2,11 +2,14 @@ import SwiftUI
 
 /// The Settings content.
 ///
-/// The Plugins, Appearance, Updates, and Advanced sections arrive with the
-/// features they configure, in Phases 4 through 7.
+/// The Appearance, Updates, and Advanced sections arrive with the features
+/// they configure, in Phases 5 through 7.
 struct SettingsView: View {
     let frecency: any FrecencyStoring
     let onShortcutChanged: (HotkeyShortcut) -> Void
+    let pluginIndex: PluginIndex
+    let configuration: any PluginConfigurationStoring
+    let secrets: any PluginSecretStoring
 
     var body: some View {
         TabView {
@@ -25,6 +28,18 @@ struct SettingsView: View {
                         systemImage: "magnifyingglass"
                     )
                 }
+
+            PluginsSettingsView(
+                index: pluginIndex,
+                configuration: configuration,
+                secrets: secrets
+            )
+            .tabItem {
+                Label(
+                    String(localized: "settings.plugins.title"),
+                    systemImage: "puzzlepiece.extension"
+                )
+            }
         }
     }
 }

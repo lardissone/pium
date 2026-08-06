@@ -12,7 +12,7 @@ struct PluginManifest: Sendable, Equatable {
     static let currentSchemaVersion = 1
 
     let schemaVersion: Int
-    /// Stable and globally unique. Trust in 4b is keyed to it, so it may not
+    /// Stable and globally unique. Usage history is keyed to it, so it may not
     /// change without the plugin becoming a different plugin.
     let id: String
     let name: String
