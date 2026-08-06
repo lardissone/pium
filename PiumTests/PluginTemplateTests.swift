@@ -68,3 +68,55 @@ struct PluginTemplateTests {
         #expect(diagnostic.message.contains("base64"))
     }
 }
+
+@Suite("Template resolution")
+struct PluginTemplateResolutionTests {
+    private func tokens(_ string: String, keys: Set<String> = []) throws -> [PluginTemplateToken] {
+        try PluginTemplate.parseAllowingConfiguration(string, configurationKeys: keys).get()
+    }
+
+    @Test func literalsSurviveUntouched() throws {
+        let resolved = PluginTemplate.resolve(
+            try tokens("--flag"), input: "ignored", configuration: [:]
+        )
+        #expect(resolved == "--flag")
+    }
+
+    /// One argv element, whatever the input contains: the whole point of
+    /// tokens over string replacement.
+    @Test func inputWithSpacesStaysOneArgument() throws {
+        let resolved = PluginTemplate.resolve(
+            try tokens("{{input}}"), input: "hello world; rm -rf /", configuration: [:]
+        )
+        #expect(resolved == "hello world; rm -rf /")
+    }
+
+    @Test func theUrlEncodeFilterEncodesTheInput() throws {
+        let resolved = PluginTemplate.resolve(
+            try tokens("https://x.com/?q={{input|url_encode}}"),
+            input: "a b&c",
+            configuration: [:]
+        )
+        #expect(resolved == "https://x.com/?q=a%20b%26c")
+    }
+
+    @Test func aconfigurationValueIsInterpolated() throws {
+        let resolved = PluginTemplate.resolve(
+            try tokens("{{baseURL}}/status", keys: ["baseURL"]),
+            input: "",
+            configuration: ["baseURL": "https://home.local"]
+        )
+        #expect(resolved == "https://home.local/status")
+    }
+
+    /// A field the user never filled resolves to nothing rather than to the
+    /// literal `{{baseURL}}`, which would reach the command as text.
+    @Test func anUnfilledConfigurationValueResolvesToEmpty() throws {
+        let resolved = PluginTemplate.resolve(
+            try tokens("{{baseURL}}/status", keys: ["baseURL"]),
+            input: "",
+            configuration: [:]
+        )
+        #expect(resolved == "/status")
+    }
+}
