@@ -222,6 +222,74 @@
         }
       }
     },
+    "hud.exited %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It ended with error code %lld and said nothing"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminó con el código de error %lld y no dijo nada"
+          }
+        }
+      }
+    },
+    "hud.signalled %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It was stopped by signal %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo detuvo la señal %lld"
+          }
+        }
+      }
+    },
+    "hud.timedOut": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It ran longer than the time the plugin allows"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrió más tiempo del que el plugin permite"
+          }
+        }
+      }
+    },
+    "hud.truncated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "…output was cut short"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "…la salida se cortó"
+          }
+        }
+      }
+    },
     "launcher.actions": {
       "extractionState": "manual",
       "localizations": {
