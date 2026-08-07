@@ -47,6 +47,13 @@ final class ChildProcess: @unchecked Sendable {
 
         var actions: posix_spawn_file_actions_t?
         posix_spawn_file_actions_init(&actions)
+        // Nothing feeds a plugin's stdin, so it reads end-of-file rather than
+        // whatever Pium's own stdin happens to be. Inherited, a command that
+        // reads stdin blocks forever on a terminal build, and a blocked run
+        // holds the single execution slot with no way to release it. The three
+        // redirections claim descriptors 0, 1 and 2 respectively, so the order
+        // the file actions apply in leaves each of them standing.
+        posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
         posix_spawn_file_actions_adddup2(&actions, outPipe[1], STDOUT_FILENO)
         posix_spawn_file_actions_adddup2(&actions, errPipe[1], STDERR_FILENO)
         // The child holds no copy of the read ends; otherwise the reader never

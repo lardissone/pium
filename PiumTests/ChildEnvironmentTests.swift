@@ -1,4 +1,5 @@
 import Testing
+import Darwin
 import Foundation
 @testable import Pium
 
@@ -58,6 +59,41 @@ struct ChildEnvironmentTests {
         #expect(built["LANG"] != nil)
         #expect(built["TMPDIR"] != nil)
         #expect(Set(built.keys) == ["PATH", "HOME", "USER", "LANG", "TMPDIR"])
+    }
+
+    /// An identifier the system has no locale for is not passed through: a
+    /// child handing one to `setlocale` prints "Setting locale failed" on the
+    /// stream a plugin's own message arrives on.
+    @Test func anIdentifierWithNoLocaleBehindItFallsBack() {
+        #expect(ChildEnvironment.languageValue(for: "qq_QQ") == ChildEnvironment.fallbackLanguage)
+    }
+
+    /// A region setting produces identifiers with keywords attached, which name
+    /// no locale either.
+    @Test func anIdentifierCarryingKeywordsFallsBack() {
+        #expect(
+            ChildEnvironment.languageValue(for: "en_US@rg=arzzzz")
+                == ChildEnvironment.fallbackLanguage
+        )
+    }
+
+    @Test func anIdentifierTheSystemHasIsTheOneTheChildGets() {
+        #expect(ChildEnvironment.languageValue(for: "en_US") == "en_US.UTF-8")
+    }
+
+    /// Whatever this machine's Region setting happens to be, the `LANG` a
+    /// plugin runs under names a locale its C library can actually load.
+    @Test func thelanguageTheChildGetsNamesALocaleThisSystemHas() throws {
+        let built = try environment().build(for: manifest([])).get()
+        let language = try #require(built["LANG"])
+        // `LC_ALL_MASK` is a compound macro Swift does not import; these six
+        // categories are what it is defined as.
+        let allCategories =
+            LC_COLLATE_MASK | LC_CTYPE_MASK | LC_MESSAGES_MASK
+            | LC_MONETARY_MASK | LC_NUMERIC_MASK | LC_TIME_MASK
+        let locale = newlocale(allCategories, language, nil)
+        #expect(locale != nil, "LANG names a locale this system does not have: \(language)")
+        if let locale { freelocale(locale) }
     }
 
     /// The launching environment is not inherited, so a variable Pium happens

@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// Builds the environment a plugin's command runs in.
@@ -31,7 +32,7 @@ struct ChildEnvironment {
             "PATH": searchPaths.joined(separator: ":"),
             "HOME": NSHomeDirectory(),
             "USER": NSUserName(),
-            "LANG": Locale.current.identifier + ".UTF-8",
+            "LANG": Self.languageValue(for: Locale.current.identifier),
             "TMPDIR": NSTemporaryDirectory(),
         ]
 
@@ -58,5 +59,39 @@ struct ChildEnvironment {
             environment[field.environmentVariable] = value
         }
         return .success(environment)
+    }
+
+    /// The locale a child gets when the system has none for the identifier
+    /// asked about. Present on every macOS install.
+    static let fallbackLanguage = "en_US.UTF-8"
+
+    /// The `LANG` a child gets for a locale identifier: that identifier's
+    /// UTF-8 locale where the system has one, and `fallbackLanguage` where it
+    /// does not.
+    ///
+    /// `Locale.current.identifier` follows the user's Region setting, and not
+    /// every combination it produces names a locale that exists — an English
+    /// language with an Argentine region gives `en_AR`, which no macOS install
+    /// carries. A child handing that to `setlocale` prints "Setting locale
+    /// failed" on its stderr before falling back to `C`, which is noise on the
+    /// very stream a plugin's own message arrives on. Falling back here keeps
+    /// the child's environment as this file describes it: fixed, valid, and
+    /// not a function of how the machine is configured.
+    ///
+    /// `newlocale` is the existence check because it is the same lookup the
+    /// child's own C library performs, so nothing is assumed about where
+    /// locale definitions live or what names they answer to. Its mask is
+    /// spelled out one category at a time because `LC_ALL_MASK` is a compound
+    /// macro Swift does not import; these six are what it is defined as.
+    static func languageValue(for identifier: String) -> String {
+        let candidate = identifier + ".UTF-8"
+        let allCategories =
+            LC_COLLATE_MASK | LC_CTYPE_MASK | LC_MESSAGES_MASK
+            | LC_MONETARY_MASK | LC_NUMERIC_MASK | LC_TIME_MASK
+        guard let locale = newlocale(allCategories, candidate, nil) else {
+            return fallbackLanguage
+        }
+        freelocale(locale)
+        return candidate
     }
 }

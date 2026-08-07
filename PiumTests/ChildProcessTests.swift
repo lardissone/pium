@@ -56,6 +56,40 @@ struct ChildProcessTests {
         #expect(String(decoding: err, as: UTF8.self) == "err\n")
     }
 
+    /// A plugin reads end-of-file, not whatever Pium is reading from. Pium's
+    /// own stdin is replaced by a pipe for the length of this test so that an
+    /// inherited descriptor would be something the child can tell apart from
+    /// `/dev/null` — and so that the assertion holds wherever this suite runs,
+    /// rather than only where the host's stdin happens to differ.
+    ///
+    /// The fixture compares descriptors instead of reading, because a child
+    /// that inherited this pipe would block on a read until the test process
+    /// itself ended.
+    @Test func achildReadsFromDevNullRatherThanPiumsOwnStandardInput() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = try script(
+            "if [ /dev/fd/0 -ef /dev/null ]; then echo devnull; else echo inherited; fi",
+            in: directory
+        )
+
+        var ends: [Int32] = [0, 0]
+        try #require(pipe(&ends) == 0)
+        let saved = dup(STDIN_FILENO)
+        dup2(ends[0], STDIN_FILENO)
+        defer {
+            dup2(saved, STDIN_FILENO)
+            close(saved)
+            close(ends[0])
+            close(ends[1])
+        }
+
+        let child = try spawn(url.path, in: directory)
+        let output = String(decoding: child.standardOutput.readDataToEndOfFile(), as: UTF8.self)
+        _ = child.waitForExit()
+        #expect(output == "devnull\n")
+    }
+
     @Test func theEnvironmentReachesTheChild() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

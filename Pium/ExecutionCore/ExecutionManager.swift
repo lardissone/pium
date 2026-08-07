@@ -19,8 +19,24 @@ final class ExecutionManager {
     private let configuration: any PluginConfigurationStoring
     private let runner = ProcessRunner()
 
+    /// How many runs are remembered.
+    ///
+    /// The interface asks about the run in flight and the one that just ended;
+    /// nothing asks about a run from last Tuesday, and each record carries up
+    /// to two 64 KB captures. A menubar app is open for weeks, so a collection
+    /// with no reason to shrink is a collection that only grows.
+    ///
+    /// Bounded rather than emptying the captures of records that are no longer
+    /// current: a record whose output was thrown away reads exactly like a
+    /// command that printed nothing, and every record kept here should be able
+    /// to say what its run did.
+    static let historyLimit = 20
+
     private(set) var records: [UUID: ExecutionRecord] = [:]
     private var cancellations: [UUID: ProcessRunner.Cancellation] = [:]
+    /// The order runs started in, which the dictionary does not keep and
+    /// eviction needs.
+    private var startOrder: [UUID] = []
 
     init(
         configuration: any PluginConfigurationStoring,
@@ -80,6 +96,8 @@ final class ExecutionManager {
             standardError: "",
             wasTruncated: false
         )
+        startOrder.append(id)
+        evictOldestRuns()
         let cancellation = ProcessRunner.Cancellation()
         cancellations[id] = cancellation
 
@@ -93,6 +111,17 @@ final class ExecutionManager {
 
     func cancel(_ id: UUID) {
         cancellations[id]?.cancel()
+    }
+
+    /// Drops the oldest runs past `historyLimit`, skipping any that is still
+    /// running: that record is what `activeRecord` answers with, and its
+    /// cancellation is the only handle that can stop it.
+    private func evictOldestRuns() {
+        while startOrder.count > Self.historyLimit {
+            guard let oldest = startOrder.firstIndex(where: { records[$0]?.state != .running })
+            else { return }
+            records[startOrder.remove(at: oldest)] = nil
+        }
     }
 
     /// No declaration runs in the plugin's own folder. Otherwise, mirrors
@@ -151,8 +180,14 @@ final class ExecutionManager {
         // failure is visible, which is why 5a is not shippable alone.
         switch record.state {
         case .finished(let code) where code != 0:
+            // The plugin id is public because it is what makes the line
+            // useful. The child's stderr is not, and must not become so: a
+            // command that traces itself, or that reports the URL a request
+            // failed on, prints the token Pium handed it — and the unified log
+            // keeps what it is given. Redacted, the line still says which
+            // plugin failed and with what code.
             logger.error(
-                "\(record.pluginID, privacy: .public) exited \(code): \(record.standardError, privacy: .public)"
+                "\(record.pluginID, privacy: .public) exited \(code): \(record.standardError)"
             )
         case .timedOut:
             logger.error("\(record.pluginID, privacy: .public) timed out")

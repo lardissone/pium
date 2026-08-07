@@ -192,6 +192,57 @@ struct ExecutionManagerTests {
         )
     }
 
+    /// Records are bounded: each one holds up to two 64 KB captures, and a
+    /// menubar app that keeps every run it ever started keeps every byte those
+    /// runs ever printed. What survives is the recent end, which is what the
+    /// interface asks about.
+    @Test func onlyTheMostRecentRunsAreRemembered() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = manager()
+
+        var started: [UUID] = []
+        for _ in 0..<(ExecutionManager.historyLimit + 5) {
+            let id = try manager.run(record(executable: "echo", in: directory), input: "").get()
+            _ = try await finalState(of: id, in: manager)
+            started.append(id)
+        }
+
+        #expect(manager.records.count == ExecutionManager.historyLimit)
+        #expect(manager.records[started[0]] == nil, "The oldest run is still remembered")
+        #expect(manager.records[try #require(started.last)] != nil, "The newest run was forgotten")
+    }
+
+    /// Forgetting old runs must not disturb the single slot: the run in flight
+    /// is the one `activeRecord` names, and it is what a second run is refused
+    /// for. Both answers come from the same collection eviction writes to.
+    @Test func aRunInFlightIsStillTheActiveOneAfterTheHistoryHasChurned() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = manager()
+
+        for _ in 0..<(ExecutionManager.historyLimit + 5) {
+            let id = try manager.run(record(executable: "echo", in: directory), input: "").get()
+            _ = try await finalState(of: id, in: manager)
+        }
+
+        let inFlight = try manager.run(
+            record(executable: "sleep", arguments: ["30"], in: directory), input: ""
+        ).get()
+        defer { manager.cancel(inFlight) }
+
+        #expect(manager.records[inFlight]?.state == .running)
+        #expect(manager.activeRecord?.id == inFlight)
+        #expect(manager.records.count == ExecutionManager.historyLimit)
+        guard case .failure(let failure) = manager.run(
+            record(executable: "echo", in: directory), input: ""
+        ) else {
+            Issue.record("A second run must still be refused")
+            return
+        }
+        #expect(failure == .alreadyRunning(plugin: "Probe"))
+    }
+
     @Test func amissingRequiredValueFailsBeforeRunning() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

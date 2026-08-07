@@ -91,6 +91,38 @@ struct ProcessRunnerTests {
         #expect(outcome.wasTruncated == true)
     }
 
+    /// The two streams arrive as two strings, neither folded into the other:
+    /// stderr is where a failing command explains itself, and the interface
+    /// shows it on its own.
+    @Test func itReportsStandardErrorSeparatelyFromOutput() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = try script("echo out; echo err >&2", in: directory)
+
+        let outcome = await ProcessRunner().run(request(url.path, in: directory), cancellation: .init())
+        #expect(outcome.ending == .exited(0))
+        #expect(outcome.standardOutput == "out\n")
+        #expect(outcome.standardError == "err\n")
+        #expect(outcome.wasTruncated == false)
+    }
+
+    /// Either stream reaching the cap makes the run truncated. A command that
+    /// says nothing on stdout and floods stderr is the ordinary shape of a
+    /// failure, so the flag cannot be a property of stdout alone.
+    @Test func errorPastTheCapKeepsTheBeginningAndMarksTheRunTruncated() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        // 200 KB, comfortably past the 64 KB cap.
+        let url = try script("for i in $(seq 1 200000); do printf 'x'; done >&2", in: directory)
+
+        let outcome = await ProcessRunner().run(request(url.path, in: directory), cancellation: .init())
+        #expect(outcome.ending == .exited(0))
+        #expect(outcome.standardOutput == "")
+        #expect(outcome.standardError.count == ProcessRunner.outputCap)
+        #expect(outcome.standardError.allSatisfy { $0 == "x" })
+        #expect(outcome.wasTruncated == true)
+    }
+
     @Test func atimeoutEndsTheRunAsTimedOut() async throws {
         let outcome = await ProcessRunner().run(
             request("/bin/sleep", ["30"], timeoutSeconds: 1), cancellation: .init()
