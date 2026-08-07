@@ -17,6 +17,7 @@ final class Preferences {
         static let isFileSearchEnabled = "pium.isFileSearchEnabled"
         static let fileSearchScope = "pium.fileSearchScope"
         static let disabledPluginIDs = "pium.disabledPluginIDs"
+        static let hudAnchor = "pium.hudAnchor"
         /// Read by macOS at launch to pick the application's language.
         static let appleLanguages = "AppleLanguages"
     }
@@ -106,6 +107,14 @@ final class Preferences {
     var disabledPluginIDs: Set<String> {
         get { Set(defaults.stringArray(forKey: Key.disabledPluginIDs) ?? []) }
         set { defaults.set(newValue.sorted(), forKey: Key.disabledPluginIDs) }
+    }
+
+    /// Where HUD panels appear on screen.
+    var hudAnchor: HUDAnchor {
+        get {
+            defaults.string(forKey: Key.hudAnchor).flatMap(HUDAnchor.init(rawValue:)) ?? .topRight
+        }
+        set { defaults.set(newValue.rawValue, forKey: Key.hudAnchor) }
     }
 }
 
