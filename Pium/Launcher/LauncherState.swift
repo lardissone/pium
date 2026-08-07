@@ -108,25 +108,32 @@ final class LauncherState {
         argumentText = ""
     }
 
+    /// Guarded by `confirmingResult` as well as argument mode: with a
+    /// confirmation showing, further typing must not change what a `Return`
+    /// would run out from under the message the user is looking at.
     func appendToArgument(_ characters: String) {
-        guard isInArgumentMode else { return }
+        guard isInArgumentMode, confirmingResult == nil else { return }
         argumentText += characters
     }
 
     /// Replaces the argument wholesale, which is what the search field's binding
-    /// does while argument mode is on.
+    /// does while argument mode is on. See `appendToArgument` on why a pending
+    /// confirmation blocks this too.
     func setArgumentText(_ text: String) {
-        guard isInArgumentMode else { return }
+        guard isInArgumentMode, confirmingResult == nil else { return }
         argumentText = text
     }
 
     /// Deletes one character, or leaves argument mode when there is nothing left.
     ///
     /// Returns whether anything was deleted, so the caller can tell the two
-    /// outcomes apart.
+    /// outcomes apart. Blocked while a confirmation is showing, same as the
+    /// other argument mutators — including the exit on an empty backspace,
+    /// which would otherwise abandon argument mode while `confirmingResult`
+    /// still pointed at it.
     @discardableResult
     func deleteLastArgumentCharacter() -> Bool {
-        guard isInArgumentMode else { return false }
+        guard isInArgumentMode, confirmingResult == nil else { return false }
         guard !argumentText.isEmpty else {
             exitArgumentMode()
             return false
@@ -149,15 +156,26 @@ final class LauncherState {
         actionQuery = ""
     }
 
-    /// Enters confirmation on the selected result, if it declares a message
-    /// to show before it runs (PRD §10.4).
+    /// What a confirmation, if begun now, would be about. PRD §10.3 and §10.4
+    /// are independent — a plugin being typed into in argument mode still has
+    /// a row's worth of state, just not a row on screen — so this is the
+    /// argument target while one is being typed, and the selected result
+    /// otherwise.
+    private var confirmationCandidate: SearchResult? {
+        isInArgumentMode ? argumentTarget : selectedResult
+    }
+
+    /// Enters confirmation on the result a `Return` would otherwise run, if
+    /// it declares a message to show first (PRD §10.4).
     ///
     /// Returns whether it did, so the key handler can fall through and run
     /// the action directly when the result needs no confirmation.
     @discardableResult
     func beginConfirmation() -> Bool {
-        guard let selected = selectedResult, selected.confirmation != nil else { return false }
-        confirmingResult = selected
+        guard let candidate = confirmationCandidate, candidate.confirmation != nil else {
+            return false
+        }
+        confirmingResult = candidate
         return true
     }
 

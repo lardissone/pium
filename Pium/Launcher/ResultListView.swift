@@ -4,7 +4,11 @@ import SwiftUI
 /// moves, and treats a double click as activation.
 struct ResultListView: View {
     @Bindable var state: LauncherState
-    let onActivate: (SearchResult, ResultAction) -> Void
+    /// Just the result, not also its action: what runs is decided by the
+    /// same gate `Return` goes through — including a confirmation the
+    /// manifest asked for — so a double click cannot hand it a specific
+    /// action to run unconditionally.
+    let onActivate: (SearchResult) -> Void
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -17,8 +21,8 @@ struct ResultListView: View {
                             // and a double click on one must not be recorded as
                             // a selection either.
                             .onTapGesture(count: 2) {
-                                guard let action = result.primaryAction else { return }
-                                onActivate(result, action)
+                                guard result.primaryAction != nil else { return }
+                                onActivate(result)
                             }
                             // Simultaneous, not chained: a plain second
                             // `onTapGesture` would wait out the double-click

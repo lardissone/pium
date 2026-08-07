@@ -51,4 +51,63 @@ struct LauncherConfirmationTests {
         state.cancelConfirmation()
         #expect(state.beginConfirmation() == true)
     }
+
+    /// PRD §10.3 (argument mode) and §10.4 (confirmation) are independent: a
+    /// plugin that takes an argument can also declare `confirmBeforeRun`, and
+    /// `selectedResult` is `nil` in argument mode — `enterArgumentMode` empties
+    /// `results` — so confirmation there has to come from `argumentTarget`.
+    private func argumentModeState(confirmation: String?, isRequired: Bool = true) -> LauncherState {
+        let state = LauncherState()
+        state.setResults([
+            SearchResult(
+                id: "demo.deploy",
+                kind: .plugin,
+                title: "Deploy",
+                subtitle: nil,
+                iconSource: .systemSymbol("terminal"),
+                searchableTerms: ["deploy"],
+                textScore: 1,
+                actions: [],
+                argument: ArgumentRequest(placeholder: nil, isRequired: isRequired),
+                confirmation: confirmation
+            ),
+        ])
+        state.enterArgumentMode()
+        return state
+    }
+
+    @Test func argumentModeAlsoAsksBeforeRunning() {
+        let state = argumentModeState(confirmation: "This deploys to production.")
+        state.setArgumentText("v2")
+        #expect(state.beginConfirmation() == true)
+        #expect(state.confirmingResult?.id == "demo.deploy")
+    }
+
+    @Test func argumentModeWithNoDeclaredMessageNeedsNoConfirmation() {
+        let state = argumentModeState(confirmation: nil)
+        state.setArgumentText("v2")
+        #expect(state.beginConfirmation() == false)
+    }
+
+    /// Cancelling answers "are you sure", not "abandon what you typed" — the
+    /// argument survives, and the plugin is still in argument mode.
+    @Test func cancellingAnArgumentModeConfirmationKeepsTheTypedTextAndTheMode() {
+        let state = argumentModeState(confirmation: "This deploys to production.")
+        state.setArgumentText("v2")
+        _ = state.beginConfirmation()
+        state.cancelConfirmation()
+        #expect(state.confirmingResult == nil)
+        #expect(state.isInArgumentMode == true)
+        #expect(state.argumentText == "v2")
+    }
+
+    /// Editing the argument after the message is showing must not be able to
+    /// change what a `Return` then runs out from under it.
+    @Test func theArgumentCannotBeEditedWhileItsConfirmationIsShowing() {
+        let state = argumentModeState(confirmation: "This deploys to production.")
+        state.setArgumentText("v2")
+        _ = state.beginConfirmation()
+        state.setArgumentText("v2-tampered")
+        #expect(state.argumentText == "v2")
+    }
 }

@@ -583,6 +583,46 @@ final class LauncherSmokeTests: XCTestCase {
         XCTAssertTrue(ran, "Confirming must run the command")
     }
 
+    /// A double click has to clear the same confirmation gate `Return` does.
+    /// Before this test, `ResultListView` ran a double-clicked row's primary
+    /// action directly, so a mouse user could run a plugin the keyboard would
+    /// have had to ask about first.
+    func testDoubleClickAlsoAsksFirst() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let folder = realHome.appending(path: ".config/pium/plugins")
+        let marker = folder.appending(path: "\(name).ran")
+        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "none" },
+          "command": { "executable": "touch", "arguments": ["\(marker.path)"] },
+          "confirmBeforeRun": "Are you sure?" }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        let row = pluginRow(named: name)
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+
+        row.doubleClick()
+        XCTAssertTrue(
+            app.staticTexts["Are you sure?"].waitForExistence(timeout: 5),
+            "A double click must ask rather than run"
+        )
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: marker.path),
+            "The command must not have run before it was confirmed"
+        )
+    }
+
     @discardableResult
     private func writePluginManifest(named name: String, inputMode: String = "none") throws -> URL {
         let folder = realHome.appending(path: ".config/pium/plugins")

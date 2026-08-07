@@ -20,8 +20,13 @@ struct LauncherView: View {
             searchField
             if !state.results.isEmpty {
                 Divider()
-                ResultListView(state: state) { result, action in
-                    perform(action, on: result, input: state.argumentText)
+                ResultListView(state: state) { result in
+                    // Selecting first, then running the same path `Return`
+                    // does, is what makes a double click subject to the same
+                    // gates: the row it names becomes the one `Return` would
+                    // act on, confirmation included.
+                    state.select(id: result.id)
+                    activateSelected()
                 }
             }
             if let confirming = state.confirmingResult, let message = confirming.confirmation {
@@ -230,7 +235,10 @@ struct LauncherView: View {
     /// so a space anywhere else is an ordinary space and the handlers below are
     /// untouched.
     private func handleArgumentTyping(_ press: KeyPress) -> KeyPress.Result {
-        guard !state.isActionMenuPresented else { return .ignored }
+        // A pending confirmation freezes the argument exactly as it was
+        // typed: the backspace-on-empty branch below would otherwise leave
+        // argument mode while `confirmingResult` still pointed into it.
+        guard !state.isActionMenuPresented, state.confirmingResult == nil else { return .ignored }
         guard press.modifiers.isDisjoint(with: [.command, .control, .option]) else {
             return .ignored
         }
@@ -267,11 +275,22 @@ struct LauncherView: View {
     private func handleReturn(modifiers: ActionShortcut.Modifiers) -> KeyPress.Result {
         if state.isInArgumentMode {
             guard let target = state.argumentTarget else { return .handled }
-            // A required argument that is empty blocks the run. Saying what is
-            // missing is 5b's job; not running it is this phase's.
+            // A required argument that is empty blocks the run — and blocks
+            // even asking, per the PRD: confirming is about whether to run,
+            // not a way around the gate that decides whether it could.
             if target.argument?.isRequired == true, !state.isArgumentSatisfied {
                 return .handled
             }
+
+            // Same precedence as the plain path below: an already-showing
+            // confirmation is answered by this `Return`, and a target that
+            // declares a message asks before a first one runs.
+            if state.confirmingResult != nil {
+                state.cancelConfirmation()
+            } else if state.beginConfirmation() {
+                return .handled
+            }
+
             guard let action = target.actions.first(where: { $0.id == "execute" }) else {
                 return .handled
             }
@@ -286,29 +305,45 @@ struct LauncherView: View {
             return .handled
         }
 
-        // With a confirmation already showing, this `Return` is the answer:
-        // clear it and fall through to running the action below. Without one,
-        // a result that declares a message asks first instead of running.
-        if state.confirmingResult != nil {
-            state.cancelConfirmation()
-        } else if state.beginConfirmation() {
-            return .handled
-        }
-
-        guard let action = state.action(matching: .return, modifiers: modifiers) else {
-            return .handled
-        }
-        perform(action, on: selected, input: state.argumentText)
+        activateSelected(modifiers: modifiers)
         return .handled
     }
 
-    /// What the confirmation bar's Confirm button does — the same as
-    /// pressing plain `Return` while its message is showing.
-    private func confirmSelected() {
-        guard state.confirmingResult != nil, let selected = state.selectedResult else { return }
-        state.cancelConfirmation()
-        guard let action = state.action(matching: .return, modifiers: []) else { return }
+    /// Runs the selected result's `Return`-shortcut action, applying the same
+    /// confirmation gate `Return` does: answers an already-showing
+    /// confirmation, or begins one instead of running anything when the
+    /// result declares a message and none is showing yet. Shared by the
+    /// keyboard path above and a double click in the result list, so a mouse
+    /// can never run something the keyboard would have had to confirm first.
+    @discardableResult
+    private func activateSelected(modifiers: ActionShortcut.Modifiers = []) -> Bool {
+        guard let selected = state.selectedResult else { return false }
+
+        if state.confirmingResult != nil {
+            state.cancelConfirmation()
+        } else if state.beginConfirmation() {
+            return true
+        }
+
+        guard let action = state.action(matching: .return, modifiers: modifiers) else {
+            return false
+        }
         perform(action, on: selected, input: state.argumentText)
+        return true
+    }
+
+    /// What the confirmation bar's Confirm button does — the same as
+    /// pressing plain `Return` while its message is showing. Looked up from
+    /// `confirmingResult` itself rather than `state.selectedResult`, because
+    /// a confirmation begun from argument mode has no selected row: `results`
+    /// is empty there by PRD §10.3.
+    private func confirmSelected() {
+        guard let confirming = state.confirmingResult else { return }
+        state.cancelConfirmation()
+        guard let action = confirming.actions.first(where: { $0.shortcut == .returnKey }) else {
+            return
+        }
+        perform(action, on: confirming, input: state.argumentText)
     }
 
     /// Running any action closes the launcher, exactly as `Return` on a result
