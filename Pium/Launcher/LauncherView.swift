@@ -24,7 +24,9 @@ struct LauncherView: View {
                     // Selecting first, then running the same path `Return`
                     // does, is what makes a double click subject to the same
                     // gates: the row it names becomes the one `Return` would
-                    // act on, confirmation included.
+                    // act on, confirmation included. `select` itself clears
+                    // any confirmation pending for a *different* row, so one
+                    // cannot be read as an answer about this one.
                     state.select(id: result.id)
                     activateSelected()
                 }
@@ -60,7 +62,7 @@ struct LauncherView: View {
                     filter: state.actionQuery,
                     highlightedID: state.highlightedActionID,
                     onHighlight: { state.highlightAction(id: $0) },
-                    onPerform: { perform($0, on: selected, input: state.argumentText) }
+                    onPerform: { attemptToPerform($0, on: selected) }
                 )
                 .padding(.trailing, Tokens.Spacing.normal)
                 .padding(.bottom, Tokens.Size.footerHeight + Tokens.Spacing.tight)
@@ -235,10 +237,26 @@ struct LauncherView: View {
     /// so a space anywhere else is an ordinary space and the handlers below are
     /// untouched.
     private func handleArgumentTyping(_ press: KeyPress) -> KeyPress.Result {
+        guard !state.isActionMenuPresented else { return .ignored }
+
         // A pending confirmation freezes the argument exactly as it was
-        // typed: the backspace-on-empty branch below would otherwise leave
-        // argument mode while `confirmingResult` still pointed into it.
-        guard !state.isActionMenuPresented, state.confirmingResult == nil else { return .ignored }
+        // typed. `.handled`, not `.ignored`: `LauncherState`'s mutators
+        // already no-op while confirming, but rejecting a keystroke only in
+        // the binding is not enough — per the comment on `queryField` above,
+        // the field keeps its own buffer while editing, so an ignored
+        // keystroke would still move it, leaving the user reading text that
+        // is not what the confirmation in front of them is actually about.
+        // `Return` and `Esc` still have to reach their own handlers below:
+        // they are how this confirmation gets answered or cancelled.
+        if state.isInArgumentMode, state.confirmingResult != nil {
+            switch press.key {
+            case .return, .escape:
+                return .ignored
+            default:
+                return .handled
+            }
+        }
+
         guard press.modifiers.isDisjoint(with: [.command, .control, .option]) else {
             return .ignored
         }
@@ -281,27 +299,17 @@ struct LauncherView: View {
             if target.argument?.isRequired == true, !state.isArgumentSatisfied {
                 return .handled
             }
-
-            // Same precedence as the plain path below: an already-showing
-            // confirmation is answered by this `Return`, and a target that
-            // declares a message asks before a first one runs.
-            if state.confirmingResult != nil {
-                state.cancelConfirmation()
-            } else if state.beginConfirmation() {
-                return .handled
-            }
-
             guard let action = target.actions.first(where: { $0.id == "execute" }) else {
                 return .handled
             }
-            perform(action, on: target, input: state.argumentText)
+            attemptToPerform(action, on: target)
             return .handled
         }
         guard let selected = state.selectedResult else { return .handled }
 
         if state.isActionMenuPresented {
             guard let highlighted = state.highlightedAction else { return .handled }
-            perform(highlighted, on: selected, input: state.argumentText)
+            attemptToPerform(highlighted, on: selected)
             return .handled
         }
 
@@ -309,27 +317,31 @@ struct LauncherView: View {
         return .handled
     }
 
-    /// Runs the selected result's `Return`-shortcut action, applying the same
-    /// confirmation gate `Return` does: answers an already-showing
-    /// confirmation, or begins one instead of running anything when the
-    /// result declares a message and none is showing yet. Shared by the
-    /// keyboard path above and a double click in the result list, so a mouse
-    /// can never run something the keyboard would have had to confirm first.
+    /// Resolves the selected result's `Return`-shortcut action — the one
+    /// `Return` runs — then routes it through `attemptToPerform`. Shared by
+    /// the keyboard path above and a double click in the result list.
     @discardableResult
     private func activateSelected(modifiers: ActionShortcut.Modifiers = []) -> Bool {
         guard let selected = state.selectedResult else { return false }
-
-        if state.confirmingResult != nil {
-            state.cancelConfirmation()
-        } else if state.beginConfirmation() {
-            return true
-        }
-
         guard let action = state.action(matching: .return, modifiers: modifiers) else {
             return false
         }
-        perform(action, on: selected, input: state.argumentText)
+        attemptToPerform(action, on: selected)
         return true
+    }
+
+    /// Runs `action` on `result` unless `state.attemptToRun` — the gate
+    /// every path that can start a run goes through — decides a confirmation
+    /// has to show first instead. Shared by every one of those paths: the
+    /// keyboard, a double click, and the action menu, both by key and by
+    /// mouse, so none of them can bypass `confirmBeforeRun` (PRD §10.4).
+    ///
+    /// Resolving which action is meant *before* calling this matters —
+    /// `⌘ Return` on a plugin means Reveal JSON, not the run `confirmBeforeRun`
+    /// is about, and `attemptToRun` only gates the latter.
+    private func attemptToPerform(_ action: ResultAction, on result: SearchResult) {
+        guard state.attemptToRun(action, on: result) else { return }
+        perform(action, on: result, input: state.argumentText)
     }
 
     /// What the confirmation bar's Confirm button does — the same as

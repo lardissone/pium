@@ -185,6 +185,38 @@ final class LauncherState {
         confirmingResult = nil
     }
 
+    /// Whether `action` on `result` should run right now — the one gate
+    /// every path that can start a run goes through, so `confirmBeforeRun`
+    /// (PRD §10.4) applies the same way to the keyboard, a double click, and
+    /// the action menu, by key or by mouse alike.
+    ///
+    /// Only the `Return`-shortcut action is the run the PRD means: a menu's
+    /// other actions (Reveal JSON, ...) are not gated and always return
+    /// `true` unconfirmed. `result` is taken explicitly rather than inferred
+    /// from selection, so a caller that already knows exactly which result
+    /// an action belongs to — the action menu operates on whichever row it
+    /// was opened for, not necessarily whatever is selected the instant this
+    /// runs — cannot be second-guessed by a candidate this doesn't match.
+    ///
+    /// A confirmation already showing counts as an answer only when it names
+    /// this exact `result`. Showing for a different one, it is replaced by a
+    /// fresh confirmation for this `result` rather than being read as
+    /// permission for it — the same principle `select(id:)` applies when the
+    /// selection itself changes.
+    ///
+    /// Returns whether the caller should perform `action` now.
+    @discardableResult
+    func attemptToRun(_ action: ResultAction, on result: SearchResult) -> Bool {
+        guard action.shortcut == .returnKey, result.confirmation != nil else { return true }
+        if confirmingResult?.id == result.id {
+            cancelConfirmation()
+            return true
+        }
+        dismissActionMenu()
+        confirmingResult = result
+        return false
+    }
+
     /// The actions the menu is showing, narrowed by whatever has been typed
     /// into it. Scored with the same matcher the result list uses, so "reveal"
     /// and "finder" both find Reveal in Finder.
@@ -252,8 +284,15 @@ final class LauncherState {
         }
     }
 
+    /// Changing the selection answers nothing: a confirmation pending for
+    /// the row being left off must not be read as permission for the row
+    /// being moved onto, so it is cleared here rather than left to whichever
+    /// caller happens to select next.
     func select(id: String?) {
         guard let id, results.contains(where: { $0.id == id }) else { return }
+        if id != selectedID {
+            cancelConfirmation()
+        }
         selectedID = id
     }
 

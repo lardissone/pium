@@ -550,7 +550,7 @@ final class LauncherSmokeTests: XCTestCase {
         try """
         { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
           "input": { "mode": "none" },
-          "command": { "executable": "touch", "arguments": ["\(marker.path)"] },
+          "command": { "executable": "touch", "arguments": ["\(jsonEscaped(marker.path))"] },
           "confirmBeforeRun": "Are you sure?" }
         """.write(to: url, atomically: true, encoding: .utf8)
         addTeardownBlock { try? FileManager.default.removeItem(at: url) }
@@ -597,7 +597,7 @@ final class LauncherSmokeTests: XCTestCase {
         try """
         { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
           "input": { "mode": "none" },
-          "command": { "executable": "touch", "arguments": ["\(marker.path)"] },
+          "command": { "executable": "touch", "arguments": ["\(jsonEscaped(marker.path))"] },
           "confirmBeforeRun": "Are you sure?" }
         """.write(to: url, atomically: true, encoding: .utf8)
         addTeardownBlock { try? FileManager.default.removeItem(at: url) }
