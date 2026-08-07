@@ -542,18 +542,8 @@ final class LauncherSmokeTests: XCTestCase {
     /// A plugin declaring confirmBeforeRun does not run on the first Return.
     func testConfirmBeforeRunAsksFirst() throws {
         let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
-        let folder = realHome.appending(path: ".config/pium/plugins")
-        let marker = folder.appending(path: "\(name).ran")
-        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let url = folder.appending(path: "\(name).pium.json")
-        try """
-        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
-          "input": { "mode": "none" },
-          "command": { "executable": "touch", "arguments": ["\(jsonEscaped(marker.path))"] },
-          "confirmBeforeRun": "Are you sure?" }
-        """.write(to: url, atomically: true, encoding: .utf8)
-        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        let marker = confirmingPluginMarker(named: name)
+        try writeConfirmingPluginManifest(named: name, marker: marker)
 
         app.terminate()
         app.launch()
@@ -575,12 +565,7 @@ final class LauncherSmokeTests: XCTestCase {
         )
 
         app.typeKey(.return, modifierFlags: [])
-        var ran = false
-        for _ in 0..<25 where !ran {
-            usleep(200_000)
-            ran = FileManager.default.fileExists(atPath: marker.path)
-        }
-        XCTAssertTrue(ran, "Confirming must run the command")
+        XCTAssertTrue(waitForMarker(marker), "Confirming must run the command")
     }
 
     /// A double click has to clear the same confirmation gate `Return` does.
@@ -589,18 +574,8 @@ final class LauncherSmokeTests: XCTestCase {
     /// have had to ask about first.
     func testDoubleClickAlsoAsksFirst() throws {
         let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
-        let folder = realHome.appending(path: ".config/pium/plugins")
-        let marker = folder.appending(path: "\(name).ran")
-        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let url = folder.appending(path: "\(name).pium.json")
-        try """
-        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
-          "input": { "mode": "none" },
-          "command": { "executable": "touch", "arguments": ["\(jsonEscaped(marker.path))"] },
-          "confirmBeforeRun": "Are you sure?" }
-        """.write(to: url, atomically: true, encoding: .utf8)
-        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        let marker = confirmingPluginMarker(named: name)
+        try writeConfirmingPluginManifest(named: name, marker: marker)
 
         app.terminate()
         app.launch()
@@ -621,6 +596,113 @@ final class LauncherSmokeTests: XCTestCase {
             FileManager.default.fileExists(atPath: marker.path),
             "The command must not have run before it was confirmed"
         )
+    }
+
+    /// The action menu's Execute row is the run PRD §10.4 is about. Before
+    /// this test, both the keyboard path (`Return` on the highlighted row)
+    /// and the mouse path called `perform` directly, with no confirmation
+    /// check at all — this covers the keyboard path, `⌘ K` then `Return`,
+    /// which is the one a cold start reaches first.
+    func testMenuExecuteAsksBeforeRunning() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let marker = confirmingPluginMarker(named: name)
+        try writeConfirmingPluginManifest(named: name, marker: marker)
+
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+
+        // Opens the menu with Execute highlighted first, per `PluginProvider`'s
+        // action order.
+        searchField.typeKey("k", modifierFlags: .command)
+        let menuRows = app.descendants(matching: .any).matching(identifier: "action.row")
+        XCTAssertTrue(menuRows.firstMatch.waitForExistence(timeout: 10), "⌘K must open the menu")
+
+        searchField.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(
+            app.staticTexts["Are you sure?"].waitForExistence(timeout: 5),
+            "Return on the menu's highlighted Execute action must ask rather than run"
+        )
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: marker.path),
+            "The command must not have run before it was confirmed"
+        )
+
+        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(waitForMarker(marker), "Confirming must run the command")
+    }
+
+    /// `⌘ Return` on a plugin means Reveal JSON, not the run `confirmBeforeRun`
+    /// protects. Before this test, the confirmation began without first
+    /// checking which action the modifiers actually named, so this
+    /// combination put "Are you sure?" on screen for an action that was
+    /// never going to run the plugin's command at all.
+    func testCommandReturnRevealsWithoutAskingFirst() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let marker = confirmingPluginMarker(named: name)
+        try writeConfirmingPluginManifest(named: name, marker: marker)
+
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+
+        searchField.typeKey(.return, modifierFlags: .command)
+        XCTAssertFalse(
+            app.staticTexts["Are you sure?"].waitForExistence(timeout: 3),
+            "⌘ Return reveals the JSON; it must never ask about the run"
+        )
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: marker.path),
+            "Revealing must not run the plugin's command either"
+        )
+    }
+
+    /// Where the fixtures above write a plugin's marker file, kept separate
+    /// from the plugins folder itself the way `testReturnRunsThePlugin` does.
+    private func confirmingPluginMarker(named name: String) -> URL {
+        realHome.appending(path: ".config/pium/plugins/\(name).ran")
+    }
+
+    /// Writes a manifest for a plugin that asks before it runs (PRD §10.4):
+    /// `touch`-ing `marker` is what "the command actually ran" looks like to
+    /// a test that cannot see the process itself. Shared by every test that
+    /// checks a specific path — keyboard, double click, the action menu —
+    /// against the same confirmation gate.
+    @discardableResult
+    private func writeConfirmingPluginManifest(named name: String, marker: URL) throws -> URL {
+        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
+        let folder = realHome.appending(path: ".config/pium/plugins")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "none" },
+          "command": { "executable": "touch", "arguments": ["\(jsonEscaped(marker.path))"] },
+          "confirmBeforeRun": "Are you sure?" }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        return url
+    }
+
+    /// Polls for `marker` to appear, the same 200ms/5s shape the plugin-run
+    /// tests in this file already use.
+    private func waitForMarker(_ marker: URL, timeout iterations: Int = 25) -> Bool {
+        var ran = false
+        for _ in 0..<iterations where !ran {
+            usleep(200_000)
+            ran = FileManager.default.fileExists(atPath: marker.path)
+        }
+        return ran
     }
 
     @discardableResult
