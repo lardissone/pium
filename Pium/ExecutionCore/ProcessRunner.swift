@@ -170,8 +170,21 @@ struct ProcessRunner {
         var snapshot: (String, Bool) {
             lock.lock()
             defer { lock.unlock() }
-            return (String(decoding: kept, as: UTF8.self), truncated)
+            return (ProcessRunner.text(of: kept), truncated)
         }
+    }
+
+    /// Decodes what was kept, discarding a trailing byte sequence the cap cut
+    /// in half. `String(decoding:)` would turn those bytes into U+FFFD, which
+    /// is a character the command never printed.
+    private static func text(of bytes: Data) -> String {
+        if let complete = String(data: bytes, encoding: .utf8) { return complete }
+        // A UTF-8 sequence is at most four bytes, so at most three can dangle.
+        for dropped in 1...3 where bytes.count > dropped {
+            let shortened = bytes.dropLast(dropped)
+            if let complete = String(data: shortened, encoding: .utf8) { return complete }
+        }
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     /// The moment `run` stopped waiting on its drains, and the deadline that

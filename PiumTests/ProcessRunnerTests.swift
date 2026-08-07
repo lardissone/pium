@@ -86,9 +86,25 @@ struct ProcessRunnerTests {
 
         let outcome = await ProcessRunner().run(request(url.path, in: directory), cancellation: .init())
         #expect(outcome.ending == .exited(0))
-        #expect(outcome.standardOutput.count == ProcessRunner.outputCap)
+        #expect(outcome.standardOutput.utf8.count <= ProcessRunner.outputCap)
         #expect(outcome.standardOutput.allSatisfy { $0 == "x" })
         #expect(outcome.wasTruncated == true)
+    }
+
+    /// The cap is a byte count and the output is text: a character that
+    /// straddles it must be dropped whole rather than decoded into U+FFFD.
+    @Test func truncationDoesNotSplitACharacter() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        // Three-byte characters, so the cap lands mid-character.
+        let url = try script("for i in $(seq 1 40000); do printf '€'; done", in: directory)
+
+        let outcome = await ProcessRunner().run(
+            request(url.path, in: directory), cancellation: .init()
+        )
+        #expect(outcome.wasTruncated)
+        #expect(!outcome.standardOutput.contains("\u{FFFD}"))
+        #expect(outcome.standardOutput.allSatisfy { $0 == "€" })
     }
 
     /// The two streams arrive as two strings, neither folded into the other:
