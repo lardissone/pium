@@ -125,22 +125,27 @@ struct ProcessRunner {
     /// arrives on its own.
     private static let drainGraceSeconds: Double = 1
 
-    /// How long an abandoned drain may keep its `DispatchQueue.global`
-    /// worker thread parked before this reclaims it for good. `reap` uses
-    /// that same global queue, so a grandchild that keeps writing for its
-    /// entire remaining lifetime — potentially never finishing — would
-    /// otherwise strand a worker thread per abandoned stream indefinitely;
-    /// enough concurrent runs like that can exhaust the pool and stall
-    /// reaping for runs that have nothing to do with the grandchild. Past
-    /// this cap, `armAbandonmentWatchdog` closes the read end to force the
-    /// stuck read to return — safe because `drain` reads with `Darwin.read`
-    /// rather than `FileHandle.availableData`, so a closed descriptor is an
-    /// ordinary `-1`/`EBADF`, not an uncatchable exception. This can still
-    /// `SIGPIPE` whatever is still writing at that point; accepted as the
-    /// price of not leaking a thread forever, and `drainGraceSeconds` above
-    /// already covers the common case — a daemon that goes quiet within a
-    /// few seconds — without paying it.
+    /// How long a drain nobody is waiting on any more may keep reading
+    /// before it gives up and lets go of its half of the pipe. `drain` runs
+    /// on `DispatchQueue.global`, the same pool `reap` uses, so a grandchild
+    /// that keeps writing for its entire remaining lifetime — potentially
+    /// never finishing — would otherwise strand a worker thread and a file
+    /// descriptor per abandoned stream indefinitely; enough concurrent runs
+    /// like that exhaust the descriptor table and stall reaping for runs
+    /// that have nothing to do with the grandchild.
+    ///
+    /// Long, because letting go closes the read end, and that `SIGPIPE`s
+    /// whatever is still writing — a process the user started and Pium was
+    /// never asked to touch. `drainGraceSeconds` above already covers the
+    /// common case, a grandchild that goes quiet within a few seconds,
+    /// without ever reaching this.
     private static let abandonedDrainHardCapSeconds: Double = 300
+
+    /// How often a drain wakes from `poll` to ask whether it has been
+    /// abandoned. Only the abandonment deadline, five minutes out, depends on
+    /// this granularity, so a full second between checks is ample — and it
+    /// costs one wakeup per second per live stream, nothing more.
+    private static let abandonmentCheckMilliseconds: Int32 = 1000
 
     /// What a drain has kept, readable at any time — including while the
     /// drain itself is still running. `awaitDrains` needs this: giving up on
@@ -151,7 +156,6 @@ struct ProcessRunner {
         private let lock = NSLock()
         private var kept = Data()
         private var truncated = false
-        private var finished = false
 
         fileprivate func append(_ chunk: Data) {
             lock.lock()
@@ -163,25 +167,39 @@ struct ProcessRunner {
             if chunk.count > room { truncated = true }
         }
 
-        /// Marks that the drain reached EOF (or a read error) on its own,
-        /// so `armAbandonmentWatchdog` knows not to touch a drain that has
-        /// already finished by the time its cap elapses.
-        fileprivate func markFinished() {
-            lock.lock()
-            defer { lock.unlock() }
-            finished = true
-        }
-
-        fileprivate var isFinished: Bool {
-            lock.lock()
-            defer { lock.unlock() }
-            return finished
-        }
-
         var snapshot: (String, Bool) {
             lock.lock()
             defer { lock.unlock() }
             return (String(decoding: kept, as: UTF8.self), truncated)
+        }
+    }
+
+    /// The moment `run` stopped waiting on its drains, and the deadline that
+    /// follows from it. A drain reads until EOF for as long as somebody is
+    /// waiting on the answer; once nobody is, it has `abandonedDrainHardCapSeconds`
+    /// to reach EOF on its own before it gives up.
+    ///
+    /// The deadline has to start here rather than when the drain does: a
+    /// command that legitimately runs for an hour keeps its drains short of
+    /// EOF that whole time, and cutting them off at a fixed age would truncate
+    /// its output and `SIGPIPE` the command itself mid-run.
+    private final class Abandonment: @unchecked Sendable {
+        private let lock = NSLock()
+        private var deadline: ContinuousClock.Instant?
+
+        /// Starts the clock; the first call fixes the deadline.
+        fileprivate func begin() {
+            lock.lock()
+            defer { lock.unlock() }
+            guard deadline == nil else { return }
+            deadline = ContinuousClock().now + .seconds(ProcessRunner.abandonedDrainHardCapSeconds)
+        }
+
+        fileprivate var isPastDeadline: Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            guard let deadline else { return false }
+            return ContinuousClock().now >= deadline
         }
     }
 
@@ -250,10 +268,13 @@ struct ProcessRunner {
 
         let outCaptured = CapturedOutput()
         let errCaptured = CapturedOutput()
-        let outTask = Task { await Self.drain(child.standardOutput, into: outCaptured) }
-        let errTask = Task { await Self.drain(child.standardError, into: errCaptured) }
-        Self.armAbandonmentWatchdog(for: child.standardOutput, captured: outCaptured)
-        Self.armAbandonmentWatchdog(for: child.standardError, captured: errCaptured)
+        let abandonment = Abandonment()
+        let outTask = Task {
+            await Self.drain(child.standardOutput, into: outCaptured, abandonment: abandonment)
+        }
+        let errTask = Task {
+            await Self.drain(child.standardError, into: errCaptured, abandonment: abandonment)
+        }
 
         // Whether the timeout fired is recorded by the task that fires it, not
         // inferred from which signal killed the process: a command can be
@@ -290,7 +311,9 @@ struct ProcessRunner {
         cancelEscalation.cancel()
         timeoutEscalation?.cancel()
 
-        let (output, error) = await Self.awaitDrains(outTask, errTask, out: outCaptured, err: errCaptured)
+        let (output, error) = await Self.awaitDrains(
+            outTask, errTask, out: outCaptured, err: errCaptured, abandonment: abandonment
+        )
         return Self.outcome(
             ending: ending,
             timedOut: expiry.hasExpired,
@@ -329,26 +352,47 @@ struct ProcessRunner {
     /// discarding the rest. Discarding is not the same as not reading: the
     /// child blocks on a full pipe, so draining continues either way.
     ///
-    /// Reads with `Darwin.read` rather than `FileHandle.availableData`: a
-    /// closed descriptor makes `read` return an ordinary `-1` with `EBADF`,
-    /// where `availableData` raises an Objective-C exception Swift cannot
-    /// catch. `armAbandonmentWatchdog` depends on that — closing `handle`
-    /// out from under this loop is how a drain abandoned for too long is
-    /// ever reclaimed.
-    private static func drain(_ handle: FileHandle, into captured: CapturedOutput) async {
+    /// Waits in `poll` rather than in `read` so the loop comes up for air
+    /// every `abandonmentCheckMilliseconds` even when the pipe is silent. That
+    /// is what lets a drain nobody is waiting on any more notice its own
+    /// deadline and stop — releasing the worker thread it occupies and, once
+    /// it drops the last reference to `handle`, the read end of the pipe.
+    /// Bounding an abandoned drain from inside the drain is the whole reason
+    /// for the `poll`: the alternative is a second party closing this
+    /// descriptor from another thread while this loop sits between two reads,
+    /// which reads whatever the kernel has since handed that number to.
+    ///
+    /// `Darwin.read` rather than `FileHandle.availableData` because the latter
+    /// raises an Objective-C exception, which Swift cannot catch, where `read`
+    /// reports the same conditions as an ordinary `-1`.
+    private static func drain(
+        _ handle: FileHandle,
+        into captured: CapturedOutput,
+        abandonment: Abandonment
+    ) async {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .utility).async {
                 let fd = handle.fileDescriptor
                 var buffer = [UInt8](repeating: 0, count: outputCap)
-                readLoop: while true {
+                readLoop: while !abandonment.isPastDeadline {
+                    var watched = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+                    let ready = poll(&watched, 1, abandonmentCheckMilliseconds)
+                    if ready < 0 {
+                        if errno == EINTR { continue readLoop }
+                        break readLoop
+                    }
+                    // Nothing to read this interval; go round and re-check the
+                    // deadline. A closed write end shows up as readable too,
+                    // and `read` reports it as the EOF it is.
+                    guard ready > 0 else { continue readLoop }
+
                     let bytesRead = buffer.withUnsafeMutableBytes { pointer in
                         Darwin.read(fd, pointer.baseAddress, pointer.count)
                     }
                     switch bytesRead {
                     case ..<0:
                         // EINTR is a spurious wakeup, worth retrying; any
-                        // other error (including EBADF from the watchdog
-                        // closing this fd out from under us) ends the loop.
+                        // other error ends the loop.
                         if errno == EINTR { continue readLoop }
                         break readLoop
                     case 0:
@@ -357,22 +401,8 @@ struct ProcessRunner {
                         captured.append(Data(buffer[0..<bytesRead]))
                     }
                 }
-                captured.markFinished()
                 continuation.resume()
             }
-        }
-    }
-
-    /// Reclaims an abandoned drain's worker thread once it has clearly
-    /// outlived any reasonable wait: past `abandonedDrainHardCapSeconds`, if
-    /// `captured` still has not seen EOF, this closes `handle` to force the
-    /// stuck read to return. A no-op once the drain has already finished on
-    /// its own, which is by far the common case.
-    private static func armAbandonmentWatchdog(for handle: FileHandle, captured: CapturedOutput) {
-        Task.detached {
-            try? await Task.sleep(for: .seconds(abandonedDrainHardCapSeconds))
-            guard !captured.isFinished else { return }
-            handle.closeFile()
         }
     }
 
@@ -382,21 +412,22 @@ struct ProcessRunner {
     /// can keep a drain short of EOF indefinitely.
     ///
     /// Past the bound, this run gives up on the *wait*, not on the pipe:
-    /// closing the read end here, immediately, was an earlier version of
-    /// this fix, and it was wrong twice over — `availableData` raised an
-    /// uncatchable exception on a close landing between two reads rather
-    /// than while parked inside one, and even a version that survived the
-    /// close would `SIGPIPE` the grandchild on its next write, killing a
-    /// process nobody asked Pium to touch. Giving up here instead just
-    /// stops looking: this run returns whatever `captured` already held at
-    /// the moment it stopped waiting, and the abandoned drain keeps running
-    /// quietly in the background — for as long as the pipe stays open, or
-    /// until `armAbandonmentWatchdog`'s much longer cap reclaims it.
+    /// closing the read end here, the moment the bound elapses, would
+    /// `SIGPIPE` the grandchild on its next write and kill a process nobody
+    /// asked Pium to touch. Giving up on the wait instead just stops looking:
+    /// this run returns whatever `captured` held at that moment, and the drain
+    /// keeps reading quietly in the background until the pipe closes or its
+    /// own, much longer, `Abandonment` deadline passes.
+    ///
+    /// That deadline starts here, whichever way the race went — a drain that
+    /// has already finished is not listening, and one that has not is exactly
+    /// what the deadline is for.
     private static func awaitDrains(
         _ outTask: Task<Void, Never>,
         _ errTask: Task<Void, Never>,
         out: CapturedOutput,
-        err: CapturedOutput
+        err: CapturedOutput,
+        abandonment: Abandonment
     ) async -> ((String, Bool), (String, Bool)) {
         let gate = OneShotGate()
         Task {
@@ -409,6 +440,7 @@ struct ProcessRunner {
             await gate.open()
         }
         await gate.wait()
+        abandonment.begin()
         return (out.snapshot, err.snapshot)
     }
 

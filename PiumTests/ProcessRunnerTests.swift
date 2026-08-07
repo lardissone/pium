@@ -32,6 +32,40 @@ struct ProcessRunnerTests {
         )
     }
 
+    /// How many descriptors this process holds open. `/dev/fd` lists exactly
+    /// that on Darwin, which is the cheapest way to ask.
+    private func openDescriptorCount() -> Int {
+        (try? FileManager.default.contentsOfDirectory(atPath: "/dev/fd").count) ?? 0
+    }
+
+    /// A finished run must hand its two pipe descriptors back by the time it
+    /// returns. Anything that outlives the run while still holding a read end
+    /// — a timer, a watchdog, a task nobody cancels — pins two descriptors per
+    /// run against a 256 soft limit, and a user doing nothing more exotic than
+    /// running commands in a loop hits `EMFILE` on descriptors that belong to
+    /// runs which finished long ago.
+    ///
+    /// The count is taken after a warm-up run so that descriptors the runtime
+    /// opens once on first use are not attributed to the runs being measured,
+    /// and the tolerance is wide because this suite runs its tests in parallel:
+    /// a concurrent run holds its own two descriptors while it lasts. Sixty
+    /// runs leak a hundred and twenty descriptors if they leak at all, which is
+    /// far outside that noise.
+    @Test func afinishedRunReleasesItsPipeDescriptors() async {
+        _ = await ProcessRunner().run(request("/bin/echo", ["warm"]), cancellation: .init())
+
+        let before = openDescriptorCount()
+        for _ in 0..<60 {
+            _ = await ProcessRunner().run(request("/bin/echo", ["x"]), cancellation: .init())
+        }
+        let after = openDescriptorCount()
+
+        #expect(
+            after - before < 40,
+            "Sixty finished runs left \(after - before) descriptors open"
+        )
+    }
+
     @Test func itReportsOutputAndTheExitCode() async {
         let outcome = await ProcessRunner().run(
             request("/bin/echo", ["hola"]), cancellation: .init()
