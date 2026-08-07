@@ -4,6 +4,9 @@ import SwiftUI
 /// result list and its footer expand the panel downward.
 struct LauncherView: View {
     @Bindable var state: LauncherState
+    /// Read for `activeRecord` alone: while a run is in progress, its footer
+    /// replaces the shortcut one, and Cancel is this manager's own.
+    let executionManager: ExecutionManager
     let onDismiss: () -> Void
     let onQueryChanged: (String) -> Void
     /// Both halves of what happened, because the result is what usage history
@@ -20,6 +23,13 @@ struct LauncherView: View {
                 ResultListView(state: state) { result, action in
                     perform(action, on: result, input: state.argumentText)
                 }
+            }
+            if let active = executionManager.activeRecord {
+                Divider()
+                ActiveRunView(pluginName: active.pluginName, startedAt: active.startedAt) {
+                    executionManager.cancel(active.id)
+                }
+            } else if !state.results.isEmpty {
                 Divider()
                 FooterBarView(primaryAction: state.selectedResult?.primaryAction) {
                     state.presentActionMenu()

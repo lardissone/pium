@@ -14,7 +14,11 @@ final class LauncherPanelController: NSObject {
 
     var isVisible: Bool { panel.isVisible }
 
-    init(coordinator: SearchCoordinator, frecency: any FrecencyStoring) {
+    init(
+        coordinator: SearchCoordinator,
+        frecency: any FrecencyStoring,
+        executionManager: ExecutionManager
+    ) {
         self.coordinator = coordinator
         self.frecency = frecency
         let size = CGSize(
@@ -27,6 +31,7 @@ final class LauncherPanelController: NSObject {
         panel.contentView = NSHostingView(
             rootView: LauncherView(
                 state: state,
+                executionManager: executionManager,
                 onDismiss: { [weak self] in self?.hide() },
                 onQueryChanged: { [weak self] text in self?.runSearch(text) },
                 onPerform: { [weak self] result, _ in self?.record(result) }

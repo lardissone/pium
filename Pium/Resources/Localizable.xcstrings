@@ -375,6 +375,23 @@
         }
       }
     },
+    "launcher.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        }
+      }
+    },
     "launcher.placeholder": {
       "extractionState": "stale",
       "localizations": {
@@ -388,6 +405,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buscar apps, archivos y comandos"
+          }
+        }
+      }
+    },
+    "launcher.running %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Running %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejecutando %@"
           }
         }
       }

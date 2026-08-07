@@ -13,6 +13,7 @@ struct HUDPresentationTests {
             id: UUID(),
             pluginID: "demo.probe",
             pluginName: "Probe",
+            startedAt: Date(),
             state: state,
             standardOutput: out,
             standardError: err,

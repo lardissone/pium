@@ -89,7 +89,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 ],
                 frecency: frecency
             ),
-            frecency: frecency
+            frecency: frecency,
+            executionManager: executions
         )
         super.init()
     }

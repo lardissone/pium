@@ -17,6 +17,9 @@ struct ExecutionRecord: Identifiable, Sendable {
     let id: UUID
     let pluginID: String
     let pluginName: String
+    /// When the run started, for a footer that measures elapsed time from the
+    /// run's own beginning rather than from whenever it happens to be read.
+    let startedAt: Date
     var state: State
     var standardOutput: String
     var standardError: String

@@ -102,6 +102,7 @@ final class ExecutionManager {
             id: id,
             pluginID: manifest.id,
             pluginName: manifest.name,
+            startedAt: Date(),
             state: .running,
             standardOutput: "",
             standardError: "",
