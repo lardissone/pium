@@ -378,28 +378,36 @@ final class LauncherSmokeTests: XCTestCase {
         XCTAssertTrue(ran, "Return on a plugin row must run its command")
     }
 
-    /// What the user typed in argument mode must reach the command. The plugin
-    /// writes its argument to a file, because a UI test can see a file.
+    /// What the user typed in argument mode must reach the command as exactly
+    /// one `argv` element. The plugin creates a directory named after it,
+    /// because a UI test cannot see a process but can see the filesystem — and
+    /// a directory whose name holds a space can only come from a command that
+    /// received that name whole.
+    ///
+    /// `mkdir` from the controlled search path rather than a script of the
+    /// plugin's own: files this runner creates carry `com.apple.quarantine`
+    /// because it is sandboxed, and the kernel refuses to execute a quarantined
+    /// script with `EPERM`. That refusal is about who wrote the fixture, not
+    /// about the launcher, so a fixture that cannot hit it says more.
+    ///
+    /// The command runs in the scratch folder, so an argument that ever does
+    /// split leaves its second half there — cleaned up with everything else —
+    /// rather than in the user's own plugins folder.
     func testArgumentModeRunsThePluginWithWhatWasTyped() throws {
         let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
-        let marker = realHome.appending(path: ".config/pium/plugins/\(name).arg")
-        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
+        let scratch = realHome.appending(path: "pium-uitest-scratch-\(name)")
+        try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: scratch) }
 
         let folder = realHome.appending(path: ".config/pium/plugins")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let script = folder.appending(path: "\(name).sh")
-        try "#!/bin/sh\nprintf '%s' \"$1\" > \"\(marker.path)\"\n"
-            .write(to: script, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: 0o755], ofItemAtPath: script.path
-        )
-        addTeardownBlock { try? FileManager.default.removeItem(at: script) }
-
         let url = folder.appending(path: "\(name).pium.json")
         try """
         { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
           "input": { "mode": "required", "placeholder": "Text" },
-          "command": { "executable": "./\(name).sh", "arguments": ["{{input}}"] } }
+          "command": { "executable": "mkdir",
+                       "arguments": ["-p", "\(jsonEscaped(scratch.path))/{{input}}"],
+                       "workingDirectory": "\(jsonEscaped(scratch.path))" } }
         """.write(to: url, atomically: true, encoding: .utf8)
         addTeardownBlock { try? FileManager.default.removeItem(at: url) }
 
@@ -417,18 +425,21 @@ final class LauncherSmokeTests: XCTestCase {
         app.typeText("hola mundo")
         app.typeKey(.return, modifierFlags: [])
 
-        // `printf ... > marker` truncates the file before writing, so a read
-        // landing in that window sees "" rather than nothing at all. Looping
-        // until the content matches, rather than until it is merely present,
-        // rides out that window instead of failing on it.
-        var written: String?
-        for _ in 0..<50 where written != "hola mundo" {
+        let typed = scratch.appending(path: "hola mundo")
+        var created = false
+        for _ in 0..<50 where !created {
             usleep(200_000)
-            written = try? String(contentsOf: marker, encoding: .utf8)
+            created = FileManager.default.fileExists(atPath: typed.path)
         }
-        XCTAssertEqual(
-            written, "hola mundo",
+        XCTAssertTrue(
+            created,
             "The typed argument must reach the command as one argument"
+        )
+        // Two arguments would have made `hola` here and `mundo` beside it, so
+        // the absence of the first is what tells one element from two.
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: scratch.appending(path: "hola").path),
+            "The typed argument must not be split on its space"
         )
     }
 
