@@ -1,0 +1,159 @@
+import Foundation
+import OSLog
+
+/// Owns the runs.
+///
+/// Records live in a collection keyed by `UUID` even though MVP policy admits
+/// one at a time (PIUM-DOC-2 §3.2), so allowing concurrency later replaces a
+/// policy rather than a model.
+///
+/// Everything that can fail does so before a process exists: resolving the
+/// executable, resolving the arguments, and reading the configuration. What
+/// remains after that is a command that ran, and how it ended.
+@MainActor
+@Observable
+final class ExecutionManager {
+    private let logger = Logger(subsystem: Signposts.subsystem, category: "Execution")
+    private let resolver: ExecutableResolver
+    private let environment: ChildEnvironment
+    private let configuration: any PluginConfigurationStoring
+    private let runner = ProcessRunner()
+
+    private(set) var records: [UUID: ExecutionRecord] = [:]
+    private var cancellations: [UUID: ProcessRunner.Cancellation] = [:]
+
+    init(
+        configuration: any PluginConfigurationStoring,
+        secrets: any PluginSecretStoring,
+        searchPaths: [String] = ControlledPath.default
+    ) {
+        self.configuration = configuration
+        self.resolver = ExecutableResolver(searchPaths: searchPaths)
+        self.environment = ChildEnvironment(
+            configuration: configuration, secrets: secrets, searchPaths: searchPaths
+        )
+    }
+
+    /// The plugin currently holding the single slot, if any.
+    var activeRecord: ExecutionRecord? {
+        records.values.first { $0.state == .running }
+    }
+
+    @discardableResult
+    func run(_ record: PluginRecord, input: String) -> Result<UUID, ExecutionFailure> {
+        guard let manifest = record.manifest else {
+            return .failure(.executableMissing(path: record.fileURL.path))
+        }
+        if let active = activeRecord {
+            return .failure(.alreadyRunning(plugin: active.pluginName))
+        }
+
+        let directory = record.fileURL.deletingLastPathComponent()
+        let executable: URL
+        switch resolver.resolve(manifest.command.executable, relativeTo: directory) {
+        case .success(let url): executable = url
+        case .failure(let failure): return .failure(failure)
+        }
+
+        let childEnvironment: [String: String]
+        switch environment.build(for: manifest) {
+        case .success(let built): childEnvironment = built
+        case .failure(let failure): return .failure(failure)
+        }
+
+        let arguments = resolvedArguments(of: manifest, input: input)
+        let request = ExecutionRequest(
+            executable: executable,
+            arguments: arguments,
+            workingDirectory: manifest.command.workingDirectory.map {
+                // `appending(path:)`, for the same reason `ExecutableResolver`
+                // uses it: `URL(filePath:relativeTo:)` drops the base's last
+                // component when the base carries no directory hint.
+                directory.appending(path: $0).standardizedFileURL
+            } ?? directory,
+            environment: childEnvironment,
+            timeoutSeconds: manifest.timeoutSeconds
+        )
+
+        let id = UUID()
+        records[id] = ExecutionRecord(
+            id: id,
+            pluginID: manifest.id,
+            pluginName: manifest.name,
+            state: .running,
+            standardOutput: "",
+            standardError: "",
+            wasTruncated: false
+        )
+        let cancellation = ProcessRunner.Cancellation()
+        cancellations[id] = cancellation
+
+        logger.notice("Running \(manifest.id, privacy: .public)")
+        Task { [runner] in
+            let outcome = await runner.run(request, cancellation: cancellation)
+            finish(id, with: outcome)
+        }
+        return .success(id)
+    }
+
+    func cancel(_ id: UUID) {
+        cancellations[id]?.cancel()
+    }
+
+    /// Regular configuration may be interpolated into arguments; secrets may
+    /// not, which `ManifestValidator` already enforces on the file.
+    private func resolvedArguments(of manifest: PluginManifest, input: String) -> [String] {
+        var values: [String: String] = [:]
+        for field in manifest.configuration where field.type == .string {
+            values[field.key] = configuration.value(pluginID: manifest.id, key: field.key)
+        }
+        let keys = Set(manifest.configuration.map(\.key))
+
+        return manifest.command.arguments.map { argument in
+            guard case .success(let tokens) = PluginTemplate.parseAllowingConfiguration(
+                argument, configurationKeys: keys
+            ) else {
+                // Unreachable: the file could not have loaded with a template
+                // that does not parse. Passing it through unchanged is the
+                // honest fallback — it is what the author wrote.
+                return argument
+            }
+            return PluginTemplate.resolve(tokens, input: input, configuration: values)
+        }
+    }
+
+    private func finish(_ id: UUID, with outcome: ExecutionOutcome) {
+        guard var record = records[id] else { return }
+        record.state = switch outcome.ending {
+        case .exited(let code): .finished(exitCode: code)
+        case .cancelled: .cancelled
+        case .timedOut: .timedOut
+        case .signalled(let signal): .signalled(signal)
+        case .failed(let failure): .failed(failure)
+        }
+        record.standardOutput = outcome.standardOutput
+        record.standardError = outcome.standardError
+        record.wasTruncated = outcome.wasTruncated
+        records[id] = record
+        cancellations[id] = nil
+
+        // 5b turns these into interface. Until then the log is the only place a
+        // failure is visible, which is why 5a is not shippable alone.
+        switch record.state {
+        case .finished(let code) where code != 0:
+            logger.error(
+                "\(record.pluginID, privacy: .public) exited \(code): \(record.standardError, privacy: .public)"
+            )
+        case .timedOut:
+            logger.error("\(record.pluginID, privacy: .public) timed out")
+        case .signalled(let signal):
+            logger.error("\(record.pluginID, privacy: .public) was killed by signal \(signal)")
+        case .failed(let failure):
+            logger.error(
+                "\(record.pluginID, privacy: .public) did not run: \(failure.logDescription, privacy: .public)"
+            )
+        default:
+            logger.notice("\(record.pluginID, privacy: .public) finished")
+        }
+    }
+}
