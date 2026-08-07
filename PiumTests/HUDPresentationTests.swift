@@ -55,6 +55,26 @@ struct HUDPresentationTests {
     @Test func atimeoutSaysItRanTooLong() throws {
         let hud = try #require(HUDPresentation.forOutcome(record(.timedOut), mode: .silent))
         #expect(hud.kind == .failure)
+        #expect(!hud.body.hasPrefix("hud."), "the HUD shows its lookup key: \(hud.body)")
+    }
+
+    /// The code is the whole message when the command said nothing, so a key
+    /// the catalog has no entry for is not a cosmetic slip: `String(localized:)`
+    /// hands back the key, and `hud.exited 2` is then all the user is told.
+    @Test func anexitCodeWithNothingOnStandardErrorIsExplainedInWords() throws {
+        let hud = try #require(
+            HUDPresentation.forOutcome(record(.finished(exitCode: 2)), mode: .silent)
+        )
+        #expect(hud.kind == .failure)
+        #expect(!hud.body.hasPrefix("hud."), "the HUD shows its lookup key: \(hud.body)")
+        #expect(hud.body.contains("2"))
+    }
+
+    @Test func asignalledRunNamesTheSignalInWords() throws {
+        let hud = try #require(HUDPresentation.forOutcome(record(.signalled(9)), mode: .silent))
+        #expect(hud.kind == .failure)
+        #expect(!hud.body.hasPrefix("hud."), "the HUD shows its lookup key: \(hud.body)")
+        #expect(hud.body.contains("9"))
     }
 
     @Test func acommandThatNeverStartedShowsWhy() throws {

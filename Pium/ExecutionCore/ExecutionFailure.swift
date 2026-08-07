@@ -37,7 +37,10 @@ enum ExecutionFailure: Error, Equatable {
         case .alreadyRunning(let plugin):
             String(localized: "execution.failure.alreadyRunning \(plugin)")
         case .spawnFailed(let code):
-            String(localized: "execution.failure.spawnFailed \(code)")
+            // An `Int` interpolation asks the catalog for `%lld`, which is how
+            // every numeric string in it is keyed. An `Int32` would ask for
+            // `%d` and match nothing, leaving the key itself on screen.
+            String(localized: "execution.failure.spawnFailed \(Int(code))")
         }
     }
 }

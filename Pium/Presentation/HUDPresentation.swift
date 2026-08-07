@@ -31,7 +31,10 @@ struct HUDPresentation: Equatable, Sendable {
         case .timedOut:
             failure(record, body: String(localized: "hud.timedOut"))
         case .signalled(let signal):
-            failure(record, body: String(localized: "hud.signalled \(signal)"))
+            // An `Int` interpolation asks the catalog for `%lld`, which is how
+            // every numeric string in it is keyed. An `Int32` would ask for
+            // `%d` and match nothing, leaving the key itself on screen.
+            failure(record, body: String(localized: "hud.signalled \(Int(signal))"))
         case .failed(let cause):
             failure(record, body: cause.message)
         }
@@ -55,7 +58,8 @@ struct HUDPresentation: Equatable, Sendable {
     /// with nothing said, the code is all there is.
     private static func exitBody(_ record: ExecutionRecord, code: Int32) -> String {
         let error = text(record.standardError, truncated: record.wasTruncated)
-        return error.isEmpty ? String(localized: "hud.exited \(code)") : error
+        // `Int(code)` for the same reason as `hud.signalled` above.
+        return error.isEmpty ? String(localized: "hud.exited \(Int(code))") : error
     }
 
     private static func text(_ raw: String, truncated: Bool) -> String {

@@ -156,29 +156,6 @@ final class LauncherState {
         actionQuery = ""
     }
 
-    /// What a confirmation, if begun now, would be about. PRD §10.3 and §10.4
-    /// are independent — a plugin being typed into in argument mode still has
-    /// a row's worth of state, just not a row on screen — so this is the
-    /// argument target while one is being typed, and the selected result
-    /// otherwise.
-    private var confirmationCandidate: SearchResult? {
-        isInArgumentMode ? argumentTarget : selectedResult
-    }
-
-    /// Enters confirmation on the result a `Return` would otherwise run, if
-    /// it declares a message to show first (PRD §10.4).
-    ///
-    /// Returns whether it did, so the key handler can fall through and run
-    /// the action directly when the result needs no confirmation.
-    @discardableResult
-    func beginConfirmation() -> Bool {
-        guard let candidate = confirmationCandidate, candidate.confirmation != nil else {
-            return false
-        }
-        confirmingResult = candidate
-        return true
-    }
-
     /// Leaves confirmation without running anything. Nothing here is
     /// remembered: the very next `Return` on the same result asks again.
     func cancelConfirmation() {
