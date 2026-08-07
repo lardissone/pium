@@ -90,29 +90,62 @@ struct ProcessRunnerTests {
     /// wait on an EOF that will not arrive until that grandchild, which
     /// nobody asked it to track, eventually finishes on its own.
     ///
-    /// The grandchild writes continuously — a tight, unpaced loop, not a
-    /// sleep between writes — rather than sitting silent. A reader merely
-    /// parked inside a blocking read is the benign half of this race: a
+    /// The grandchild writes in two phases, each defending a different
+    /// property of this test.
+    ///
+    /// Phase 1 is a long, entirely unpaced burst (2,000,000 writes, several
+    /// seconds on a typical machine). A reader merely parked inside a
+    /// blocking read is the benign half of the close-after-abandon race: a
     /// close lands cleanly there. The dangerous half is a reader caught
     /// between two reads, right where an earlier version of this fix landed
-    /// a forced close and crashed the app instead of hanging it; a tight
-    /// write loop is what gives that half a real chance to happen, because
-    /// the reader spends most of its time cycling through reads rather than
-    /// blocked on any single one. The grandchild's total run time (tens of
-    /// seconds at this write rate) deliberately outlasts the time limit
-    /// below (the coarsest swift-testing allows is whole minutes): without
-    /// the fix, this run waited for the grandchild regardless of whether it
-    /// was silent or noisy, so a regression back to that state still fails
-    /// here instead of merely running long and passing once the grandchild
-    /// exits on its own.
+    /// a forced close and crashed the app instead of hanging it — and an
+    /// unpaced burst is what gives that half a real chance to happen,
+    /// because for as long as it runs the reader is cycling through reads
+    /// rather than blocked on any single one. It starts the instant this
+    /// subshell does, which is also when `drain`'s roughly one-second grace
+    /// period starts counting down from, so the burst reliably overlaps the
+    /// window that matters. (A version of this fixture that paced every
+    /// write instead reproduced nothing: it left the reader parked for
+    /// nearly all of it.)
+    ///
+    /// Phase 2 is 35 iterations of one write followed by a real two-second
+    /// sleep. Its floor — 70 seconds, from the sleeps alone — is what
+    /// actually outlasts the time limit below (the coarsest swift-testing
+    /// allows is whole minutes), and unlike phase 1's, that floor cannot be
+    /// shortened by a faster machine: `sleep` is a wall-clock wait, not a
+    /// function of how fast this machine can run a shell loop. (A version
+    /// of this fixture that used only phase 1's kind of burst, sized to
+    /// take "about a minute", reproduced the crash fine but could in
+    /// principle finish under the time limit on a fast enough machine,
+    /// silently passing a hang regression instead of catching it.)
+    ///
+    /// Without the fix, this run waited for the grandchild regardless of
+    /// which phase it was in, so a regression back to that state still
+    /// fails here instead of merely running long and passing once the
+    /// grandchild exits on its own.
     @Test(.timeLimit(.minutes(1)))
     func agrandchildHoldingStdoutDoesNotHangTheRun() async throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let pidFile = directory.appending(path: "grandchild.pid")
         let url = try script(
-            "(i=0; while [ $i -lt 20000000 ]; do printf x; i=$((i+1)); done) &\n"
-                + "echo $! > \(pidFile.path)\necho done",
+            """
+            (
+              i=0
+              while [ $i -lt 2000000 ]; do
+                printf x
+                i=$((i+1))
+              done
+              i=0
+              while [ $i -lt 35 ]; do
+                printf x
+                sleep 2
+                i=$((i+1))
+              done
+            ) &
+            echo $! > \(pidFile.path)
+            echo done
+            """,
             in: directory
         )
 
@@ -177,12 +210,25 @@ struct ProcessRunnerTests {
 
     /// A cancel arriving after `run` has already returned must not reach the
     /// process group it already reaped — the kernel could have recycled that
-    /// pgid for an unrelated process by then. Proven directly, without
-    /// needing pid recycling or timing luck: a grandchild is left alive in
+    /// pgid for an unrelated process by then. A grandchild is left alive in
     /// the group after `run` returns, `cancel()` is called late, and the
-    /// grandchild must still be alive afterward. Before `Cancellation.detach`
+    /// grandchild must still be alive afterward: before `Cancellation.detach`
     /// existed, `cancel()` would still call `child.signalGroup(SIGTERM)` on
     /// this exact scenario; after, `child` is nil and the call is a no-op.
+    ///
+    /// This cannot actually fail under Xcode's own test host, and that is
+    /// worth stating plainly rather than leaving to be discovered: the host
+    /// itself has `SIGTERM` set to be ignored, and POSIX propagates an
+    /// ignored disposition across every `exec` in the chain, so
+    /// `kill(-pid, SIGTERM)` is a no-op for the whole process group
+    /// regardless of whether `detach` ran — confirmed by disabling `detach`
+    /// and re-running this exact test, which still passed. Kept anyway,
+    /// because it is the correct, timing-independent proof of `detach`'s
+    /// effect everywhere else this suite runs (a plain `swift test`, any CI
+    /// that is not this specific host, a command-line build) — dropping it
+    /// would leave that guarantee completely uncovered, and rewriting it
+    /// around `SIGKILL` instead would reintroduce a timing dependency this
+    /// design specifically avoids.
     @Test func alateCancelDoesNotReachAProcessGroupRunAlreadyReaped() async throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
