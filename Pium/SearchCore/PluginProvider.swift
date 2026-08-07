@@ -126,7 +126,8 @@ final class PluginProvider: ResultProvider {
                     placeholder: manifest.input.placeholder,
                     isRequired: manifest.input.mode == .required
                 )
-                : nil
+                : nil,
+            confirmation: manifest.confirmBeforeRun
         )
     }
 

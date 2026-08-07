@@ -24,7 +24,14 @@ struct LauncherView: View {
                     perform(action, on: result, input: state.argumentText)
                 }
             }
-            if let active = executionManager.activeRecord {
+            if let confirming = state.confirmingResult, let message = confirming.confirmation {
+                Divider()
+                ConfirmationBarView(
+                    message: message,
+                    onConfirm: { confirmSelected() },
+                    onCancel: { state.cancelConfirmation() }
+                )
+            } else if let active = executionManager.activeRecord {
                 Divider()
                 ActiveRunView(pluginName: active.pluginName, startedAt: active.startedAt) {
                     executionManager.cancel(active.id)
@@ -145,10 +152,13 @@ struct LauncherView: View {
             }
             .onKeyPress(.escape) {
                 // The PRD: with the menu open, the first Esc returns to search
-                // rather than closing the launcher. Argument mode gets the same
-                // courtesy before the launcher closes.
+                // rather than closing the launcher. A pending confirmation and
+                // argument mode get the same courtesy before the launcher
+                // closes.
                 if state.isActionMenuPresented {
                     state.dismissActionMenu()
+                } else if state.confirmingResult != nil {
+                    state.cancelConfirmation()
                 } else if state.isInArgumentMode {
                     state.exitArgumentMode()
                 } else {
@@ -240,11 +250,13 @@ struct LauncherView: View {
         return .handled
     }
 
-    /// The arrows drive whichever list is in front of the user.
+    /// The arrows drive whichever list is in front of the user. A pending
+    /// confirmation pins the selection to the row it is asking about, so the
+    /// arrows do nothing until it is resolved.
     private func move(by offset: Int) {
         if state.isActionMenuPresented {
             state.moveActionHighlight(by: offset)
-        } else {
+        } else if state.confirmingResult == nil {
             state.moveSelection(by: offset)
         }
     }
@@ -273,11 +285,30 @@ struct LauncherView: View {
             perform(highlighted, on: selected, input: state.argumentText)
             return .handled
         }
+
+        // With a confirmation already showing, this `Return` is the answer:
+        // clear it and fall through to running the action below. Without one,
+        // a result that declares a message asks first instead of running.
+        if state.confirmingResult != nil {
+            state.cancelConfirmation()
+        } else if state.beginConfirmation() {
+            return .handled
+        }
+
         guard let action = state.action(matching: .return, modifiers: modifiers) else {
             return .handled
         }
         perform(action, on: selected, input: state.argumentText)
         return .handled
+    }
+
+    /// What the confirmation bar's Confirm button does — the same as
+    /// pressing plain `Return` while its message is showing.
+    private func confirmSelected() {
+        guard state.confirmingResult != nil, let selected = state.selectedResult else { return }
+        state.cancelConfirmation()
+        guard let action = state.action(matching: .return, modifiers: []) else { return }
+        perform(action, on: selected, input: state.argumentText)
     }
 
     /// Running any action closes the launcher, exactly as `Return` on a result
@@ -295,5 +326,53 @@ private extension Character {
     /// control code arriving as the event's text.
     var isTypable: Bool {
         isLetter || isNumber || isPunctuation || isSymbol || self == " "
+    }
+}
+
+/// Replaces `FooterBarView` while a result's `confirmBeforeRun` message is
+/// showing (PRD §10.4): the manifest's message on the left, `Return` to
+/// confirm and `Esc` to go back on the right, in `FooterBarView`'s own
+/// register of a label next to its shortcut badge.
+private struct ConfirmationBarView: View {
+    let message: String
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: Tokens.Spacing.tight) {
+            Text(message)
+                .font(Tokens.TypeScale.footerLabel)
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            Button(action: onCancel) {
+                HStack(spacing: Tokens.Spacing.tight) {
+                    Text(String(localized: "launcher.confirmCancel"))
+                        .font(Tokens.TypeScale.footerLabel)
+                    ShortcutBadgeView(shortcut: .escape)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "launcher.confirmCancel"))
+
+            Divider()
+                .frame(height: 14)
+                .padding(.horizontal, Tokens.Spacing.tight)
+
+            Button(action: onConfirm) {
+                HStack(spacing: Tokens.Spacing.tight) {
+                    Text(String(localized: "launcher.confirm"))
+                        .font(Tokens.TypeScale.footerLabel)
+                    ShortcutBadgeView(shortcut: .returnKey)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "launcher.confirm"))
+        }
+        .padding(.horizontal, Tokens.Spacing.normal)
+        .frame(height: Tokens.Size.footerHeight)
     }
 }

@@ -539,6 +539,50 @@ final class LauncherSmokeTests: XCTestCase {
         XCTAssertTrue(hud.exists, "The HUD must outlive the launcher that started it")
     }
 
+    /// A plugin declaring confirmBeforeRun does not run on the first Return.
+    func testConfirmBeforeRunAsksFirst() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let folder = realHome.appending(path: ".config/pium/plugins")
+        let marker = folder.appending(path: "\(name).ran")
+        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "none" },
+          "command": { "executable": "touch", "arguments": ["\(marker.path)"] },
+          "confirmBeforeRun": "Are you sure?" }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+
+        searchField.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(
+            app.staticTexts["Are you sure?"].waitForExistence(timeout: 5),
+            "The first Return must ask rather than run"
+        )
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: marker.path),
+            "The command must not have run before it was confirmed"
+        )
+
+        app.typeKey(.return, modifierFlags: [])
+        var ran = false
+        for _ in 0..<25 where !ran {
+            usleep(200_000)
+            ran = FileManager.default.fileExists(atPath: marker.path)
+        }
+        XCTAssertTrue(ran, "Confirming must run the command")
+    }
+
     @discardableResult
     private func writePluginManifest(named name: String, inputMode: String = "none") throws -> URL {
         let folder = realHome.appending(path: ".config/pium/plugins")

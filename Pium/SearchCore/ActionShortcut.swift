@@ -10,6 +10,7 @@ struct ActionShortcut: Sendable, Equatable {
     enum Key: Sendable, Equatable {
         case character(Character)
         case `return`
+        case escape
     }
 
     struct Modifiers: OptionSet, Sendable, Equatable {
@@ -30,6 +31,10 @@ struct ActionShortcut: Sendable, Equatable {
     static let commandReturn = ActionShortcut(key: .return, modifiers: [.command])
     /// Opens the contextual action menu.
     static let commandK = ActionShortcut(key: .character("k"), modifiers: [.command])
+    /// Backs out of a mode the launcher is in, such as a pending
+    /// confirmation. Display-only: `Esc` is handled directly by the view
+    /// rather than looked up through `matches`.
+    static let escape = ActionShortcut(key: .escape, modifiers: [])
 
     /// Whether a pressed combination runs this action.
     ///
@@ -59,6 +64,7 @@ struct ActionShortcut: Sendable, Equatable {
         if modifiers.contains(.command) { result += "⌘" }
         switch key {
         case .return: result += "⏎"
+        case .escape: result += "⎋"
         case .character(let character): result += String(character).uppercased()
         }
         return result

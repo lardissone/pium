@@ -23,6 +23,12 @@ final class LauncherState {
 
     private(set) var isActionMenuPresented = false
 
+    /// The result currently asking to confirm before it runs. `nil` outside
+    /// that state. Never persisted across a cancellation: PRD §10.4 asks
+    /// every time, so this is the only place that fact could leak from and it
+    /// is always reset by `cancelConfirmation`.
+    private(set) var confirmingResult: SearchResult?
+
     /// Which action the menu has highlighted. Held as an ID for the same reason
     /// result selection is: the list it indexes into can change underneath.
     private(set) var highlightedActionID: String?
@@ -74,8 +80,10 @@ final class LauncherState {
             // The menu described a result that is gone. Closing it only in this
             // case matters: every keystroke runs a search, so dismissing on any
             // update would let a batch still in flight close a menu the user
-            // just opened.
+            // just opened. A pending confirmation is cleared for the same
+            // reason — it names a result that no longer exists.
             dismissActionMenu()
+            cancelConfirmation()
         }
     }
 
@@ -139,6 +147,24 @@ final class LauncherState {
         isActionMenuPresented = false
         highlightedActionID = nil
         actionQuery = ""
+    }
+
+    /// Enters confirmation on the selected result, if it declares a message
+    /// to show before it runs (PRD §10.4).
+    ///
+    /// Returns whether it did, so the key handler can fall through and run
+    /// the action directly when the result needs no confirmation.
+    @discardableResult
+    func beginConfirmation() -> Bool {
+        guard let selected = selectedResult, selected.confirmation != nil else { return false }
+        confirmingResult = selected
+        return true
+    }
+
+    /// Leaves confirmation without running anything. Nothing here is
+    /// remembered: the very next `Return` on the same result asks again.
+    func cancelConfirmation() {
+        confirmingResult = nil
     }
 
     /// The actions the menu is showing, narrowed by whatever has been typed
