@@ -42,6 +42,13 @@ final class HUDController {
         entry.expiry = Task { [weak self] in
             try? await Task.sleep(for: presentation.duration)
             guard !Task.isCancelled else { return }
+            // `self` is weak so this task cannot keep the controller alive,
+            // but the reverse is not covered: if the controller were ever
+            // deallocated while entries were still live, this closure would
+            // find `self` gone and never reach `orderOut`, leaving the panel
+            // on screen. `AppDelegate` holds the controller for the app's
+            // whole lifetime, which is what makes that unreachable today —
+            // a deliberate ceiling, not an oversight.
             self?.dismiss(panel)
         }
         entries.insert(entry, at: 0)
@@ -66,17 +73,24 @@ final class HUDController {
     }
 
     /// Newest nearest the anchored edge; the rest drift toward the middle.
+    ///
+    /// Each panel is placed after the real heights of the ones already laid
+    /// out this pass, not after its own — HUDs vary in height with how much a
+    /// plugin printed, so a taller panel ahead of this one has to open a wider
+    /// gap than a shorter one would.
     private func layout() {
         guard let screen = NSScreen.main else { return }
         let anchor = anchor()
-        for (index, entry) in entries.enumerated() {
+        var precedingHeights: [CGFloat] = []
+        for entry in entries {
             let origin = anchor.origin(
                 forPanelOfSize: entry.panel.frame.size,
-                atIndex: index,
+                stackedAfter: precedingHeights,
                 in: screen.visibleFrame,
                 spacing: Self.spacing
             )
             entry.panel.setFrameOrigin(origin)
+            precedingHeights.append(entry.panel.frame.size.height)
         }
     }
 }

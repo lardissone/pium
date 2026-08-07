@@ -20,13 +20,18 @@ enum HUDAnchor: String, CaseIterable, Sendable {
         }
     }
 
+    /// `precedingHeights` are the actual heights of the panels already placed
+    /// closer to the anchored edge, in any order — only their sum matters. An
+    /// index cannot stand in for this: HUDs vary in height with how much a
+    /// plugin printed, so a stack only clears each panel it passes by summing
+    /// what that panel actually measured, not by multiplying a uniform guess.
     func origin(
         forPanelOfSize size: CGSize,
-        atIndex index: Int,
+        stackedAfter precedingHeights: [CGFloat],
         in visibleFrame: CGRect,
         spacing: CGFloat
     ) -> CGPoint {
-        let offset = CGFloat(index) * (size.height + spacing)
+        let offset = precedingHeights.reduce(CGFloat.zero) { $0 + $1 + spacing }
         let x: CGFloat = switch self {
         case .topLeft, .bottomLeft:
             visibleFrame.minX + Self.margin

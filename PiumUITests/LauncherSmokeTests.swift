@@ -491,6 +491,15 @@ final class LauncherSmokeTests: XCTestCase {
     }
 
     /// A HUD outlives the launcher that started it.
+    ///
+    /// A failing command rather than a successful one: PRD §11 keeps a
+    /// failure HUD on screen for 10 seconds against a success's 4, and a
+    /// failure is shown whatever the output mode. The extra margin matters
+    /// here because the test itself takes real wall-clock time — it reopens
+    /// and dismisses the launcher between the HUD appearing and the final
+    /// assertion, so that assertion is checking something that survived an
+    /// interval, not one that merely has not been torn down yet in the same
+    /// instant `waitForExistence` returned.
     func testAToastHudSurvivesDismissingTheLauncher() throws {
         let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
         let folder = realHome.appending(path: ".config/pium/plugins")
@@ -499,8 +508,8 @@ final class LauncherSmokeTests: XCTestCase {
         try """
         { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
           "input": { "mode": "none" },
-          "command": { "executable": "echo", "arguments": ["hola desde el plugin"] },
-          "output": { "mode": "toast" } }
+          "command": { "executable": "sh",
+                       "arguments": ["-c", "echo 'hola desde el plugin' 1>&2; exit 1"] } }
         """.write(to: url, atomically: true, encoding: .utf8)
         addTeardownBlock { try? FileManager.default.removeItem(at: url) }
 
@@ -515,8 +524,18 @@ final class LauncherSmokeTests: XCTestCase {
         searchField.typeKey(.return, modifierFlags: [])
 
         let hud = app.staticTexts["hola desde el plugin"]
-        XCTAssertTrue(hud.waitForExistence(timeout: 10), "A toast plugin must show a HUD")
-        // Running an action already dismissed the launcher; the HUD must remain.
+        // Well short of the 10-second failure duration, leaving room for the
+        // steps below before the HUD would time out on its own regardless.
+        XCTAssertTrue(hud.waitForExistence(timeout: 5), "A failing plugin must show a HUD")
+
+        // Running the plugin already dismissed the launcher once; open and
+        // dismiss it again so the closing assertion checks the HUD across an
+        // interval instead of in the same instant it appeared.
+        openLauncherFromMenubar()
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(searchField.waitForNonExistence(timeout: 10))
+
         XCTAssertTrue(hud.exists, "The HUD must outlive the launcher that started it")
     }
 

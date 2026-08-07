@@ -14,7 +14,7 @@ struct HUDAnchorTests {
 
     @Test func thetopRightAnchorSitsUnderTheTopEdge() {
         let origin = HUDAnchor.topRight.origin(
-            forPanelOfSize: panel, atIndex: 0, in: screen, spacing: 10
+            forPanelOfSize: panel, stackedAfter: [], in: screen, spacing: 10
         )
         let expectedX: CGFloat = 1000 - 300 - 20
         let expectedY: CGFloat = 800 - 100 - 20
@@ -26,25 +26,45 @@ struct HUDAnchorTests {
     /// bottom one — always away from the edge it is anchored to.
     @Test func thesecondPanelStacksAwayFromItsEdge() {
         let first = HUDAnchor.topRight.origin(
-            forPanelOfSize: panel, atIndex: 0, in: screen, spacing: 10
+            forPanelOfSize: panel, stackedAfter: [], in: screen, spacing: 10
         )
         let second = HUDAnchor.topRight.origin(
-            forPanelOfSize: panel, atIndex: 1, in: screen, spacing: 10
+            forPanelOfSize: panel, stackedAfter: [panel.height], in: screen, spacing: 10
         )
         #expect(second.y == first.y - 110)
 
         let bottomFirst = HUDAnchor.bottomLeft.origin(
-            forPanelOfSize: panel, atIndex: 0, in: screen, spacing: 10
+            forPanelOfSize: panel, stackedAfter: [], in: screen, spacing: 10
         )
         let bottomSecond = HUDAnchor.bottomLeft.origin(
-            forPanelOfSize: panel, atIndex: 1, in: screen, spacing: 10
+            forPanelOfSize: panel, stackedAfter: [panel.height], in: screen, spacing: 10
         )
         #expect(bottomSecond.y == bottomFirst.y + 110)
     }
 
+    /// The bug this guards against: placing the second panel `size.height`
+    /// (its own height) away from the edge rather than the *first* panel's
+    /// height would let a short panel tuck under a tall one instead of below
+    /// it. Real HUDs are not uniform — `HUDView` grows with how much a plugin
+    /// printed — so a fixed per-slot offset is wrong the moment two panels
+    /// differ.
+    @Test func adifferentlySizedPrecedingPanelDoesNotOverlap() {
+        let tall = CGSize(width: 300, height: 220)
+        let short = CGSize(width: 300, height: 60)
+        let first = HUDAnchor.topRight.origin(
+            forPanelOfSize: tall, stackedAfter: [], in: screen, spacing: 10
+        )
+        let second = HUDAnchor.topRight.origin(
+            forPanelOfSize: short, stackedAfter: [tall.height], in: screen, spacing: 10
+        )
+        // The first panel occupies [first.y, first.y + tall.height]. The
+        // second must sit entirely below that, with at least one spacing gap.
+        #expect(second.y + short.height <= first.y)
+    }
+
     @Test func acenterAnchorCentersHorizontally() {
         let origin = HUDAnchor.topCenter.origin(
-            forPanelOfSize: panel, atIndex: 0, in: screen, spacing: 10
+            forPanelOfSize: panel, stackedAfter: [], in: screen, spacing: 10
         )
         let expectedX: CGFloat = (1000 - 300) / 2
         #expect(origin.x == expectedX)
@@ -55,7 +75,7 @@ struct HUDAnchorTests {
     @Test func placementFollowsTheScreenItIsGiven() {
         let secondary = CGRect(x: 1000, y: -200, width: 800, height: 600)
         let origin = HUDAnchor.bottomLeft.origin(
-            forPanelOfSize: panel, atIndex: 0, in: secondary, spacing: 10
+            forPanelOfSize: panel, stackedAfter: [], in: secondary, spacing: 10
         )
         #expect(origin.x == 1020)
         #expect(origin.y == -180)
