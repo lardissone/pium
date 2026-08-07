@@ -58,7 +58,7 @@ final class ExecutionManager {
     @discardableResult
     func run(_ record: PluginRecord, input: String) -> Result<UUID, ExecutionFailure> {
         guard let manifest = record.manifest else {
-            return .failure(.executableMissing(path: record.fileURL.path))
+            return .failure(.invalidManifest(path: record.fileURL.path))
         }
         if let active = activeRecord {
             return .failure(.alreadyRunning(plugin: active.pluginName))
@@ -195,7 +195,7 @@ final class ExecutionManager {
             logger.error("\(record.pluginID, privacy: .public) was killed by signal \(signal)")
         case .failed(let failure):
             logger.error(
-                "\(record.pluginID, privacy: .public) did not run: \(failure.logDescription, privacy: .public)"
+                "\(record.pluginID, privacy: .public) did not run: \(failure.message, privacy: .public)"
             )
         default:
             logger.notice("\(record.pluginID, privacy: .public) finished")

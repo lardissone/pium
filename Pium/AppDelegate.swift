@@ -50,10 +50,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         },
                         execute: { record, input in
                             if case .failure(let failure) = executions.run(record, input: input) {
-                                // 5b puts this in front of the user; today the
-                                // log is where a refusal or a bad manifest lands.
+                                // The HUD puts this in front of the user; until
+                                // then the log is where a refusal or a bad
+                                // manifest lands.
                                 Logger(subsystem: Signposts.subsystem, category: "Execution")
-                                    .error("\(failure.logDescription, privacy: .public)")
+                                    .error("\(failure.message, privacy: .public)")
                             }
                         }
                     ),

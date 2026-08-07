@@ -69,6 +69,159 @@
         }
       }
     },
+    "execution.failure.alreadyRunning %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is still running"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ todavía se está ejecutando"
+          }
+        }
+      }
+    },
+    "execution.failure.invalidManifest %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ could not be read as a plugin. Its problem is shown in Settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ no se pudo leer como plugin. Su problema se muestra en Ajustes"
+          }
+        }
+      }
+    },
+    "execution.failure.missing %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no file at %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ningún archivo en %@"
+          }
+        }
+      }
+    },
+    "execution.failure.missingConfiguration %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” has no value yet. Fill it in Settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» todavía no tiene valor. Completalo en Ajustes"
+          }
+        }
+      }
+    },
+    "execution.failure.notExecutable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is not executable. Give it permission with chmod +x"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ no es ejecutable. Dale permiso con chmod +x"
+          }
+        }
+      }
+    },
+    "execution.failure.notFound %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not find “%1$@”. Looked in: %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró «%1$@». Se buscó en: %2$@"
+          }
+        }
+      }
+    },
+    "execution.failure.quarantined %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS quarantined %@ because it was downloaded. Clear it with xattr -d com.apple.quarantine"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS puso %@ en cuarentena porque se descargó. Quitala con xattr -d com.apple.quarantine"
+          }
+        }
+      }
+    },
+    "execution.failure.secretUnavailable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Keychain would not give up the secret for “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El Llavero no entregó el secreto de «%@»"
+          }
+        }
+      }
+    },
+    "execution.failure.spawnFailed %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The command could not be started (error %lld)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo iniciar el comando (error %lld)"
+          }
+        }
+      }
+    },
     "launcher.actions": {
       "extractionState": "manual",
       "localizations": {

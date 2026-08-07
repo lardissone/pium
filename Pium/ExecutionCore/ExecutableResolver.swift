@@ -47,6 +47,18 @@ struct ExecutableResolver {
         guard fileManager.isExecutableFile(atPath: url.path) else {
             return .failure(.executableNotExecutable(path: url.path))
         }
+        guard !isQuarantined(url) else {
+            return .failure(.quarantined(path: url.path))
+        }
         return .success(url)
+    }
+
+    /// A quarantined file is executable by its permission bits and refused by
+    /// the kernel, so the bits alone do not answer the question.
+    private func isQuarantined(_ url: URL) -> Bool {
+        url.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return false }
+            return getxattr(path, "com.apple.quarantine", nil, 0, 0, 0) >= 0
+        }
     }
 }
