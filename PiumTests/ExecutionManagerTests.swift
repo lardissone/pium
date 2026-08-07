@@ -16,6 +16,7 @@ struct ExecutionManagerTests {
         arguments: [String] = [],
         configuration: [PluginConfigurationField] = [],
         timeoutSeconds: Int? = nil,
+        workingDirectory: String? = nil,
         in directory: URL
     ) -> PluginRecord {
         let manifest = PluginManifest(
@@ -28,7 +29,7 @@ struct ExecutionManagerTests {
             icon: nil,
             input: PluginInput(mode: .optional, placeholder: nil),
             command: PluginCommand(
-                executable: executable, arguments: arguments, workingDirectory: nil
+                executable: executable, arguments: arguments, workingDirectory: workingDirectory
             ),
             configuration: configuration,
             output: PluginOutput(mode: .silent),
@@ -148,16 +149,47 @@ struct ExecutionManagerTests {
         #expect(try await finalState(of: id, in: manager) == .timedOut)
     }
 
+    /// A double space in the input is what makes this discriminate: `echo`
+    /// prints it back verbatim only if the whole string reached argv as one
+    /// element. Splitting it into separate arguments first — the bug this
+    /// guards against — collapses the double space to one when `echo` joins
+    /// its arguments back together, so `"a b\n"` here would mean the input
+    /// was not kept whole.
     @Test func theInputReachesTheCommandAsOneArgument() async throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let manager = manager()
 
         let id = try manager.run(
-            record(executable: "echo", arguments: ["{{input}}"], in: directory), input: "a b c"
+            record(executable: "echo", arguments: ["{{input}}"], in: directory), input: "a  b"
         ).get()
         _ = try await finalState(of: id, in: manager)
-        #expect(manager.records[id]?.standardOutput == "a b c\n")
+        #expect(manager.records[id]?.standardOutput == "a  b\n")
+    }
+
+    /// PRD §10.4: an absolute `workingDirectory` names a directory outright,
+    /// the same way `ExecutableResolver` treats an absolute executable path —
+    /// it must not be reinterpreted as relative to the plugin's own folder.
+    @Test func anAbsoluteWorkingDirectoryIsNotTreatedAsRelativeToThePluginFolder() async throws {
+        let pluginDirectory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: pluginDirectory) }
+        let workingDirectory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: workingDirectory) }
+        let manager = manager()
+
+        let id = try manager.run(
+            record(executable: "pwd", workingDirectory: workingDirectory.path, in: pluginDirectory),
+            input: ""
+        ).get()
+        #expect(try await finalState(of: id, in: manager) == .finished(exitCode: 0))
+        let output = manager.records[id]?.standardOutput ?? ""
+        // Compared as `.path` strings after resolving symlinks, not as `URL`s:
+        // `pwd` reports the kernel's physical path (through /private), the same
+        // reason `ChildProcessTests.theWorkingDirectoryIsTheOneGiven` does this.
+        #expect(
+            URL(filePath: output.trimmingCharacters(in: .newlines)).resolvingSymlinksInPath().path
+                == workingDirectory.resolvingSymlinksInPath().path
+        )
     }
 
     @Test func amissingRequiredValueFailsBeforeRunning() throws {

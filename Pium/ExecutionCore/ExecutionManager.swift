@@ -65,12 +65,7 @@ final class ExecutionManager {
         let request = ExecutionRequest(
             executable: executable,
             arguments: arguments,
-            workingDirectory: manifest.command.workingDirectory.map {
-                // `appending(path:)`, for the same reason `ExecutableResolver`
-                // uses it: `URL(filePath:relativeTo:)` drops the base's last
-                // component when the base carries no directory hint.
-                directory.appending(path: $0).standardizedFileURL
-            } ?? directory,
+            workingDirectory: resolvedWorkingDirectory(of: manifest, relativeTo: directory),
             environment: childEnvironment,
             timeoutSeconds: manifest.timeoutSeconds
         )
@@ -98,6 +93,21 @@ final class ExecutionManager {
 
     func cancel(_ id: UUID) {
         cancellations[id]?.cancel()
+    }
+
+    /// No declaration runs in the plugin's own folder. Otherwise, mirrors
+    /// `ExecutableResolver`'s own branch on a leading `/`: an absolute
+    /// declaration names a directory outright, and only a relative one
+    /// resolves against the plugin's folder.
+    private func resolvedWorkingDirectory(of manifest: PluginManifest, relativeTo directory: URL) -> URL {
+        guard let declared = manifest.command.workingDirectory else { return directory }
+        if declared.hasPrefix("/") {
+            return URL(filePath: declared)
+        }
+        // `appending(path:)`, for the same reason `ExecutableResolver` uses it:
+        // `URL(filePath:relativeTo:)` drops the base's last component when the
+        // base carries no directory hint.
+        return directory.appending(path: declared).standardizedFileURL
     }
 
     /// Regular configuration may be interpolated into arguments; secrets may
