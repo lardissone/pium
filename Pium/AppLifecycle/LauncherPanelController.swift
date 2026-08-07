@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 import SwiftUI
 
 /// Owns the launcher panel: when it appears, where, and what dismisses it.
@@ -10,6 +11,10 @@ final class LauncherPanelController: NSObject {
     /// The same store the coordinator ranks against, so what is recorded here
     /// is what the next search sees.
     private let frecency: any FrecencyStoring
+    /// Read for `activeRecord` alone: a run starting or ending changes how
+    /// tall the panel needs to be, independently of the search results
+    /// stream that is the only other thing that resizes it.
+    private let executionManager: ExecutionManager
     private var searchTask: Task<Void, Never>?
 
     var isVisible: Bool { panel.isVisible }
@@ -21,6 +26,7 @@ final class LauncherPanelController: NSObject {
     ) {
         self.coordinator = coordinator
         self.frecency = frecency
+        self.executionManager = executionManager
         let size = CGSize(
             width: Tokens.Size.panelWidth,
             height: Tokens.Size.searchFieldHeight
@@ -42,6 +48,7 @@ final class LauncherPanelController: NSObject {
         // owning a token that would need cleaning up in a `deinit`, which a
         // main-actor-isolated class cannot have under Swift 6.
         panel.delegate = self
+        observeActiveRun()
     }
 
     func toggle() {
@@ -66,6 +73,10 @@ final class LauncherPanelController: NSObject {
         // foreground application.
         NSApp.activate()
         panel.makeKeyAndOrderFront(nil)
+        // Typing is not the only way the panel needs to be taller than the
+        // search field: reopening while a plugin is running must show its
+        // footer too (PRD §11), and nothing types anything on that path.
+        resizePanelToContent()
     }
 
     func hide() {
@@ -94,6 +105,26 @@ final class LauncherPanelController: NSObject {
             query: TextNormalizer.query(state.query),
             at: Date()
         )
+    }
+
+    /// Resizes the panel whenever a run starts or ends, so a plugin finishing
+    /// while the launcher is sitting open shrinks the footer away instead of
+    /// leaving a gap. Re-registers itself after every change: `Observation`
+    /// tracking fires its `onChange` once and then stops watching.
+    ///
+    /// Only while the panel is visible — the view stays mounted behind a
+    /// hidden panel (see `hide()`), so `activeRecord` keeps changing while
+    /// nobody is looking, and there is nothing on screen to resize.
+    private func observeActiveRun() {
+        withObservationTracking { [weak self] in
+            _ = self?.executionManager.activeRecord
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                if self.panel.isVisible { self.resizePanelToContent() }
+                self.observeActiveRun()
+            }
+        }
     }
 
     /// The panel grows and shrinks with the result list, keeping its top edge
