@@ -334,6 +334,91 @@ final class LauncherSmokeTests: XCTestCase {
         )
     }
 
+    /// Return runs the command. The plugin writes a file, because a UI test
+    /// cannot see a process but can see what it left behind.
+    func testReturnRunsThePlugin() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let marker = realHome.appending(path: ".config/pium/plugins/\(name).ran")
+        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
+
+        let folder = realHome.appending(path: ".config/pium/plugins")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "none" },
+          "command": { "executable": "touch", "arguments": ["\(marker.path)"] } }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+        searchField.typeKey(.return, modifierFlags: [])
+
+        var ran = false
+        for _ in 0..<50 where !ran {
+            usleep(200_000)
+            ran = FileManager.default.fileExists(atPath: marker.path)
+        }
+        XCTAssertTrue(ran, "Return on a plugin row must run its command")
+    }
+
+    /// What the user typed in argument mode must reach the command. The plugin
+    /// writes its argument to a file, because a UI test can see a file.
+    func testArgumentModeRunsThePluginWithWhatWasTyped() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let marker = realHome.appending(path: ".config/pium/plugins/\(name).arg")
+        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
+
+        let folder = realHome.appending(path: ".config/pium/plugins")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let script = folder.appending(path: "\(name).sh")
+        try "#!/bin/sh\nprintf '%s' \"$1\" > \(marker.path)\n"
+            .write(to: script, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: script.path
+        )
+        addTeardownBlock { try? FileManager.default.removeItem(at: script) }
+
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "required", "placeholder": "Text" },
+          "command": { "executable": "./\(name).sh", "arguments": ["{{input}}"] } }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+
+        // Space enters argument mode on a plugin that takes input.
+        searchField.typeText(" ")
+        app.typeText("hola mundo")
+        app.typeKey(.return, modifierFlags: [])
+
+        var written: String?
+        for _ in 0..<50 where written == nil {
+            usleep(200_000)
+            written = try? String(contentsOf: marker, encoding: .utf8)
+        }
+        XCTAssertEqual(
+            written, "hola mundo",
+            "The typed argument must reach the command as one argument"
+        )
+    }
+
     @discardableResult
     private func writePluginManifest(named name: String, inputMode: String = "none") throws -> URL {
         let folder = realHome.appending(path: ".config/pium/plugins")

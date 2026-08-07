@@ -18,7 +18,7 @@ struct LauncherView: View {
             if !state.results.isEmpty {
                 Divider()
                 ResultListView(state: state) { result, action in
-                    perform(action, on: result)
+                    perform(action, on: result, input: state.argumentText)
                 }
                 Divider()
                 FooterBarView(primaryAction: state.selectedResult?.primaryAction) {
@@ -38,7 +38,7 @@ struct LauncherView: View {
                     filter: state.actionQuery,
                     highlightedID: state.highlightedActionID,
                     onHighlight: { state.highlightAction(id: $0) },
-                    onPerform: { perform($0, on: selected) }
+                    onPerform: { perform($0, on: selected, input: state.argumentText) }
                 )
                 .padding(.trailing, Tokens.Spacing.normal)
                 .padding(.bottom, Tokens.Size.footerHeight + Tokens.Spacing.tight)
@@ -244,31 +244,39 @@ struct LauncherView: View {
     /// rather than assumed, so a new action needs no change here.
     private func handleReturn(modifiers: ActionShortcut.Modifiers) -> KeyPress.Result {
         if state.isInArgumentMode {
-            // Running the command is Phase 5. Until then Return does nothing
-            // rather than something surprising.
+            guard let target = state.argumentTarget else { return .handled }
+            // A required argument that is empty blocks the run. Saying what is
+            // missing is 5b's job; not running it is this phase's.
+            if target.argument?.isRequired == true, !state.isArgumentSatisfied {
+                return .handled
+            }
+            guard let action = target.actions.first(where: { $0.id == "execute" }) else {
+                return .handled
+            }
+            perform(action, on: target, input: state.argumentText)
             return .handled
         }
         guard let selected = state.selectedResult else { return .handled }
 
         if state.isActionMenuPresented {
             guard let highlighted = state.highlightedAction else { return .handled }
-            perform(highlighted, on: selected)
+            perform(highlighted, on: selected, input: state.argumentText)
             return .handled
         }
         guard let action = state.action(matching: .return, modifiers: modifiers) else {
             return .handled
         }
-        perform(action, on: selected)
+        perform(action, on: selected, input: state.argumentText)
         return .handled
     }
 
     /// Running any action closes the launcher, exactly as `Return` on a result
     /// does, and reports the pair so the panel can record the selection.
-    private func perform(_ action: ResultAction, on result: SearchResult) {
+    private func perform(_ action: ResultAction, on result: SearchResult, input: String) {
         state.dismissActionMenu()
         onDismiss()
         onPerform(result, action)
-        action.perform()
+        action.perform(input)
     }
 }
 

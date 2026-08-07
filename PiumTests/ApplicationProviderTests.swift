@@ -87,7 +87,7 @@ struct ApplicationProviderTests {
         nonisolated(unsafe) var opened: URL?
         let provider = makeProvider(["Safari"]) { opened = $0 }
         let results = await results(provider, "safari")
-        results.first?.primaryAction?.perform()
+        results.first?.primaryAction?.perform("")
         #expect(opened?.path == "/Applications/Safari.app")
     }
 }

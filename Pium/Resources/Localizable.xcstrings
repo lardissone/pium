@@ -1,6 +1,23 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "action.execute": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejecutar"
+          }
+        }
+      }
+    },
     "action.open": {
       "extractionState": "manual",
       "localizations": {

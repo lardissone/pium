@@ -18,8 +18,8 @@ struct SearchResultTests {
     /// The first action is the one `Return` runs; the rest populate the
     /// contextual menu.
     @Test func primaryActionIsTheFirstAction() {
-        let open = ResultAction(id: "open", title: "Open") {}
-        let reveal = ResultAction(id: "reveal", title: "Reveal in Finder") {}
+        let open = ResultAction(id: "open", title: "Open") { _ in }
+        let reveal = ResultAction(id: "reveal", title: "Reveal in Finder") { _ in }
         let result = SearchResult(
             id: "app:/Applications/Safari.app",
             kind: .application,

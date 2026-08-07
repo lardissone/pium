@@ -23,8 +23,8 @@ struct ActionMenuTests {
 
     private func safariActions() -> [ResultAction] {
         [
-            ResultAction(id: "open", title: "Open", shortcut: .returnKey) {},
-            ResultAction(id: "reveal", title: "Reveal in Finder", shortcut: .commandReturn) {},
+            ResultAction(id: "open", title: "Open", shortcut: .returnKey) { _ in },
+            ResultAction(id: "reveal", title: "Reveal in Finder", shortcut: .commandReturn) { _ in },
         ]
     }
 
@@ -41,13 +41,13 @@ struct ActionMenuTests {
     }
 
     @Test func theMenuOpensForASelectedResult() {
-        let state = stateWithResult(actions: [ResultAction(id: "open", title: "Open") {}])
+        let state = stateWithResult(actions: [ResultAction(id: "open", title: "Open") { _ in }])
         state.presentActionMenu()
         #expect(state.isActionMenuPresented)
     }
 
     @Test func dismissingClosesTheMenu() {
-        let state = stateWithResult(actions: [ResultAction(id: "open", title: "Open") {}])
+        let state = stateWithResult(actions: [ResultAction(id: "open", title: "Open") { _ in }])
         state.presentActionMenu()
         state.dismissActionMenu()
         #expect(state.isActionMenuPresented == false)
@@ -55,7 +55,7 @@ struct ActionMenuTests {
 
     /// A new search must not leave a menu hanging over stale results.
     @Test func newResultsCloseTheMenu() {
-        let state = stateWithResult(actions: [ResultAction(id: "open", title: "Open") {}])
+        let state = stateWithResult(actions: [ResultAction(id: "open", title: "Open") { _ in }])
         state.presentActionMenu()
         state.setResults([])
         #expect(state.isActionMenuPresented == false)
@@ -180,7 +180,7 @@ struct ActionMenuTests {
     }
 
     @Test func preparingForPresentationClosesTheMenu() {
-        let state = stateWithResult(actions: [ResultAction(id: "open", title: "Open") {}])
+        let state = stateWithResult(actions: [ResultAction(id: "open", title: "Open") { _ in }])
         state.presentActionMenu()
         state.prepareForPresentation()
         #expect(state.isActionMenuPresented == false)

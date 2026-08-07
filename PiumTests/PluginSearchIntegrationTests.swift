@@ -49,7 +49,9 @@ struct PluginSearchIntegrationTests {
             disabledIDs: []
         )
         let coordinator = SearchCoordinator(
-            providers: [PluginProvider(index: index, status: { resolver }, reveal: { _ in })],
+            providers: [
+                PluginProvider(index: index, status: { resolver }, execute: { _, _ in }, reveal: { _ in }),
+            ],
             frecency: FrecencyStore(fileURL: root.appending(path: "frecency.json"))
         )
 
