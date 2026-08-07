@@ -16,6 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// to it on selection, and Settings erases it.
     private let frecency: FrecencyStore
     private let panelController: LauncherPanelController
+    /// Outlives the launcher panel by design (PRD §11): a HUD it is showing
+    /// must not close just because the panel that started it did.
+    private let hudController: HUDController
     private let onboardingController = OnboardingWindowController()
     private let settingsController = SettingsWindowController()
     private var menuBarController: MenuBarController?
@@ -32,7 +35,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.frecency = frecency
         let configuration = pluginConfiguration
         let secrets = pluginSecrets
-        let executions = ExecutionManager(configuration: configuration, secrets: secrets)
+        let hud = HUDController()
+        hudController = hud
+        let executions = ExecutionManager(
+            configuration: configuration,
+            secrets: secrets,
+            onFinished: { record, mode in
+                guard let presentation = HUDPresentation.forOutcome(record, mode: mode) else {
+                    return
+                }
+                hud.show(presentation)
+            }
+        )
         executionManager = executions
         panelController = LauncherPanelController(
             coordinator: SearchCoordinator(
@@ -50,9 +64,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         },
                         execute: { record, input in
                             if case .failure(let failure) = executions.run(record, input: input) {
-                                // The HUD puts this in front of the user; until
-                                // then the log is where a refusal or a bad
-                                // manifest lands.
+                                // A refusal here means nothing ever ran, so
+                                // there is no `ExecutionRecord` for a HUD to
+                                // show — the log is the only place it lands.
                                 Logger(subsystem: Signposts.subsystem, category: "Execution")
                                     .error("\(failure.message, privacy: .public)")
                             }

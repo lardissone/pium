@@ -490,6 +490,36 @@ final class LauncherSmokeTests: XCTestCase {
         XCTAssertFalse(ran, "An empty required argument must not run the plugin, but it did")
     }
 
+    /// A HUD outlives the launcher that started it.
+    func testAToastHudSurvivesDismissingTheLauncher() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let folder = realHome.appending(path: ".config/pium/plugins")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "none" },
+          "command": { "executable": "echo", "arguments": ["hola desde el plugin"] },
+          "output": { "mode": "toast" } }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+        searchField.typeKey(.return, modifierFlags: [])
+
+        let hud = app.staticTexts["hola desde el plugin"]
+        XCTAssertTrue(hud.waitForExistence(timeout: 10), "A toast plugin must show a HUD")
+        // Running an action already dismissed the launcher; the HUD must remain.
+        XCTAssertTrue(hud.exists, "The HUD must outlive the launcher that started it")
+    }
+
     @discardableResult
     private func writePluginManifest(named name: String, inputMode: String = "none") throws -> URL {
         let folder = realHome.appending(path: ".config/pium/plugins")

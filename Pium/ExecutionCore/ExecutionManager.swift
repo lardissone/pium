@@ -37,17 +37,28 @@ final class ExecutionManager {
     /// The order runs started in, which the dictionary does not keep and
     /// eviction needs.
     private var startOrder: [UUID] = []
+    /// A run's declared output mode, kept only until `finish` reads it — the
+    /// one thing `HUDPresentation.forOutcome` needs that `ExecutionRecord`
+    /// itself does not carry.
+    private var outputModes: [UUID: PluginOutputMode] = [:]
+
+    /// Told once a run reaches a final state, together with the output mode
+    /// its plugin declared. 5b's `AppDelegate` is the only caller; left `nil`
+    /// here so 5a's own tests, which never set it, run unaffected.
+    private let onFinished: ((ExecutionRecord, PluginOutputMode) -> Void)?
 
     init(
         configuration: any PluginConfigurationStoring,
         secrets: any PluginSecretStoring,
-        searchPaths: [String] = ControlledPath.default
+        searchPaths: [String] = ControlledPath.default,
+        onFinished: ((ExecutionRecord, PluginOutputMode) -> Void)? = nil
     ) {
         self.configuration = configuration
         self.resolver = ExecutableResolver(searchPaths: searchPaths)
         self.environment = ChildEnvironment(
             configuration: configuration, secrets: secrets, searchPaths: searchPaths
         )
+        self.onFinished = onFinished
     }
 
     /// The plugin currently holding the single slot, if any.
@@ -97,6 +108,7 @@ final class ExecutionManager {
             wasTruncated: false
         )
         startOrder.append(id)
+        outputModes[id] = manifest.output.mode
         evictOldestRuns()
         let cancellation = ProcessRunner.Cancellation()
         cancellations[id] = cancellation
@@ -176,8 +188,10 @@ final class ExecutionManager {
         records[id] = record
         cancellations[id] = nil
 
-        // 5b turns these into interface. Until then the log is the only place a
-        // failure is visible, which is why 5a is not shippable alone.
+        // The log is not the only place a failure is visible: `onFinished`
+        // hands the same record to whatever puts it in front of the user.
+        // Both still happen — the log outlives any HUD, which times out and
+        // closes.
         switch record.state {
         case .finished(let code) where code != 0:
             // The plugin id is public because it is what makes the line
@@ -200,5 +214,8 @@ final class ExecutionManager {
         default:
             logger.notice("\(record.pluginID, privacy: .public) finished")
         }
+
+        let mode = outputModes.removeValue(forKey: id) ?? .silent
+        onFinished?(record, mode)
     }
 }

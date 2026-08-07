@@ -222,6 +222,23 @@
         }
       }
     },
+    "hud.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        }
+      }
+    },
     "hud.exited %lld": {
       "extractionState": "manual",
       "localizations": {
