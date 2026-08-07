@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let pluginIndex: PluginIndex
     private let pluginConfiguration = PluginConfigurationStore()
     private let pluginSecrets = KeychainSecretStore()
+    private let executionManager: ExecutionManager
     /// Built once and shared: the coordinator reads it to rank, the panel writes
     /// to it on selection, and Settings erases it.
     private let frecency: FrecencyStore
@@ -31,6 +32,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.frecency = frecency
         let configuration = pluginConfiguration
         let secrets = pluginSecrets
+        let executions = ExecutionManager(configuration: configuration, secrets: secrets)
+        executionManager = executions
         panelController = LauncherPanelController(
             coordinator: SearchCoordinator(
                 providers: [
@@ -44,6 +47,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                 secrets: secrets,
                                 disabledIDs: Preferences.shared.disabledPluginIDs
                             )
+                        },
+                        execute: { record, input in
+                            if case .failure(let failure) = executions.run(record, input: input) {
+                                // 5b puts this in front of the user; today the
+                                // log is where a refusal or a bad manifest lands.
+                                Logger(subsystem: Signposts.subsystem, category: "Execution")
+                                    .error("\(failure.logDescription, privacy: .public)")
+                            }
                         }
                     ),
                     ApplicationProvider(index: index),

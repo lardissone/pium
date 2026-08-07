@@ -35,7 +35,8 @@ struct PluginProviderTests {
         _ records: [PluginRecord],
         disabled: Set<String> = [],
         values: [String: String] = [:],
-        secrets: [String: String] = [:]
+        secrets: [String: String] = [:],
+        execute: @escaping @Sendable @MainActor (PluginRecord, String) -> Void = { _, _ in }
     ) -> PluginProvider {
         let index = PluginIndex(
             root: URL(filePath: "/tmp/unused"),
@@ -56,7 +57,7 @@ struct PluginProviderTests {
             secrets: InMemorySecretStore(secrets: secrets),
             disabledIDs: disabled
         )
-        return PluginProvider(index: index, status: { resolver }, reveal: { _ in })
+        return PluginProvider(index: index, status: { resolver }, execute: execute, reveal: { _ in })
     }
 
     private func valid(_ manifest: PluginManifest) -> PluginRecord {
@@ -110,13 +111,39 @@ struct PluginProviderTests {
         #expect(await results(provider, "zzzz").isEmpty)
     }
 
-    /// Execution is Phase 5, so the only thing a plugin row can do is show the
-    /// author their file. A row that looks runnable and is not would be a lie.
-    @Test func apluginResultOnlyOffersReveal() async throws {
+    /// A valid manifest offers execute first and reveal second, matching the
+    /// order the PRD fixes and the shortcuts the footer and menu render from.
+    @Test func avalidPluginResultOffersExecuteThenReveal() async throws {
         let provider = provider([valid(manifest(id: "web.yt", name: "YouTube"))])
         let result = try #require(await results(provider, "yout").first)
-        #expect(result.actions.map(\.id) == ["reveal"])
+        #expect(result.actions.map(\.id) == ["execute", "reveal"])
+    }
+
+    /// 4a made revealing primary because executing did not exist and a row
+    /// whose Return does nothing teaches that Return does nothing. It exists
+    /// now, and PRD §7.4 has described this arrangement all along.
+    @Test func executingIsThePrimaryActionAndRevealingIsSecond() async throws {
+        let executed = Executions()
+        let provider = provider([valid(manifest(id: "web.yt", name: "YouTube"))]) { record, _ in
+            executed.record(record.id)
+        }
+
+        let result = try #require(await results(provider, "youtube").first)
+        #expect(result.actions.first?.id == "execute")
         #expect(result.actions.first?.shortcut == .returnKey)
+        #expect(result.actions.dropFirst().first?.id == "reveal")
+        #expect(result.actions.dropFirst().first?.shortcut == .commandReturn)
+
+        result.actions.first?.perform("")
+        #expect(executed.ids == ["web.yt"])
+    }
+
+    /// A reference type, because `perform` is `@Sendable` and cannot capture a
+    /// local `var`.
+    @MainActor
+    private final class Executions {
+        private(set) var ids: [String] = []
+        func record(_ id: String) { ids.append(id) }
     }
 
     @Test func apluginThatTakesInputCarriesAnArgumentRequest() async throws {

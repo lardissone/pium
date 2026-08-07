@@ -14,12 +14,13 @@ enum PluginTemplateFilter: String, Sendable, Equatable, CaseIterable {
     case urlEncode = "url_encode"
 }
 
-/// Parses `{{input}}` and `{{input|url_encode}}` into tokens.
+/// Parses `{{input}}` and `{{input|url_encode}}` into tokens, and resolves
+/// them into arguments.
 ///
 /// Tokens rather than string replacement: an argument is built by concatenating
 /// resolved tokens into one `argv` element, so nothing the user types can ever
-/// become a separate argument or reach a shell. Phase 5 resolves them; this
-/// phase only proves a template is well formed, which validation needs.
+/// become a separate argument or reach a shell. Validation proves a template is
+/// well formed; execution resolves the tokens.
 enum PluginTemplate {
     private static let opening = "{{"
     private static let closing = "}}"
@@ -101,6 +102,48 @@ enum PluginTemplate {
         }
 
         return .success(name == variableName ? .input(filter) : .configuration(name, filter))
+    }
+
+    /// Concatenates resolved tokens into exactly one `argv` element.
+    ///
+    /// One element, always: an argument is a single string no matter what the
+    /// user typed, so nothing can split itself into a second argument and
+    /// nothing reaches a shell. A configuration key with no stored value
+    /// resolves to nothing, never to the template text — a command receiving
+    /// the literal `{{baseURL}}` is worse than one receiving an empty string.
+    ///
+    /// Secrets never appear here: `ManifestValidator` rejects a manifest that
+    /// interpolates one, so a `.configuration` token naming a secret cannot
+    /// reach this function.
+    static func resolve(
+        _ tokens: [PluginTemplateToken],
+        input: String,
+        configuration: [String: String]
+    ) -> String {
+        tokens.map { token in
+            switch token {
+            case .literal(let text):
+                text
+            case .input(let filter):
+                apply(filter, to: input)
+            case .configuration(let key, let filter):
+                apply(filter, to: configuration[key] ?? "")
+            }
+        }
+        .joined()
+    }
+
+    private static func apply(_ filter: PluginTemplateFilter, to value: String) -> String {
+        switch filter {
+        case .raw:
+            value
+        case .urlEncode:
+            // The query-allowed set still permits `&` and `+`, which change the
+            // meaning of the query they land in.
+            value.addingPercentEncoding(
+                withAllowedCharacters: .alphanumerics.union(.init(charactersIn: "-._~"))
+            ) ?? value
+        }
     }
 }
 

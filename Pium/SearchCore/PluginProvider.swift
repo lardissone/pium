@@ -13,17 +13,20 @@ final class PluginProvider: ResultProvider {
 
     private let index: PluginIndex
     private let status: @MainActor () -> PluginStatusResolver
+    private let execute: @Sendable @MainActor (PluginRecord, String) -> Void
     private let reveal: @Sendable @MainActor (URL) -> Void
 
     init(
         index: PluginIndex,
         status: @escaping @MainActor () -> PluginStatusResolver,
+        execute: @escaping @Sendable @MainActor (PluginRecord, String) -> Void,
         reveal: @escaping @Sendable @MainActor (URL) -> Void = { url in
             NSWorkspace.shared.activateFileViewerSelecting([url])
         }
     ) {
         self.index = index
         self.status = status
+        self.execute = execute
         self.reveal = reveal
     }
 
@@ -67,15 +70,15 @@ final class PluginProvider: ResultProvider {
 
     private func result(for record: PluginRecord, score: Double, state: PluginState) -> SearchResult {
         let url = record.fileURL
-        let revealAction = ResultAction(
-            id: "reveal",
-            title: String(localized: "action.revealJSON"),
-            // The primary action, because executing is Phase 5 and a row whose
-            // Return does nothing teaches the user that Return does nothing.
-            shortcut: .returnKey
-        ) { [reveal] in reveal(url) }
 
         guard let manifest = record.manifest else {
+            // A file that does not decode has nothing to run, so revealing it
+            // is the whole point of the row, and it stays on Return.
+            let revealAction = ResultAction(
+                id: "reveal",
+                title: String(localized: "action.revealJSON"),
+                shortcut: .returnKey
+            ) { [reveal] _ in reveal(url) }
             return SearchResult(
                 id: record.id,
                 kind: .plugin,
@@ -97,6 +100,18 @@ final class PluginProvider: ResultProvider {
             subtitle = manifest.description
         }
 
+        let executeAction = ResultAction(
+            id: "execute",
+            title: String(localized: "action.execute"),
+            shortcut: .returnKey
+        ) { [execute] input in execute(record, input) }
+
+        let revealAction = ResultAction(
+            id: "reveal",
+            title: String(localized: "action.revealJSON"),
+            shortcut: .commandReturn
+        ) { [reveal] _ in reveal(url) }
+
         return SearchResult(
             id: manifest.id,
             kind: .plugin,
@@ -105,7 +120,7 @@ final class PluginProvider: ResultProvider {
             iconSource: .systemSymbol(symbol(for: manifest)),
             searchableTerms: terms(of: record),
             textScore: score,
-            actions: [revealAction],
+            actions: [executeAction, revealAction],
             argument: manifest.input.mode.acceptsArgument
                 ? ArgumentRequest(
                     placeholder: manifest.input.placeholder,

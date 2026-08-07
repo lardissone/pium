@@ -69,12 +69,12 @@ final class ApplicationProvider: ResultProvider {
                     id: "open",
                     title: String(localized: "action.open"),
                     shortcut: .returnKey
-                ) { [open] in open(url) },
+                ) { [open] _ in open(url) },
                 ResultAction(
                     id: "reveal",
                     title: String(localized: "action.revealInFinder"),
                     shortcut: .commandReturn
-                ) { [reveal] in reveal(url) },
+                ) { [reveal] _ in reveal(url) },
             ]
         )
     }

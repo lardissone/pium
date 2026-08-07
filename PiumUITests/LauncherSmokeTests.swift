@@ -287,6 +287,15 @@ final class LauncherSmokeTests: XCTestCase {
         return URL(filePath: String(cString: entry.pointee.pw_dir))
     }
 
+    /// Escapes a string for embedding in a JSON string literal assembled by
+    /// hand, as the fixtures below do. A real home path is not guaranteed to
+    /// be free of quotes or backslashes, and one that has either would
+    /// otherwise write a manifest that fails to parse.
+    private func jsonEscaped(_ text: String) -> String {
+        text.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+    }
+
     /// Writes a manifest into the user's real plugins folder and removes it
     /// afterwards.
     ///
@@ -332,6 +341,153 @@ final class LauncherSmokeTests: XCTestCase {
             searchField.value as? String, "\(name)z",
             "Typing must reach the search field again after leaving argument mode"
         )
+    }
+
+    /// Return runs the command. The plugin writes a file, because a UI test
+    /// cannot see a process but can see what it left behind.
+    func testReturnRunsThePlugin() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let marker = realHome.appending(path: ".config/pium/plugins/\(name).ran")
+        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
+
+        let folder = realHome.appending(path: ".config/pium/plugins")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "none" },
+          "command": { "executable": "touch", "arguments": ["\(jsonEscaped(marker.path))"] } }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+        searchField.typeKey(.return, modifierFlags: [])
+
+        var ran = false
+        for _ in 0..<50 where !ran {
+            usleep(200_000)
+            ran = FileManager.default.fileExists(atPath: marker.path)
+        }
+        XCTAssertTrue(ran, "Return on a plugin row must run its command")
+    }
+
+    /// What the user typed in argument mode must reach the command as exactly
+    /// one `argv` element. The plugin creates a directory named after it,
+    /// because a UI test cannot see a process but can see the filesystem — and
+    /// a directory whose name holds a space can only come from a command that
+    /// received that name whole.
+    ///
+    /// `mkdir` from the controlled search path rather than a script of the
+    /// plugin's own: files this runner creates carry `com.apple.quarantine`
+    /// because it is sandboxed, and the kernel refuses to execute a quarantined
+    /// script with `EPERM`. That refusal is about who wrote the fixture, not
+    /// about the launcher, so a fixture that cannot hit it says more.
+    ///
+    /// The command runs in the scratch folder, so an argument that ever does
+    /// split leaves its second half there — cleaned up with everything else —
+    /// rather than in the user's own plugins folder.
+    func testArgumentModeRunsThePluginWithWhatWasTyped() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let scratch = realHome.appending(path: "pium-uitest-scratch-\(name)")
+        try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: scratch) }
+
+        let folder = realHome.appending(path: ".config/pium/plugins")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "required", "placeholder": "Text" },
+          "command": { "executable": "mkdir",
+                       "arguments": ["-p", "\(jsonEscaped(scratch.path))/{{input}}"],
+                       "workingDirectory": "\(jsonEscaped(scratch.path))" } }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+
+        // Space enters argument mode on a plugin that takes input.
+        searchField.typeText(" ")
+        app.typeText("hola mundo")
+        app.typeKey(.return, modifierFlags: [])
+
+        let typed = scratch.appending(path: "hola mundo")
+        var created = false
+        for _ in 0..<50 where !created {
+            usleep(200_000)
+            created = FileManager.default.fileExists(atPath: typed.path)
+        }
+        XCTAssertTrue(
+            created,
+            "The typed argument must reach the command as one argument"
+        )
+        // Two arguments would have made `hola` here and `mundo` beside it, so
+        // the absence of the first is what tells one element from two.
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: scratch.appending(path: "hola").path),
+            "The typed argument must not be split on its space"
+        )
+    }
+
+    /// PRD §10.3: a required argument that is empty must not execute. The
+    /// plugin would leave a marker file if it ran, so the test can tell "did
+    /// not run" from "ran, but the marker has not landed yet."
+    func testEmptyRequiredArgumentDoesNotRunThePlugin() throws {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))".lowercased()
+        let marker = realHome.appending(path: ".config/pium/plugins/\(name).ran")
+        addTeardownBlock { try? FileManager.default.removeItem(at: marker) }
+
+        let folder = realHome.appending(path: ".config/pium/plugins")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).pium.json")
+        try """
+        { "schemaVersion": 1, "id": "uitest.\(name)", "name": "\(name)",
+          "input": { "mode": "required", "placeholder": "Text" },
+          "command": { "executable": "touch", "arguments": ["\(jsonEscaped(marker.path))"] } }
+        """.write(to: url, atomically: true, encoding: .utf8)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+
+        app.terminate()
+        app.launch()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+        XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
+
+        // Space enters argument mode; Return follows with nothing typed.
+        searchField.typeText(" ")
+        let pill = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", name)
+        ).firstMatch
+        XCTAssertTrue(pill.waitForExistence(timeout: 10), "A pill must name the plugin")
+        app.typeKey(.return, modifierFlags: [])
+
+        // A short, bounded wait rather than the 10 seconds the other plugin
+        // tests use: this test expects nothing to happen, so it should fail
+        // fast rather than sit out a timeout that was sized for the opposite
+        // case.
+        var ran = false
+        for _ in 0..<10 where !ran {
+            usleep(200_000)
+            ran = FileManager.default.fileExists(atPath: marker.path)
+        }
+        XCTAssertFalse(ran, "An empty required argument must not run the plugin, but it did")
     }
 
     @discardableResult

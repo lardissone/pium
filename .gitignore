@@ -13,3 +13,7 @@ Pium.xcodeproj/
 
 # Per-machine signing team. See Signing.xcconfig.
 Local.xcconfig
+
+# Scratch for the subagent-driven-development skill: ledgers, briefs, and
+# review packages. Working notes, not code.
+.superpowers/

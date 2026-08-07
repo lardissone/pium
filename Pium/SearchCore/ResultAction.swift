@@ -12,13 +12,15 @@ struct ResultAction: Identifiable, Sendable {
     /// directly from the result list. `nil` for actions reachable only from the
     /// menu.
     let shortcut: ActionShortcut?
-    let perform: @Sendable @MainActor () -> Void
+    /// The text typed in argument mode, empty when the launcher is not in it.
+    /// Most actions have no use for it; a plugin's execute action does.
+    let perform: @Sendable @MainActor (String) -> Void
 
     init(
         id: String,
         title: String,
         shortcut: ActionShortcut? = nil,
-        perform: @escaping @Sendable @MainActor () -> Void
+        perform: @escaping @Sendable @MainActor (String) -> Void
     ) {
         self.id = id
         self.title = title
