@@ -2,8 +2,8 @@ import AppKit
 
 /// Pium's menubar item and its menu.
 ///
-/// The PRD's cancel and update entries ship with the features that make them
-/// meaningful, in Phases 5 and 7.
+/// The PRD's update entry ships with the feature that makes it meaningful, in
+/// Phase 7.
 @MainActor
 final class MenuBarController: NSObject {
     private let statusItem: NSStatusItem
@@ -11,22 +11,53 @@ final class MenuBarController: NSObject {
     private let onOpenSettings: () -> Void
     private let onOpenPluginsFolder: () -> Void
     private let onReloadPlugins: () -> Void
+    private let onCancel: () -> Void
+    /// The plugin holding the run slot, by name, or `nil` while nothing runs.
+    private var activePlugin: String?
+
+    /// Exposed for tests: the menu's shape — its items, their identifiers and
+    /// titles — is testable. Its pixels are not.
+    var menu: NSMenu { statusItem.menu ?? NSMenu() }
 
     init(
         onOpenLauncher: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void,
         onOpenPluginsFolder: @escaping () -> Void,
-        onReloadPlugins: @escaping () -> Void
+        onReloadPlugins: @escaping () -> Void,
+        onCancel: @escaping () -> Void
     ) {
         self.onOpenLauncher = onOpenLauncher
         self.onOpenSettings = onOpenSettings
         self.onOpenPluginsFolder = onOpenPluginsFolder
         self.onReloadPlugins = onReloadPlugins
+        self.onCancel = onCancel
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
+        setActive(nil)
+    }
+
+    deinit {
+        // `deinit` is not statically main-actor-isolated, but every instance
+        // is created, held, and released on the main actor — by `AppDelegate`
+        // for the app's whole lifetime, and by a test function for the length
+        // of one test — so it is always actually safe to touch `statusItem`
+        // here. Without this, each test that builds a controller leaves a
+        // real status item behind in the menu bar.
+        MainActor.assumeIsolated {
+            NSStatusBar.system.removeStatusItem(statusItem)
+        }
+    }
+
+    /// A run in progress, by name, or `nil`. Changing it rebuilds the menu:
+    /// the Cancel entry exists only while there is something to cancel, so it
+    /// can name what it would stop. The status item's symbol changes too —
+    /// PRD §11's "subtle activity" — without animating, which would cost idle
+    /// CPU for as long as the run does.
+    func setActive(_ plugin: String?) {
+        activePlugin = plugin
         statusItem.button?.image = NSImage(
-            systemSymbolName: "sparkle",
+            systemSymbolName: plugin == nil ? "sparkle" : "sparkle.magnifyingglass",
             accessibilityDescription: String(localized: "menubar.accessibilityLabel")
         )
         statusItem.menu = buildMenu()
@@ -38,6 +69,14 @@ final class MenuBarController: NSObject {
             title: String(localized: "menubar.openPium"),
             action: #selector(openLauncher)
         ))
+        if let activePlugin {
+            let cancelItem = menuItem(
+                title: String(localized: "menubar.cancel \(activePlugin)"),
+                action: #selector(cancelRun)
+            )
+            cancelItem.identifier = NSUserInterfaceItemIdentifier("cancel")
+            menu.addItem(cancelItem)
+        }
         menu.addItem(menuItem(
             title: String(localized: "menubar.settings"),
             action: #selector(openSettings)
@@ -79,6 +118,10 @@ final class MenuBarController: NSObject {
 
     @objc private func reloadPlugins() {
         onReloadPlugins()
+    }
+
+    @objc private func cancelRun() {
+        onCancel()
     }
 
     @objc private func quit() {

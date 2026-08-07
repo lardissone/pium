@@ -22,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let onboardingController = OnboardingWindowController()
     private let settingsController = SettingsWindowController()
     private var menuBarController: MenuBarController?
+    /// See `ActivePluginRelay`.
+    private let activityRelay: ActivePluginRelay
 
     /// The panel is built here rather than lazily so the first press of the
     /// shortcut does not pay for constructing its `NSHostingView`, which would
@@ -37,10 +39,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let secrets = pluginSecrets
         let hud = HUDController()
         hudController = hud
+        // The menubar controller does not exist yet — it is built in
+        // `applicationDidFinishLaunching`, once `self` is available to its own
+        // closures — so a run's start and end, known here, reach it through
+        // this relay instead of a direct reference.
+        let activity = ActivePluginRelay()
+        activityRelay = activity
         let executions = ExecutionManager(
             configuration: configuration,
             secrets: secrets,
             onFinished: { record, mode in
+                activity.notify(nil)
                 guard let presentation = HUDPresentation.forOutcome(record, mode: mode) else {
                     return
                 }
@@ -63,7 +72,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             )
                         },
                         execute: { record, input in
-                            if case .failure(let failure) = executions.run(record, input: input) {
+                            switch executions.run(record, input: input) {
+                            case .success:
+                                activity.notify(record.manifest?.name)
+                            case .failure(let failure):
                                 // A refusal here means nothing ever ran, so
                                 // there is no `ExecutionRecord` for a HUD to
                                 // show — the log is the only place it lands.
@@ -89,8 +101,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onOpenPluginsFolder: {
                 NSWorkspace.shared.activateFileViewerSelecting([PluginLoader.defaultRoot])
             },
-            onReloadPlugins: { [weak self] in self?.pluginIndex.refresh() }
+            onReloadPlugins: { [weak self] in self?.pluginIndex.refresh() },
+            onCancel: { [weak self] in
+                guard let self, let active = executionManager.activeRecord else { return }
+                executionManager.cancel(active.id)
+            }
         )
+        activityRelay.handler = { [weak self] plugin in self?.menuBarController?.setActive(plugin) }
 
         // Done here rather than in `PiumApp`: the menu exists only once the app
         // has finished launching, and it is `AppDelegate` that owns the window
@@ -155,5 +172,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             configuration: pluginConfiguration,
             secrets: pluginSecrets
         )
+    }
+}
+
+/// Carries a run's start (`notify(name)`) and end (`notify(nil)`) out of the
+/// closures that observe them, formed in `AppDelegate.init` before `self` is
+/// a usable value, to whatever is wired up as `handler` afterward.
+@MainActor
+private final class ActivePluginRelay {
+    var handler: ((String?) -> Void)?
+
+    func notify(_ plugin: String?) {
+        handler?(plugin)
     }
 }

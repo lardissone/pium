@@ -443,6 +443,23 @@
         }
       }
     },
+    "menubar.cancel %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar «%@»"
+          }
+        }
+      }
+    },
     "menubar.openPium": {
       "extractionState": "stale",
       "localizations": {
