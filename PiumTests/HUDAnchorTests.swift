@@ -2,6 +2,10 @@ import Testing
 import Foundation
 @testable import Pium
 
+/// Expected coordinates are `CGFloat`-typed constants. Integer arithmetic
+/// written inline in an `#expect` type-checks as `Int` — the macro passes each
+/// side to a separate generic parameter, so the literals never see the
+/// `CGFloat` they are compared against — and an `Int` never equals a `CGFloat`.
 @Suite("HUD anchor")
 @MainActor
 struct HUDAnchorTests {
@@ -12,8 +16,10 @@ struct HUDAnchorTests {
         let origin = HUDAnchor.topRight.origin(
             forPanelOfSize: panel, atIndex: 0, in: screen, spacing: 10
         )
-        #expect(origin.x == 1000 - 300 - 20)
-        #expect(origin.y == 800 - 100 - 20)
+        let expectedX: CGFloat = 1000 - 300 - 20
+        let expectedY: CGFloat = 800 - 100 - 20
+        #expect(origin.x == expectedX)
+        #expect(origin.y == expectedY)
     }
 
     /// The second panel goes below the first at a top anchor, and above it at a
@@ -40,7 +46,8 @@ struct HUDAnchorTests {
         let origin = HUDAnchor.topCenter.origin(
             forPanelOfSize: panel, atIndex: 0, in: screen, spacing: 10
         )
-        #expect(origin.x == (1000 - 300) / 2)
+        let expectedX: CGFloat = (1000 - 300) / 2
+        #expect(origin.x == expectedX)
     }
 
     /// A screen whose frame does not start at zero — a second display — must
