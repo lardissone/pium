@@ -128,6 +128,14 @@ final class LauncherState {
     }
 
     func exitArgumentMode() {
+        // A confirmation showing here is asking about the argument text this
+        // is about to erase — answering it after would run whatever is left,
+        // which is not what was asked. The same principle `query`'s `didSet`
+        // above already applies when a pending confirmation's premise goes
+        // stale, for the one other way that can happen.
+        if let confirmingResult, confirmingResult.id == argumentTarget?.id {
+            cancelConfirmation()
+        }
         argumentTarget = nil
         argumentText = ""
     }

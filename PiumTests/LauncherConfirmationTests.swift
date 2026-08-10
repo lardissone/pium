@@ -146,6 +146,24 @@ struct LauncherConfirmationTests {
         #expect(state.argumentText == "v2")
     }
 
+    /// The seventh path: clicking the plugin pill calls `exitArgumentMode`
+    /// directly, which is reachable with a pending confirmation on screen
+    /// and clears `argumentText` without going through `Return`'s
+    /// `isArgumentSatisfied` gate at all. Left standing, Confirm would then
+    /// run with the empty text this leaves behind. Exiting must retract the
+    /// confirmation along with the argument it was about.
+    @Test func exitingArgumentModeCancelsAConfirmationThatNamesIt() throws {
+        let state = argumentModeState(confirmation: "This deploys to production.")
+        state.setArgumentText("v2")
+        let target = try #require(state.argumentTarget)
+        #expect(state.attemptToRun(runAction(of: target), on: target) == false)
+        #expect(state.confirmingResult != nil)
+
+        state.exitArgumentMode()
+
+        #expect(state.confirmingResult == nil)
+    }
+
     // MARK: - attemptToRun: the gate every path that can start a run shares
 
     /// A confirmation showing for one result must not be spent answering a run
