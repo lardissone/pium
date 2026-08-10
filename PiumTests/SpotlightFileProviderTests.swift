@@ -116,7 +116,19 @@ struct SpotlightFileProviderTests {
 
     /// The stubs above prove the mapping; this proves the whole provider works
     /// against the real index, which is where the wiring bugs live.
-    @Test func aRealFileIsFoundThroughTheLiveAdapter() async throws {
+    ///
+    /// PIUM-50: skipped on CI. A fresh GitHub Actions macOS VM has no
+    /// Spotlight index at all, and there is no cheap way to build one inside
+    /// a job that tears the VM down when it finishes. This coverage still
+    /// runs, and matters, on a developer's machine, where the index already
+    /// exists.
+    @Test(
+        .disabled(
+            if: isRunningOnCI,
+            "PIUM-50: needs a live Spotlight index, which a fresh CI VM has no way to provide"
+        )
+    )
+    func aRealFileIsFoundThroughTheLiveAdapter() async throws {
         let name = "pium-provider-\(UUID().uuidString.prefix(8))"
         // Deliberately not `~/Documents`: macOS privacy controls hide that
         // folder's contents from Spotlight results unless the app has been
@@ -149,7 +161,19 @@ struct SpotlightFileProviderTests {
     /// Exactly how `AppDelegate` builds it: real debounce, preferences-backed
     /// flags, live adapter. This is the delta between the passing tests above
     /// and the app.
-    @Test func theProviderAsTheAppBuildsItFindsARealFile() async throws {
+    ///
+    /// PIUM-50: skipped on CI. A fresh GitHub Actions macOS VM has no
+    /// Spotlight index at all, and there is no cheap way to build one inside
+    /// a job that tears the VM down when it finishes. This coverage still
+    /// runs, and matters, on a developer's machine, where the index already
+    /// exists.
+    @Test(
+        .disabled(
+            if: isRunningOnCI,
+            "PIUM-50: needs a live Spotlight index, which a fresh CI VM has no way to provide"
+        )
+    )
+    func theProviderAsTheAppBuildsItFindsARealFile() async throws {
         let name = "pium-default-\(UUID().uuidString.prefix(8))"
         // Deliberately not `~/Documents`: macOS privacy controls hide that
         // folder's contents from Spotlight results unless the app has been

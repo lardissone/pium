@@ -27,7 +27,20 @@ struct MetadataSearchingTests {
     /// A unit test over `predicateFormat` cannot: `LIKE` builds a perfectly
     /// valid `NSPredicate` that Spotlight silently matches nothing against.
     /// This writes a uniquely named file and waits for the index to catch up.
-    @Test func aFileInTheHomeFolderIsFoundOnceIndexed() async throws {
+    ///
+    /// PIUM-50: skipped on CI. A fresh GitHub Actions macOS VM has no
+    /// Spotlight index at all — `mdutil -s /` there reports indexing as
+    /// disabled — and there is no cheap way to build one inside a job that
+    /// tears the VM down when it finishes; it would mean seeding and waiting
+    /// out a real index on every run. This coverage still runs, and matters,
+    /// on a developer's machine, where the index already exists.
+    @Test(
+        .disabled(
+            if: isRunningOnCI,
+            "PIUM-50: needs a live Spotlight index, which a fresh CI VM has no way to provide"
+        )
+    )
+    func aFileInTheHomeFolderIsFoundOnceIndexed() async throws {
         let name = "pium-test-\(UUID().uuidString.prefix(8))"
         // Deliberately not `~/Documents`: macOS privacy controls hide that
         // folder's contents from Spotlight results unless the app has been

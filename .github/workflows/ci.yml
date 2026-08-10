@@ -40,6 +40,19 @@ jobs:
       # and Pium additionally needs a registered global hotkey and a floating
       # panel. Those run locally. Do not re-enable this without confirming the
       # runner actually passes.
+      #
+      # Within PiumTests, four Spotlight-backed tests (PIUM-50) disable
+      # themselves here via `.disabled(if:)` on the `CI` environment variable
+      # GitHub Actions sets — a fresh runner has no Spotlight index and there
+      # is no cheap way to build one for a VM that is torn down after the job.
+      # They still run, and are real coverage, locally. A green run of this
+      # job does not exercise the live Spotlight adapter.
+      #
+      # `CI` reaches the test process only because the scheme's TestAction
+      # declares it as an environment variable (see project.yml's `scheme:`
+      # block, which XcodeGen turns into `$(CI)` there): `xcodebuild test`
+      # does not forward its own shell environment to a macOS test host on
+      # its own, so without that declaration `ProcessInfo` would never see it.
       - name: Build Debug and run tests
         run: |
           xcodebuild test \
