@@ -139,6 +139,64 @@ struct ProcessRunnerTests {
         #expect(outcome.wasTruncated == true)
     }
 
+    /// Parks blocking work on `DispatchQueue.global(qos: .utility)` until a
+    /// fresh item cannot get a worker, and returns the closure that lets it
+    /// all go again.
+    ///
+    /// Saturation is measured rather than assumed: libdispatch grows the pool
+    /// when it notices its workers are blocked, so no fixed number of parked
+    /// items means "full" on every machine — a ten-core developer Mac takes
+    /// several times what a two-core CI runner does. Probing stops as soon as
+    /// the pool stops handing out workers, which keeps this as cheap as the
+    /// machine allows.
+    private func saturateSharedQueue() -> () -> Void {
+        let release = DispatchSemaphore(value: 0)
+        var parked = 0
+        while parked < 1024 {
+            for _ in 0..<32 {
+                DispatchQueue.global(qos: .utility).async { release.wait() }
+            }
+            parked += 32
+            let probe = DispatchSemaphore(value: 0)
+            DispatchQueue.global(qos: .utility).async { probe.signal() }
+            if probe.wait(timeout: .now() + 0.5) == .timedOut { break }
+        }
+        return { for _ in 0..<parked { release.signal() } }
+    }
+
+    /// PIUM-109: what a command printed must reach the caller even when every
+    /// worker on the process-wide dispatch pool is busy.
+    ///
+    /// A run's three blocking waits — reaping the child and draining each of
+    /// its two streams — each occupy a worker for the whole life of the
+    /// command, so a handful of concurrent runs is enough to fill that pool
+    /// with Pium's own work. Anything that then waits on a *fourth* worker
+    /// waits for a slot, not for the child: `awaitDrains` would time its
+    /// one-second window out against a drain that had not been given a thread
+    /// yet and report a clean exit with both streams empty, which is a wrong
+    /// answer rather than a slow one. Phase 5b puts that answer in front of
+    /// the user, so nothing downstream can tell it apart from a command that
+    /// genuinely printed nothing.
+    ///
+    /// Holding the pool for the whole run, rather than for a fixed interval,
+    /// is what makes this a statement about the design instead of about the
+    /// margin: it passes only if a run needs no share of that pool at all.
+    @Test(.timeLimit(.minutes(1)))
+    func abusyMachineStillReportsWhatTheCommandPrinted() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = try script("echo out; echo err >&2", in: directory)
+
+        let releaseSharedQueue = saturateSharedQueue()
+        defer { releaseSharedQueue() }
+
+        let outcome = await ProcessRunner().run(request(url.path, in: directory), cancellation: .init())
+
+        #expect(outcome.ending == .exited(0))
+        #expect(outcome.standardOutput == "out\n")
+        #expect(outcome.standardError == "err\n")
+    }
+
     @Test func atimeoutEndsTheRunAsTimedOut() async throws {
         let outcome = await ProcessRunner().run(
             request("/bin/sleep", ["30"], timeoutSeconds: 1), cancellation: .init()

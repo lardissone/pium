@@ -126,13 +126,12 @@ struct ProcessRunner {
     private static let drainGraceSeconds: Double = 1
 
     /// How long a drain nobody is waiting on any more may keep reading
-    /// before it gives up and lets go of its half of the pipe. `drain` runs
-    /// on `DispatchQueue.global`, the same pool `reap` uses, so a grandchild
+    /// before it gives up and lets go of its half of the pipe. A grandchild
     /// that keeps writing for its entire remaining lifetime — potentially
-    /// never finishing — would otherwise strand a worker thread and a file
+    /// never finishing — would otherwise strand a thread and a file
     /// descriptor per abandoned stream indefinitely; enough concurrent runs
-    /// like that exhaust the descriptor table and stall reaping for runs
-    /// that have nothing to do with the grandchild.
+    /// like that exhaust the descriptor table, and every run in the process
+    /// fails to spawn over a grandchild none of them started.
     ///
     /// Long, because letting go closes the read end, and that `SIGPIPE`s
     /// whatever is still writing — a process the user started and Pium was
@@ -217,30 +216,50 @@ struct ProcessRunner {
     }
 
     /// Resumes its single waiter the moment it is first opened; further
-    /// calls are no-ops. `awaitDrains` uses this to race the drains against
-    /// a timer without the structured wait a task group would impose — the
-    /// loser here is allowed to never finish.
+    /// calls are no-ops. A drain reports that it has stopped reading through
+    /// one of these, and `awaitDrains` races both of those against a timer
+    /// through a third — without the structured wait a task group would
+    /// impose, since the loser of that race is allowed to never finish.
     ///
-    /// `isOpen` latches the state: both racers in `awaitDrains` are
-    /// unstructured tasks, so `open()` can reach this actor before `wait()`
-    /// has registered a continuation — the common case is exactly that race,
-    /// since both drains are often already at EOF by the time `awaitDrains`
-    /// starts. Without the latch, that `open()` would resume nothing, and
-    /// `wait()` would then park on a continuation nobody is ever going to
-    /// open again.
-    private actor OneShotGate {
+    /// `isOpen` latches the state, because `open()` can arrive before
+    /// `wait()` has registered a continuation — the common case is exactly
+    /// that race, since both drains are often already at EOF by the time
+    /// `awaitDrains` starts. Without the latch, that `open()` would resume
+    /// nothing, and `wait()` would then park on a continuation nobody is
+    /// ever going to open again.
+    ///
+    /// A lock rather than an actor so that `open()` is an ordinary call: a
+    /// drain runs on a thread of its own, outside Swift concurrency
+    /// altogether, and reaching an actor from there would mean a `Task` —
+    /// putting the signal back at the mercy of a pool's spare capacity,
+    /// which is the whole thing this design keeps it away from.
+    private final class OneShotGate: @unchecked Sendable {
+        private let lock = NSLock()
         private var continuation: CheckedContinuation<Void, Never>?
         private var isOpen = false
 
         func wait() async {
-            guard !isOpen else { return }
-            await withCheckedContinuation { continuation = $0 }
+            await withCheckedContinuation { continuation in
+                lock.lock()
+                guard !isOpen else {
+                    lock.unlock()
+                    continuation.resume()
+                    return
+                }
+                self.continuation = continuation
+                lock.unlock()
+            }
         }
 
+        /// Resumes outside the lock: a resumption can run its waiter right
+        /// here on this thread, and that waiter must not find the lock held.
         func open() {
+            lock.lock()
             isOpen = true
-            continuation?.resume()
+            let waiter = continuation
             continuation = nil
+            lock.unlock()
+            waiter?.resume()
         }
     }
 
@@ -282,12 +301,14 @@ struct ProcessRunner {
         let outCaptured = CapturedOutput()
         let errCaptured = CapturedOutput()
         let abandonment = Abandonment()
-        let outTask = Task {
-            await Self.drain(child.standardOutput, into: outCaptured, abandonment: abandonment)
-        }
-        let errTask = Task {
-            await Self.drain(child.standardError, into: errCaptured, abandonment: abandonment)
-        }
+        let outDrained = OneShotGate()
+        let errDrained = OneShotGate()
+        Self.startDrain(
+            child.standardOutput, into: outCaptured, abandonment: abandonment, finished: outDrained
+        )
+        Self.startDrain(
+            child.standardError, into: errCaptured, abandonment: abandonment, finished: errDrained
+        )
 
         // Whether the timeout fired is recorded by the task that fires it, not
         // inferred from which signal killed the process: a command can be
@@ -325,7 +346,7 @@ struct ProcessRunner {
         timeoutEscalation?.cancel()
 
         let (output, error) = await Self.awaitDrains(
-            outTask, errTask, out: outCaptured, err: errCaptured, abandonment: abandonment
+            outDrained, errDrained, out: outCaptured, err: errCaptured, abandonment: abandonment
         )
         return Self.outcome(
             ending: ending,
@@ -368,8 +389,8 @@ struct ProcessRunner {
     /// Waits in `poll` rather than in `read` so the loop comes up for air
     /// every `abandonmentCheckMilliseconds` even when the pipe is silent. That
     /// is what lets a drain nobody is waiting on any more notice its own
-    /// deadline and stop — releasing the worker thread it occupies and, once
-    /// it drops the last reference to `handle`, the read end of the pipe.
+    /// deadline and stop — releasing the thread it occupies and, once it
+    /// drops the last reference to `handle`, the read end of the pipe.
     /// Bounding an abandoned drain from inside the drain is the whole reason
     /// for the `poll`: the alternative is a second party closing this
     /// descriptor from another thread while this loop sits between two reads,
@@ -382,41 +403,67 @@ struct ProcessRunner {
         _ handle: FileHandle,
         into captured: CapturedOutput,
         abandonment: Abandonment
-    ) async {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .utility).async {
-                let fd = handle.fileDescriptor
-                var buffer = [UInt8](repeating: 0, count: outputCap)
-                readLoop: while !abandonment.isPastDeadline {
-                    var watched = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
-                    let ready = poll(&watched, 1, abandonmentCheckMilliseconds)
-                    if ready < 0 {
-                        if errno == EINTR { continue readLoop }
-                        break readLoop
-                    }
-                    // Nothing to read this interval; go round and re-check the
-                    // deadline. A closed write end shows up as readable too,
-                    // and `read` reports it as the EOF it is.
-                    guard ready > 0 else { continue readLoop }
+    ) {
+        let fd = handle.fileDescriptor
+        var buffer = [UInt8](repeating: 0, count: outputCap)
+        readLoop: while !abandonment.isPastDeadline {
+            var watched = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+            let ready = poll(&watched, 1, abandonmentCheckMilliseconds)
+            if ready < 0 {
+                if errno == EINTR { continue readLoop }
+                break readLoop
+            }
+            // Nothing to read this interval; go round and re-check the
+            // deadline. A closed write end shows up as readable too, and
+            // `read` reports it as the EOF it is.
+            guard ready > 0 else { continue readLoop }
 
-                    let bytesRead = buffer.withUnsafeMutableBytes { pointer in
-                        Darwin.read(fd, pointer.baseAddress, pointer.count)
-                    }
-                    switch bytesRead {
-                    case ..<0:
-                        // EINTR is a spurious wakeup, worth retrying; any
-                        // other error ends the loop.
-                        if errno == EINTR { continue readLoop }
-                        break readLoop
-                    case 0:
-                        break readLoop // genuine EOF
-                    default:
-                        captured.append(Data(buffer[0..<bytesRead]))
-                    }
-                }
-                continuation.resume()
+            let bytesRead = buffer.withUnsafeMutableBytes { pointer in
+                Darwin.read(fd, pointer.baseAddress, pointer.count)
+            }
+            switch bytesRead {
+            case ..<0:
+                // EINTR is a spurious wakeup, worth retrying; any other error
+                // ends the loop.
+                if errno == EINTR { continue readLoop }
+                break readLoop
+            case 0:
+                break readLoop // genuine EOF
+            default:
+                captured.append(Data(buffer[0..<bytesRead]))
             }
         }
+    }
+
+    /// Puts one stream's drain on a thread of its own and returns at once,
+    /// opening `finished` when that drain stops reading.
+    ///
+    /// A thread rather than a share of `DispatchQueue.global`, and started
+    /// here rather than from inside a `Task`, because either of those would
+    /// leave *when* this begins up to a pool of bounded width. Both pools are
+    /// routinely full of Pium's own work: a run occupies a worker per stream
+    /// for as long as the pipe stays open and another for the whole life of
+    /// the command, so a few concurrent runs fill them, and libdispatch does
+    /// not grow its pool for workers that are merely blocked. A drain that is
+    /// waiting for a slot is not reading, and everything downstream — the
+    /// grace in `awaitDrains`, the cap in `CapturedOutput` — is written as if
+    /// it were, so the run would report a command's output as empty and
+    /// nothing would mark the answer as incomplete (PIUM-109).
+    ///
+    /// A thread costs more than a queue slot. Three per run is the price of
+    /// an answer that does not depend on what else the machine is doing.
+    private static func startDrain(
+        _ handle: FileHandle,
+        into captured: CapturedOutput,
+        abandonment: Abandonment,
+        finished: OneShotGate
+    ) {
+        let thread = Thread {
+            drain(handle, into: captured, abandonment: abandonment)
+            finished.open()
+        }
+        thread.name = "com.pium.drain"
+        thread.start()
     }
 
     /// Waits for both drains, but not past `drainGraceSeconds` once the
@@ -435,33 +482,45 @@ struct ProcessRunner {
     /// That deadline starts here, whichever way the race went — a drain that
     /// has already finished is not listening, and one that has not is exactly
     /// what the deadline is for.
+    ///
+    /// The grace is only ever spent on a drain that is reading and not
+    /// reaching EOF, never on one still waiting for somewhere to run: by the
+    /// time this is called each drain has had its own thread since before the
+    /// command was reaped. See `startDrain`.
     private static func awaitDrains(
-        _ outTask: Task<Void, Never>,
-        _ errTask: Task<Void, Never>,
+        _ outDrained: OneShotGate,
+        _ errDrained: OneShotGate,
         out: CapturedOutput,
         err: CapturedOutput,
         abandonment: Abandonment
     ) async -> ((String, Bool), (String, Bool)) {
         let gate = OneShotGate()
         Task {
-            _ = await outTask.value
-            _ = await errTask.value
-            await gate.open()
+            await outDrained.wait()
+            await errDrained.wait()
+            gate.open()
         }
         Task {
             try? await Task.sleep(for: .seconds(drainGraceSeconds))
-            await gate.open()
+            gate.open()
         }
         await gate.wait()
         abandonment.begin()
         return (out.snapshot, err.snapshot)
     }
 
+    /// Waits for the child on a thread of its own, for the same reason the
+    /// drains get one: `waitForExit` blocks for however long the command
+    /// runs, which is not a wait a pool of bounded width can absorb. Sharing
+    /// one is what fills it, and a reap that cannot start is a run that never
+    /// returns.
     private static func reap(_ child: ChildProcess) async -> ChildProcess.Ending {
         await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .utility).async {
+            let thread = Thread {
                 continuation.resume(returning: child.waitForExit())
             }
+            thread.name = "com.pium.reap"
+            thread.start()
         }
     }
 }
