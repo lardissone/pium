@@ -28,6 +28,7 @@ enum Tokens {
         static let actionMenuWidth: CGFloat = 260
         /// Cap for the expanded result list, applied from Phase 2 onward.
         static let maxResultListHeight: CGFloat = 420
+        static let hudWidth: CGFloat = 360
     }
 
     enum TypeScale {

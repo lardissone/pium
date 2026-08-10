@@ -26,6 +26,16 @@ struct ExecutableResolverTests {
         return url
     }
 
+    private func quarantine(_ url: URL) throws {
+        try url.path.withCString { path in
+            try "0081;00000000;Safari;".withCString { value in
+                guard setxattr(path, "com.apple.quarantine", value, strlen(value), 0, 0) == 0 else {
+                    throw ExecutionFailure.spawnFailed(code: errno)
+                }
+            }
+        }
+    }
+
     private var resolver: ExecutableResolver {
         ExecutableResolver(searchPaths: ["/usr/bin", "/bin"])
     }
@@ -93,5 +103,33 @@ struct ExecutableResolverTests {
             return
         }
         #expect(failure == .executableNotExecutable(path: script.path))
+    }
+
+    /// PIUM-89: a file macOS quarantined is executable by its permission bits
+    /// and still refused by the kernel, so `resolve` must catch it before a
+    /// spawn attempt would surface only an unreadable errno.
+    @Test func aquarantinedScriptIsReportedAsQuarantined() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let script = try writeScript(named: "run.sh", in: directory)
+        try quarantine(script)
+
+        guard case .failure(let failure) = resolver.resolve("./run.sh", relativeTo: directory) else {
+            Issue.record("A quarantined script must fail")
+            return
+        }
+        #expect(failure == .quarantined(path: script.path))
+    }
+
+    /// Proves the check discriminates rather than always firing: an ordinary
+    /// script in the same directory, with no quarantine attribute, still
+    /// resolves.
+    @Test func anUnquarantinedScriptStillResolves() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let script = try writeScript(named: "run.sh", in: directory)
+
+        let resolved = try resolver.resolve("./run.sh", relativeTo: directory).get()
+        #expect(resolved.resolvingSymlinksInPath() == script.resolvingSymlinksInPath())
     }
 }

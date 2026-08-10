@@ -69,6 +69,244 @@
         }
       }
     },
+    "execution.failure.alreadyRunning %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is still running"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ todavía se está ejecutando"
+          }
+        }
+      }
+    },
+    "execution.failure.invalidManifest %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ could not be read as a plugin. Its problem is shown in Settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ no se pudo leer como plugin. Su problema se muestra en Ajustes"
+          }
+        }
+      }
+    },
+    "execution.failure.missing %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no file at %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ningún archivo en %@"
+          }
+        }
+      }
+    },
+    "execution.failure.missingConfiguration %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” has no value yet. Fill it in Settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» todavía no tiene valor. Completalo en Ajustes"
+          }
+        }
+      }
+    },
+    "execution.failure.notExecutable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is not executable. Give it permission with chmod +x"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ no es ejecutable. Dale permiso con chmod +x"
+          }
+        }
+      }
+    },
+    "execution.failure.notFound %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not find “%1$@”. Looked in: %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró «%1$@». Se buscó en: %2$@"
+          }
+        }
+      }
+    },
+    "execution.failure.quarantined %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS quarantined %@ because it was downloaded. Clear it with xattr -d com.apple.quarantine"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS puso %@ en cuarentena porque se descargó. Quitala con xattr -d com.apple.quarantine"
+          }
+        }
+      }
+    },
+    "execution.failure.secretUnavailable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Keychain would not give up the secret for “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El Llavero no entregó el secreto de «%@»"
+          }
+        }
+      }
+    },
+    "execution.failure.spawnFailed %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The command could not be started (error %lld)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo iniciar el comando (error %lld)"
+          }
+        }
+      }
+    },
+    "hud.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        }
+      }
+    },
+    "hud.exited %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It ended with error code %lld and said nothing"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminó con el código de error %lld y no dijo nada"
+          }
+        }
+      }
+    },
+    "hud.signalled %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It was stopped by signal %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo detuvo la señal %lld"
+          }
+        }
+      }
+    },
+    "hud.timedOut": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It ran longer than the time the plugin allows"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrió más tiempo del que el plugin permite"
+          }
+        }
+      }
+    },
+    "hud.truncated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "…output was cut short"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "…la salida se cortó"
+          }
+        }
+      }
+    },
     "launcher.actions": {
       "extractionState": "manual",
       "localizations": {
@@ -137,6 +375,57 @@
         }
       }
     },
+    "launcher.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        }
+      }
+    },
+    "launcher.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmar"
+          }
+        }
+      }
+    },
+    "launcher.confirmCancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        }
+      }
+    },
     "launcher.placeholder": {
       "extractionState": "stale",
       "localizations": {
@@ -150,6 +439,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Buscar apps, archivos y comandos"
+          }
+        }
+      }
+    },
+    "launcher.running %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Running %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejecutando %@"
           }
         }
       }
@@ -201,6 +507,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pium"
+          }
+        }
+      }
+    },
+    "menubar.cancel %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel “%@”"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar «%@»"
           }
         }
       }

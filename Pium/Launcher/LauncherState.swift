@@ -9,7 +9,16 @@ import Foundation
 @MainActor
 @Observable
 final class LauncherState {
-    var query = ""
+    /// Setting this always answers "not now" for any confirmation on screen:
+    /// the message is about a specific result, and once the user is typing a
+    /// different search that answer no longer applies — left standing, the
+    /// list would stay collapsed to one stale row while a new search ran
+    /// behind it. Argument mode types into `argumentText` instead, which
+    /// freezes rather than cancels while confirming (see `appendToArgument`),
+    /// so this does not reach it.
+    var query = "" {
+        didSet { cancelConfirmation() }
+    }
     private(set) var results: [SearchResult] = []
 
     /// Selection is a stable result ID rather than an index, because results
@@ -22,6 +31,12 @@ final class LauncherState {
     private(set) var presentationToken = UUID()
 
     private(set) var isActionMenuPresented = false
+
+    /// The result currently asking to confirm before it runs. `nil` outside
+    /// that state. Never persisted across a cancellation: PRD §10.4 asks
+    /// every time, so this is the only place that fact could leak from and it
+    /// is always reset by `cancelConfirmation`.
+    private(set) var confirmingResult: SearchResult?
 
     /// Which action the menu has highlighted. Held as an ID for the same reason
     /// result selection is: the list it indexes into can change underneath.
@@ -53,6 +68,21 @@ final class LauncherState {
         results.first { $0.id == selectedID }
     }
 
+    /// The rows the list actually shows. Collapsed to just the result asking
+    /// for confirmation while one is pending, so its message is read next to
+    /// the one plugin it is about rather than buried among unrelated rows.
+    /// `results` itself is never touched for this, so cancelling — `Esc` —
+    /// restores exactly what was there before with no bookkeeping of its own.
+    ///
+    /// Argument mode is excluded: `results` is already empty there by design
+    /// (PRD §10.3) — the plugin pill is the only thing naming it — and a
+    /// confirmation reached from inside it must not put a row back under a
+    /// pill that already says the same thing.
+    var presentedResults: [SearchResult] {
+        if let confirmingResult, argumentTarget == nil { return [confirmingResult] }
+        return results
+    }
+
     /// Every opening starts with an empty query, no results, and focused input.
     func prepareForPresentation() {
         query = ""
@@ -74,8 +104,10 @@ final class LauncherState {
             // The menu described a result that is gone. Closing it only in this
             // case matters: every keystroke runs a search, so dismissing on any
             // update would let a batch still in flight close a menu the user
-            // just opened.
+            // just opened. A pending confirmation is cleared for the same
+            // reason — it names a result that no longer exists.
             dismissActionMenu()
+            cancelConfirmation()
         }
     }
 
@@ -96,29 +128,44 @@ final class LauncherState {
     }
 
     func exitArgumentMode() {
+        // A confirmation showing here is asking about the argument text this
+        // is about to erase — answering it after would run whatever is left,
+        // which is not what was asked. The same principle `query`'s `didSet`
+        // above already applies when a pending confirmation's premise goes
+        // stale, for the one other way that can happen.
+        if let confirmingResult, confirmingResult.id == argumentTarget?.id {
+            cancelConfirmation()
+        }
         argumentTarget = nil
         argumentText = ""
     }
 
+    /// Guarded by `confirmingResult` as well as argument mode: with a
+    /// confirmation showing, further typing must not change what a `Return`
+    /// would run out from under the message the user is looking at.
     func appendToArgument(_ characters: String) {
-        guard isInArgumentMode else { return }
+        guard isInArgumentMode, confirmingResult == nil else { return }
         argumentText += characters
     }
 
     /// Replaces the argument wholesale, which is what the search field's binding
-    /// does while argument mode is on.
+    /// does while argument mode is on. See `appendToArgument` on why a pending
+    /// confirmation blocks this too.
     func setArgumentText(_ text: String) {
-        guard isInArgumentMode else { return }
+        guard isInArgumentMode, confirmingResult == nil else { return }
         argumentText = text
     }
 
     /// Deletes one character, or leaves argument mode when there is nothing left.
     ///
     /// Returns whether anything was deleted, so the caller can tell the two
-    /// outcomes apart.
+    /// outcomes apart. Blocked while a confirmation is showing, same as the
+    /// other argument mutators — including the exit on an empty backspace,
+    /// which would otherwise abandon argument mode while `confirmingResult`
+    /// still pointed at it.
     @discardableResult
     func deleteLastArgumentCharacter() -> Bool {
-        guard isInArgumentMode else { return false }
+        guard isInArgumentMode, confirmingResult == nil else { return false }
         guard !argumentText.isEmpty else {
             exitArgumentMode()
             return false
@@ -139,6 +186,44 @@ final class LauncherState {
         isActionMenuPresented = false
         highlightedActionID = nil
         actionQuery = ""
+    }
+
+    /// Leaves confirmation without running anything. Nothing here is
+    /// remembered: the very next `Return` on the same result asks again.
+    func cancelConfirmation() {
+        confirmingResult = nil
+    }
+
+    /// Whether `action` on `result` should run right now — the one gate
+    /// every path that can start a run goes through, so `confirmBeforeRun`
+    /// (PRD §10.4) applies the same way to the keyboard, a double click, and
+    /// the action menu, by key or by mouse alike.
+    ///
+    /// Only the `Return`-shortcut action is the run the PRD means: a menu's
+    /// other actions (Reveal JSON, ...) are not gated and always return
+    /// `true` unconfirmed. `result` is taken explicitly rather than inferred
+    /// from selection, so a caller that already knows exactly which result
+    /// an action belongs to — the action menu operates on whichever row it
+    /// was opened for, not necessarily whatever is selected the instant this
+    /// runs — cannot be second-guessed by a candidate this doesn't match.
+    ///
+    /// A confirmation already showing counts as an answer only when it names
+    /// this exact `result`. Showing for a different one, it is replaced by a
+    /// fresh confirmation for this `result` rather than being read as
+    /// permission for it — the same principle `select(id:)` applies when the
+    /// selection itself changes.
+    ///
+    /// Returns whether the caller should perform `action` now.
+    @discardableResult
+    func attemptToRun(_ action: ResultAction, on result: SearchResult) -> Bool {
+        guard action.shortcut == .returnKey, result.confirmation != nil else { return true }
+        if confirmingResult?.id == result.id {
+            cancelConfirmation()
+            return true
+        }
+        dismissActionMenu()
+        confirmingResult = result
+        return false
     }
 
     /// The actions the menu is showing, narrowed by whatever has been typed
@@ -208,8 +293,15 @@ final class LauncherState {
         }
     }
 
+    /// Changing the selection answers nothing: a confirmation pending for
+    /// the row being left off must not be read as permission for the row
+    /// being moved onto, so it is cleared here rather than left to whichever
+    /// caller happens to select next.
     func select(id: String?) {
         guard let id, results.contains(where: { $0.id == id }) else { return }
+        if id != selectedID {
+            cancelConfirmation()
+        }
         selectedID = id
     }
 

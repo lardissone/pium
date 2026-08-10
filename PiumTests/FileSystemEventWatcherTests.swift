@@ -14,8 +14,16 @@ struct FileSystemEventWatcherTests {
         return root
     }
 
-    /// Waits for the watcher to fire, rather than sleeping a fixed time: FSEvents
-    /// latency varies and a fixed sleep is either slow or flaky.
+    /// Polls `condition` rather than sleeping a fixed time: FSEvents latency
+    /// varies and a fixed sleep is either slow or flaky. Shared by every test
+    /// in this suite that waits for the watcher to report something.
+    private func poll(until condition: () -> Bool, timeout: Duration) async {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while !condition(), ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
     private func awaitChange(
         _ watcher: FileSystemEventWatcher,
         root: URL,
@@ -28,10 +36,7 @@ struct FileSystemEventWatcherTests {
 
         try work()
 
-        let deadline = ContinuousClock.now.advanced(by: timeout)
-        while !fired, ContinuousClock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(50))
-        }
+        await poll(until: { fired }, timeout: timeout)
         return fired
     }
 
@@ -87,12 +92,20 @@ struct FileSystemEventWatcherTests {
 
     /// A burst of writes is one reload, or saving a file in an editor that
     /// writes in chunks would reparse the folder several times.
+    ///
+    /// PIUM-105: a fixed sleep before asserting was flaky on a loaded CI
+    /// runner, where FSEvents had not reported yet when the assertion ran.
+    /// This waits for the first report the way every other test in this
+    /// suite does, then gives a trailing FSEvents batch room to land — the
+    /// ten writes can arrive as more than one batch, each restarting the
+    /// debounce timer — before counting.
     @Test func aburstOfChangesIsCoalescedIntoOneReport() async throws {
         let root = try makeRoot()
         defer { try? FileManager.default.removeItem(at: root) }
 
         var count = 0
-        let watcher = FileSystemEventWatcher(debounce: .milliseconds(300))
+        let debounce = Duration.milliseconds(300)
+        let watcher = FileSystemEventWatcher(debounce: debounce)
         watcher.start(root: root) { count += 1 }
         defer { watcher.stop() }
 
@@ -104,8 +117,17 @@ struct FileSystemEventWatcherTests {
             )
         }
 
-        try? await Task.sleep(for: .seconds(3))
-        #expect(count >= 1, "The burst must be reported")
-        #expect(count <= 3, "Ten writes must not become ten reloads, got \(count)")
+        await poll(until: { count >= 1 }, timeout: .seconds(10))
+        let firstReportCount = count
+        let expectedMinimumReports = 1
+        #expect(firstReportCount >= expectedMinimumReports, "The burst must be reported")
+
+        try? await Task.sleep(for: debounce * 3)
+        let settledCount = count
+        let expectedMaximumReports = 3
+        #expect(
+            settledCount <= expectedMaximumReports,
+            "Ten writes must not become ten reloads, got \(settledCount)"
+        )
     }
 }

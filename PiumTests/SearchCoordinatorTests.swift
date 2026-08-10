@@ -147,7 +147,19 @@ struct SearchCoordinatorTests {
 
     /// The stubs above prove the merge; this proves a slow real provider's
     /// batch actually reaches a consumer through the coordinator.
-    @Test func aRealFileProviderBatchReachesTheConsumer() async throws {
+    ///
+    /// PIUM-50: skipped on CI. A fresh GitHub Actions macOS VM has no
+    /// Spotlight index at all, and there is no cheap way to build one inside
+    /// a job that tears the VM down when it finishes. This coverage still
+    /// runs, and matters, on a developer's machine, where the index already
+    /// exists.
+    @Test(
+        .disabled(
+            if: isRunningOnCI,
+            "PIUM-50: needs a live Spotlight index, which a fresh CI VM has no way to provide"
+        )
+    )
+    func aRealFileProviderBatchReachesTheConsumer() async throws {
         let name = "pium-coord-\(UUID().uuidString.prefix(8))"
         // Deliberately not `~/Documents`: macOS privacy controls hide that
         // folder's contents from Spotlight results unless the app has been

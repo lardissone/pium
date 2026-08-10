@@ -57,6 +57,12 @@ struct SearchResult: Identifiable, Sendable {
     /// simply runs.
     let argument: ArgumentRequest?
 
+    /// The message to show before this result's primary action runs, from a
+    /// plugin's `confirmBeforeRun` (PRD §10.4). `nil` for everything that
+    /// simply runs. Asked every time — nothing about a past confirmation is
+    /// carried on this value or anywhere else.
+    let confirmation: String?
+
     init(
         id: String,
         kind: ResultKind,
@@ -66,7 +72,8 @@ struct SearchResult: Identifiable, Sendable {
         searchableTerms: [String],
         textScore: Double,
         actions: [ResultAction],
-        argument: ArgumentRequest? = nil
+        argument: ArgumentRequest? = nil,
+        confirmation: String? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -77,6 +84,7 @@ struct SearchResult: Identifiable, Sendable {
         self.textScore = textScore
         self.actions = actions
         self.argument = argument
+        self.confirmation = confirmation
     }
 
     /// What `Return` runs. By convention the first action.

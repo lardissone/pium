@@ -4,6 +4,9 @@ import SwiftUI
 /// result list and its footer expand the panel downward.
 struct LauncherView: View {
     @Bindable var state: LauncherState
+    /// Read for `activeRecord` alone: while a run is in progress, its footer
+    /// replaces the shortcut one, and Cancel is this manager's own.
+    let executionManager: ExecutionManager
     let onDismiss: () -> Void
     let onQueryChanged: (String) -> Void
     /// Both halves of what happened, because the result is what usage history
@@ -15,11 +18,32 @@ struct LauncherView: View {
     var body: some View {
         VStack(spacing: 0) {
             searchField
-            if !state.results.isEmpty {
+            if !state.presentedResults.isEmpty {
                 Divider()
-                ResultListView(state: state) { result, action in
-                    perform(action, on: result, input: state.argumentText)
+                ResultListView(state: state) { result in
+                    // Selecting first, then running the same path `Return`
+                    // does, is what makes a double click subject to the same
+                    // gates: the row it names becomes the one `Return` would
+                    // act on, confirmation included. `select` itself clears
+                    // any confirmation pending for a *different* row, so one
+                    // cannot be read as an answer about this one.
+                    state.select(id: result.id)
+                    activateSelected()
                 }
+            }
+            if let confirming = state.confirmingResult, let message = confirming.confirmation {
+                Divider()
+                ConfirmationBarView(
+                    message: message,
+                    onConfirm: { confirmSelected() },
+                    onCancel: { state.cancelConfirmation() }
+                )
+            } else if let active = executionManager.activeRecord {
+                Divider()
+                ActiveRunView(pluginName: active.pluginName, startedAt: active.startedAt) {
+                    executionManager.cancel(active.id)
+                }
+            } else if !state.presentedResults.isEmpty {
                 Divider()
                 FooterBarView(primaryAction: state.selectedResult?.primaryAction) {
                     state.presentActionMenu()
@@ -38,7 +62,7 @@ struct LauncherView: View {
                     filter: state.actionQuery,
                     highlightedID: state.highlightedActionID,
                     onHighlight: { state.highlightAction(id: $0) },
-                    onPerform: { perform($0, on: selected, input: state.argumentText) }
+                    onPerform: { attemptToPerform($0, on: selected) }
                 )
                 .padding(.trailing, Tokens.Spacing.normal)
                 .padding(.bottom, Tokens.Size.footerHeight + Tokens.Spacing.tight)
@@ -135,10 +159,13 @@ struct LauncherView: View {
             }
             .onKeyPress(.escape) {
                 // The PRD: with the menu open, the first Esc returns to search
-                // rather than closing the launcher. Argument mode gets the same
-                // courtesy before the launcher closes.
+                // rather than closing the launcher. A pending confirmation and
+                // argument mode get the same courtesy before the launcher
+                // closes.
                 if state.isActionMenuPresented {
                     state.dismissActionMenu()
+                } else if state.confirmingResult != nil {
+                    state.cancelConfirmation()
                 } else if state.isInArgumentMode {
                     state.exitArgumentMode()
                 } else {
@@ -211,6 +238,25 @@ struct LauncherView: View {
     /// untouched.
     private func handleArgumentTyping(_ press: KeyPress) -> KeyPress.Result {
         guard !state.isActionMenuPresented else { return .ignored }
+
+        // A pending confirmation freezes the argument exactly as it was
+        // typed. `.handled`, not `.ignored`: `LauncherState`'s mutators
+        // already no-op while confirming, but rejecting a keystroke only in
+        // the binding is not enough — per the comment on `queryField` above,
+        // the field keeps its own buffer while editing, so an ignored
+        // keystroke would still move it, leaving the user reading text that
+        // is not what the confirmation in front of them is actually about.
+        // `Return` and `Esc` still have to reach their own handlers below:
+        // they are how this confirmation gets answered or cancelled.
+        if state.isInArgumentMode, state.confirmingResult != nil {
+            switch press.key {
+            case .return, .escape:
+                return .ignored
+            default:
+                return .handled
+            }
+        }
+
         guard press.modifiers.isDisjoint(with: [.command, .control, .option]) else {
             return .ignored
         }
@@ -230,11 +276,13 @@ struct LauncherView: View {
         return .handled
     }
 
-    /// The arrows drive whichever list is in front of the user.
+    /// The arrows drive whichever list is in front of the user. A pending
+    /// confirmation pins the selection to the row it is asking about, so the
+    /// arrows do nothing until it is resolved.
     private func move(by offset: Int) {
         if state.isActionMenuPresented {
             state.moveActionHighlight(by: offset)
-        } else {
+        } else if state.confirmingResult == nil {
             state.moveSelection(by: offset)
         }
     }
@@ -242,32 +290,91 @@ struct LauncherView: View {
     /// With the menu open, `Return` runs whatever is highlighted. With it
     /// closed, the combination is looked up among the selected result's actions
     /// rather than assumed, so a new action needs no change here.
-    private func handleReturn(modifiers: ActionShortcut.Modifiers) -> KeyPress.Result {
+    ///
+    /// Not `private`: this is the launcher's decision path, and constructing
+    /// the view directly to call it is how a test exercises that path without
+    /// a window, the same way `PluginsSettingsView.setEnabled` does.
+    func handleReturn(modifiers: ActionShortcut.Modifiers) -> KeyPress.Result {
         if state.isInArgumentMode {
             guard let target = state.argumentTarget else { return .handled }
-            // A required argument that is empty blocks the run. Saying what is
-            // missing is 5b's job; not running it is this phase's.
+            // A required argument that is empty blocks the run — and blocks
+            // even asking, per the PRD: confirming is about whether to run,
+            // not a way around the gate that decides whether it could.
             if target.argument?.isRequired == true, !state.isArgumentSatisfied {
                 return .handled
             }
             guard let action = target.actions.first(where: { $0.id == "execute" }) else {
                 return .handled
             }
-            perform(action, on: target, input: state.argumentText)
+            attemptToPerform(action, on: target)
             return .handled
         }
         guard let selected = state.selectedResult else { return .handled }
 
         if state.isActionMenuPresented {
             guard let highlighted = state.highlightedAction else { return .handled }
-            perform(highlighted, on: selected, input: state.argumentText)
+            attemptToPerform(highlighted, on: selected)
             return .handled
         }
-        guard let action = state.action(matching: .return, modifiers: modifiers) else {
-            return .handled
-        }
-        perform(action, on: selected, input: state.argumentText)
+
+        activateSelected(modifiers: modifiers)
         return .handled
+    }
+
+    /// Resolves the selected result's `Return`-shortcut action — the one
+    /// `Return` runs — then routes it through `attemptToPerform`. Shared by
+    /// the keyboard path above and a double click in the result list.
+    ///
+    /// Not `private`, for the same reason `handleReturn` above is not.
+    @discardableResult
+    func activateSelected(modifiers: ActionShortcut.Modifiers = []) -> Bool {
+        guard let selected = state.selectedResult else { return false }
+        guard let action = state.action(matching: .return, modifiers: modifiers) else {
+            return false
+        }
+        attemptToPerform(action, on: selected)
+        return true
+    }
+
+    /// The chokepoint every path that can start a run goes through: the
+    /// keyboard, a double click, and the action menu, both by key and by
+    /// mouse — deliberately the one place both gates below live, so neither
+    /// can be bypassed by a path that forgot to ask.
+    ///
+    /// Not `private`, for the same reason `handleReturn` above is not.
+    ///
+    /// Resolving which action is meant *before* calling this matters —
+    /// `⌘ Return` on a plugin means Reveal JSON, not the run either gate
+    /// below is about.
+    func attemptToPerform(_ action: ResultAction, on result: SearchResult) {
+        // PRD §10.3: required input missing must not run. Entering argument
+        // mode here is exactly what space already does explicitly; this just
+        // means every path to a run does it too, rather than running with
+        // nothing typed. Already `false` for the argument-mode caller inside
+        // `handleReturn` above, which only reaches this once
+        // `isArgumentSatisfied` is true — so this does not re-enter a mode
+        // that call is already in.
+        if action.shortcut == .returnKey, result.argument?.isRequired == true, !state.isArgumentSatisfied {
+            state.enterArgumentMode()
+            return
+        }
+        // PRD §10.4, and the gate Phase 5b made sure every path shares.
+        guard state.attemptToRun(action, on: result) else { return }
+        perform(action, on: result, input: state.argumentText)
+    }
+
+    /// What the confirmation bar's Confirm button does — the same as
+    /// pressing plain `Return` while its message is showing. Looked up from
+    /// `confirmingResult` itself rather than `state.selectedResult`, because
+    /// a confirmation begun from argument mode has no selected row: `results`
+    /// is empty there by PRD §10.3.
+    private func confirmSelected() {
+        guard let confirming = state.confirmingResult else { return }
+        state.cancelConfirmation()
+        guard let action = confirming.actions.first(where: { $0.shortcut == .returnKey }) else {
+            return
+        }
+        perform(action, on: confirming, input: state.argumentText)
     }
 
     /// Running any action closes the launcher, exactly as `Return` on a result
@@ -285,5 +392,53 @@ private extension Character {
     /// control code arriving as the event's text.
     var isTypable: Bool {
         isLetter || isNumber || isPunctuation || isSymbol || self == " "
+    }
+}
+
+/// Replaces `FooterBarView` while a result's `confirmBeforeRun` message is
+/// showing (PRD §10.4): the manifest's message on the left, `Return` to
+/// confirm and `Esc` to go back on the right, in `FooterBarView`'s own
+/// register of a label next to its shortcut badge.
+private struct ConfirmationBarView: View {
+    let message: String
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: Tokens.Spacing.tight) {
+            Text(message)
+                .font(Tokens.TypeScale.footerLabel)
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            Button(action: onCancel) {
+                HStack(spacing: Tokens.Spacing.tight) {
+                    Text(String(localized: "launcher.confirmCancel"))
+                        .font(Tokens.TypeScale.footerLabel)
+                    ShortcutBadgeView(shortcut: .escape)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "launcher.confirmCancel"))
+
+            Divider()
+                .frame(height: 14)
+                .padding(.horizontal, Tokens.Spacing.tight)
+
+            Button(action: onConfirm) {
+                HStack(spacing: Tokens.Spacing.tight) {
+                    Text(String(localized: "launcher.confirm"))
+                        .font(Tokens.TypeScale.footerLabel)
+                    ShortcutBadgeView(shortcut: .returnKey)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "launcher.confirm"))
+        }
+        .padding(.horizontal, Tokens.Spacing.normal)
+        .frame(height: Tokens.Size.footerHeight)
     }
 }

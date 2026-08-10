@@ -48,6 +48,19 @@ targets:
         # Menubar agent: no Dock icon, no default main window.
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 Leandro Ardissone. MIT licensed."
+    # Explicit rather than XcodeGen's auto-generated scheme, so the test
+    # action can declare an environment variable: `xcodebuild test` does not
+    # forward its own shell environment to a macOS test host on its own, so
+    # without this `CI` would be invisible to `ProcessInfo` inside the tests
+    # that use it (PIUM-50) even when GitHub Actions has set it. `$(CI)`
+    # resolves to whatever `CI` is in xcodebuild's own environment when no
+    # build setting of that name is defined, which is what makes GitHub
+    # Actions' ambient `CI=true` reach the test process unchanged.
+    scheme:
+      testTargets:
+        - PiumTests
+      environmentVariables:
+        CI: $(CI)
 
   PiumTests:
     type: bundle.unit-test

@@ -12,7 +12,8 @@ struct PluginProviderTests {
         keywords: [String] = [],
         inputMode: PluginInputMode = .none,
         placeholder: String? = nil,
-        icon: String? = nil
+        icon: String? = nil,
+        confirmBeforeRun: String? = nil
     ) -> PluginManifest {
         PluginManifest(
             schemaVersion: 1,
@@ -27,7 +28,7 @@ struct PluginProviderTests {
             configuration: [],
             output: PluginOutput(mode: .silent),
             timeoutSeconds: nil,
-            confirmBeforeRun: nil
+            confirmBeforeRun: confirmBeforeRun
         )
     }
 
@@ -167,6 +168,19 @@ struct PluginProviderTests {
             valid(manifest(id: "web.yt", name: "YouTube", inputMode: .optional))
         ])
         #expect(try #require(await results(provider, "yout").first).argument?.isRequired == false)
+    }
+
+    @Test func apluginDeclaringConfirmBeforeRunCarriesTheMessage() async throws {
+        let provider = provider([
+            valid(manifest(id: "web.yt", name: "YouTube", confirmBeforeRun: "This deploys to production."))
+        ])
+        let result = try #require(await results(provider, "yout").first)
+        #expect(result.confirmation == "This deploys to production.")
+    }
+
+    @Test func apluginWithNoConfirmBeforeRunCarriesNoMessage() async throws {
+        let provider = provider([valid(manifest(id: "web.yt", name: "YouTube"))])
+        #expect(try #require(await results(provider, "yout").first).confirmation == nil)
     }
 
     /// The Plugins section of Preferences is 4b, so a broken manifest surfaces

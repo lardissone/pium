@@ -16,9 +16,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// to it on selection, and Settings erases it.
     private let frecency: FrecencyStore
     private let panelController: LauncherPanelController
+    /// Outlives the launcher panel by design (PRD §11): a HUD it is showing
+    /// must not close just because the panel that started it did.
+    private let hudController: HUDController
     private let onboardingController = OnboardingWindowController()
     private let settingsController = SettingsWindowController()
     private var menuBarController: MenuBarController?
+    /// See `ActivePluginRelay`.
+    private let activityRelay: ActivePluginRelay
 
     /// The panel is built here rather than lazily so the first press of the
     /// shortcut does not pay for constructing its `NSHostingView`, which would
@@ -32,7 +37,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.frecency = frecency
         let configuration = pluginConfiguration
         let secrets = pluginSecrets
-        let executions = ExecutionManager(configuration: configuration, secrets: secrets)
+        let hud = HUDController()
+        hudController = hud
+        // The menubar controller does not exist yet — it is built in
+        // `applicationDidFinishLaunching`, once `self` is available to its own
+        // closures — so a run's start and end, known here, reach it through
+        // this relay instead of a direct reference.
+        let activity = ActivePluginRelay()
+        activityRelay = activity
+        let executions = ExecutionManager(
+            configuration: configuration,
+            secrets: secrets,
+            onFinished: { record, mode in
+                activity.notify(nil)
+                hud.finishRunning(id: record.id, with: HUDPresentation.forOutcome(record, mode: mode))
+            }
+        )
         executionManager = executions
         panelController = LauncherPanelController(
             coordinator: SearchCoordinator(
@@ -49,11 +69,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             )
                         },
                         execute: { record, input in
-                            if case .failure(let failure) = executions.run(record, input: input) {
-                                // 5b puts this in front of the user; today the
-                                // log is where a refusal or a bad manifest lands.
+                            switch executions.run(record, input: input) {
+                            case .success(let id):
+                                // `records[id]` was just set by the call above, so
+                                // this always finds what it is asking about — the
+                                // same record `HUDPresentation.forOutcome` will
+                                // read from later, for the same name and start
+                                // time throughout the run.
+                                guard let started = executions.records[id] else { return }
+                                activity.notify(started.pluginName)
+                                hud.showRunning(
+                                    id: id,
+                                    presentation: RunningPresentation(
+                                        pluginName: started.pluginName, startedAt: started.startedAt
+                                    ),
+                                    onCancel: { executions.cancel(id) }
+                                )
+                            case .failure(let failure):
+                                // A refusal here means nothing ever ran, so
+                                // there is no `ExecutionRecord` for a HUD to
+                                // show — the log is the only place it lands.
                                 Logger(subsystem: Signposts.subsystem, category: "Execution")
-                                    .error("\(failure.logDescription, privacy: .public)")
+                                    .error("\(failure.message, privacy: .public)")
                             }
                         }
                     ),
@@ -62,7 +99,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 ],
                 frecency: frecency
             ),
-            frecency: frecency
+            frecency: frecency,
+            executionManager: executions
         )
         super.init()
     }
@@ -74,8 +112,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onOpenPluginsFolder: {
                 NSWorkspace.shared.activateFileViewerSelecting([PluginLoader.defaultRoot])
             },
-            onReloadPlugins: { [weak self] in self?.pluginIndex.refresh() }
+            onReloadPlugins: { [weak self] in self?.pluginIndex.refresh() },
+            onCancel: { [weak self] in
+                guard let self, let active = executionManager.activeRecord else { return }
+                executionManager.cancel(active.id)
+            }
         )
+        activityRelay.handler = { [weak self] plugin in self?.menuBarController?.setActive(plugin) }
 
         // Done here rather than in `PiumApp`: the menu exists only once the app
         // has finished launching, and it is `AppDelegate` that owns the window
@@ -140,5 +183,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             configuration: pluginConfiguration,
             secrets: pluginSecrets
         )
+    }
+}
+
+/// Carries a run's start (`notify(name)`) and end (`notify(nil)`) out of the
+/// closures that observe them, formed in `AppDelegate.init` before `self` is
+/// a usable value, to whatever is wired up as `handler` afterward.
+@MainActor
+private final class ActivePluginRelay {
+    var handler: ((String?) -> Void)?
+
+    func notify(_ plugin: String?) {
+        handler?(plugin)
     }
 }
