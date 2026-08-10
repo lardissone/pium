@@ -12,6 +12,7 @@ final class MenuBarController: NSObject {
     private let onOpenPluginsFolder: () -> Void
     private let onReloadPlugins: () -> Void
     private let onCancel: () -> Void
+    private let onOpenAbout: () -> Void
     /// The plugin holding the run slot, by name, or `nil` while nothing runs.
     private var activePlugin: String?
 
@@ -24,13 +25,15 @@ final class MenuBarController: NSObject {
         onOpenSettings: @escaping () -> Void,
         onOpenPluginsFolder: @escaping () -> Void,
         onReloadPlugins: @escaping () -> Void,
-        onCancel: @escaping () -> Void
+        onCancel: @escaping () -> Void,
+        onOpenAbout: @escaping () -> Void
     ) {
         self.onOpenLauncher = onOpenLauncher
         self.onOpenSettings = onOpenSettings
         self.onOpenPluginsFolder = onOpenPluginsFolder
         self.onReloadPlugins = onReloadPlugins
         self.onCancel = onCancel
+        self.onOpenAbout = onOpenAbout
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
@@ -91,6 +94,15 @@ final class MenuBarController: NSObject {
             action: #selector(reloadPlugins)
         ))
         menu.addItem(.separator())
+        // `LSUIElement` means there is no application menu to carry About, so
+        // this menu is the only place it can live. PRD §6.1 does not list it;
+        // it is an addition, not a reading of that section.
+        let aboutItem = menuItem(
+            title: String(localized: "menubar.about"),
+            action: #selector(openAbout)
+        )
+        aboutItem.identifier = NSUserInterfaceItemIdentifier("about")
+        menu.addItem(aboutItem)
         menu.addItem(menuItem(
             title: String(localized: "menubar.quit"),
             action: #selector(quit)
@@ -122,6 +134,10 @@ final class MenuBarController: NSObject {
 
     @objc private func cancelRun() {
         onCancel()
+    }
+
+    @objc private func openAbout() {
+        onOpenAbout()
     }
 
     @objc private func quit() {

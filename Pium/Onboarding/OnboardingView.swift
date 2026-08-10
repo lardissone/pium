@@ -8,6 +8,14 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.loose) {
+            // The wordmark repeats what the title says, so it is decoration to
+            // a screen reader rather than a second announcement of the name.
+            Image(.piumWordmark)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 180)
+                .accessibilityHidden(true)
+
             Text(String(localized: "onboarding.title"))
                 .font(.largeTitle)
 

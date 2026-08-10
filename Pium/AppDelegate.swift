@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hudController: HUDController
     private let onboardingController = OnboardingWindowController()
     private let settingsController = SettingsWindowController()
+    private let aboutController = AboutWindowController()
     private var menuBarController: MenuBarController?
     /// See `ActivePluginRelay`.
     private let activityRelay: ActivePluginRelay
@@ -116,7 +117,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onCancel: { [weak self] in
                 guard let self, let active = executionManager.activeRecord else { return }
                 executionManager.cancel(active.id)
-            }
+            },
+            onOpenAbout: { [weak self] in self?.aboutController.present() }
         )
         activityRelay.handler = { [weak self] plugin in self?.menuBarController?.setActive(plugin) }
 

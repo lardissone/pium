@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/pium_logo.png" alt="Pium" width="420">
+</p>
+
 # Pium
 
 A small, fast, native macOS launcher. A global shortcut opens a compact floating
