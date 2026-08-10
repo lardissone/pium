@@ -323,8 +323,7 @@ struct LauncherView: View {
 
     /// Resolves the selected result's `Return`-shortcut action — the one
     /// `Return` runs — then routes it through `attemptToPerform`. Shared by
-    /// the keyboard path above and a double click in the result list, so a
-    /// gate added here protects both without either needing its own copy.
+    /// the keyboard path above and a double click in the result list.
     ///
     /// Not `private`, for the same reason `handleReturn` above is not.
     @discardableResult
@@ -333,30 +332,33 @@ struct LauncherView: View {
         guard let action = state.action(matching: .return, modifiers: modifiers) else {
             return false
         }
-        // PRD §10.3: required input missing must not run. This only has to
-        // gate the run action itself — `action.shortcut == .returnKey` — and
-        // not the reveal one `⌘ Return` resolves to, which never took an
-        // argument to begin with. Entering argument mode here is exactly what
-        // space already does explicitly; `Return` on the row just does it too
-        // rather than running with nothing typed.
-        if action.shortcut == .returnKey, selected.argument?.isRequired == true {
-            state.enterArgumentMode()
-            return true
-        }
         attemptToPerform(action, on: selected)
         return true
     }
 
-    /// Runs `action` on `result` unless `state.attemptToRun` — the gate
-    /// every path that can start a run goes through — decides a confirmation
-    /// has to show first instead. Shared by every one of those paths: the
+    /// The chokepoint every path that can start a run goes through: the
     /// keyboard, a double click, and the action menu, both by key and by
-    /// mouse, so none of them can bypass `confirmBeforeRun` (PRD §10.4).
+    /// mouse — deliberately the one place both gates below live, so neither
+    /// can be bypassed by a path that forgot to ask.
+    ///
+    /// Not `private`, for the same reason `handleReturn` above is not.
     ///
     /// Resolving which action is meant *before* calling this matters —
-    /// `⌘ Return` on a plugin means Reveal JSON, not the run `confirmBeforeRun`
-    /// is about, and `attemptToRun` only gates the latter.
-    private func attemptToPerform(_ action: ResultAction, on result: SearchResult) {
+    /// `⌘ Return` on a plugin means Reveal JSON, not the run either gate
+    /// below is about.
+    func attemptToPerform(_ action: ResultAction, on result: SearchResult) {
+        // PRD §10.3: required input missing must not run. Entering argument
+        // mode here is exactly what space already does explicitly; this just
+        // means every path to a run does it too, rather than running with
+        // nothing typed. Already `false` for the argument-mode caller inside
+        // `handleReturn` above, which only reaches this once
+        // `isArgumentSatisfied` is true — so this does not re-enter a mode
+        // that call is already in.
+        if action.shortcut == .returnKey, result.argument?.isRequired == true, !state.isArgumentSatisfied {
+            state.enterArgumentMode()
+            return
+        }
+        // PRD §10.4, and the gate Phase 5b made sure every path shares.
         guard state.attemptToRun(action, on: result) else { return }
         perform(action, on: result, input: state.argumentText)
     }

@@ -235,4 +235,33 @@ struct LauncherConfirmationTests {
         let expectedIDs = ["demo.a", "demo.b"]
         #expect(state.presentedResults.map(\.id) == expectedIDs)
     }
+
+    /// Argument mode already shows nothing but the plugin (PRD §10.3) — the
+    /// pill names it. A confirmation reached from inside argument mode must
+    /// not put a row back underneath that pill.
+    @Test func confirmingFromArgumentModeShowsNoRow() throws {
+        let state = argumentModeState(confirmation: "This deploys to production.")
+        state.setArgumentText("v2")
+        let target = try #require(state.argumentTarget)
+        #expect(state.attemptToRun(runAction(of: target), on: target) == false)
+
+        #expect(state.presentedResults.isEmpty)
+    }
+
+    // MARK: - Typing behind a confirmation
+
+    /// Typing while a confirmation is showing means the user has moved on to
+    /// a different search; the stale confirmation must not survive it, or
+    /// the list would stay collapsed to one row while a new search ran
+    /// behind it.
+    @Test func changingTheQueryCancelsAPendingConfirmation() throws {
+        let state = LauncherState()
+        let target = pluginResult(confirmation: "This deploys to production.")
+        state.setResults([target])
+        #expect(state.attemptToRun(runAction(of: target), on: target) == false)
+
+        state.query = "something else"
+
+        #expect(state.confirmingResult == nil)
+    }
 }

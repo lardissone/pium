@@ -9,7 +9,16 @@ import Foundation
 @MainActor
 @Observable
 final class LauncherState {
-    var query = ""
+    /// Setting this always answers "not now" for any confirmation on screen:
+    /// the message is about a specific result, and once the user is typing a
+    /// different search that answer no longer applies — left standing, the
+    /// list would stay collapsed to one stale row while a new search ran
+    /// behind it. Argument mode types into `argumentText` instead, which
+    /// freezes rather than cancels while confirming (see `appendToArgument`),
+    /// so this does not reach it.
+    var query = "" {
+        didSet { cancelConfirmation() }
+    }
     private(set) var results: [SearchResult] = []
 
     /// Selection is a stable result ID rather than an index, because results
@@ -64,8 +73,13 @@ final class LauncherState {
     /// the one plugin it is about rather than buried among unrelated rows.
     /// `results` itself is never touched for this, so cancelling — `Esc` —
     /// restores exactly what was there before with no bookkeeping of its own.
+    ///
+    /// Argument mode is excluded: `results` is already empty there by design
+    /// (PRD §10.3) — the plugin pill is the only thing naming it — and a
+    /// confirmation reached from inside it must not put a row back under a
+    /// pill that already says the same thing.
     var presentedResults: [SearchResult] {
-        if let confirmingResult { return [confirmingResult] }
+        if let confirmingResult, argumentTarget == nil { return [confirmingResult] }
         return results
     }
 

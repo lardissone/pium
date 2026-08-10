@@ -191,4 +191,61 @@ struct LauncherActivationTests {
         #expect(!state.isInArgumentMode)
         #expect(spy.performed?.action.id == "reveal")
     }
+
+    // MARK: - The action menu, which shares `attemptToPerform` rather than `activateSelected`
+
+    /// `⌘ K` then `Return` on a required-input plugin's highlighted Execute
+    /// row must ask for the argument, the same as `Return` on the bare row.
+    /// Before the fix moved the gate into `attemptToPerform`, the menu path
+    /// never went through `activateSelected` and so ran the plugin empty.
+    @Test func menuExecuteOnARequiredInputPluginEntersArgumentModeInsteadOfRunning() {
+        let target = pluginResult(argument: ArgumentRequest(placeholder: nil, isRequired: true))
+        let state = LauncherState()
+        state.setResults([target])
+        state.presentActionMenu()
+        let spy = ActivationSpy()
+        let launcherView = view(state: state, spy: spy)
+
+        _ = launcherView.handleReturn(modifiers: [])
+
+        #expect(state.isInArgumentMode)
+        #expect(spy.performed == nil)
+    }
+
+    /// Through the menu, a plugin that both requires input and confirms must
+    /// still ask for the argument first — not confirm a command whose
+    /// argument does not exist yet and then run it empty.
+    @Test func menuExecuteOnARequiredInputPluginWithConfirmationAsksForTheArgumentFirst() {
+        let target = pluginResult(
+            argument: ArgumentRequest(placeholder: nil, isRequired: true),
+            confirmation: "This deploys to production."
+        )
+        let state = LauncherState()
+        state.setResults([target])
+        state.presentActionMenu()
+        let spy = ActivationSpy()
+        let launcherView = view(state: state, spy: spy)
+
+        _ = launcherView.handleReturn(modifiers: [])
+
+        #expect(state.isInArgumentMode)
+        #expect(state.confirmingResult == nil, "Must ask for the argument before asking to confirm")
+        #expect(spy.performed == nil)
+    }
+
+    /// Clicking "Run" in the menu goes through `attemptToPerform` directly —
+    /// what `ActionMenuView`'s `onPerform` calls — rather than through
+    /// `handleReturn`, so it needs its own proof the gate reaches it too.
+    @Test func clickingMenuExecuteOnARequiredInputPluginEntersArgumentModeInsteadOfRunning() {
+        let target = pluginResult(argument: ArgumentRequest(placeholder: nil, isRequired: true))
+        let state = LauncherState()
+        state.setResults([target])
+        let spy = ActivationSpy()
+        let launcherView = view(state: state, spy: spy)
+
+        launcherView.attemptToPerform(target.actions[0], on: target)
+
+        #expect(state.isInArgumentMode)
+        #expect(spy.performed == nil)
+    }
 }
