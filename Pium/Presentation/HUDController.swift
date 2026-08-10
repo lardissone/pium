@@ -12,15 +12,28 @@ final class HUDController {
     private struct Entry {
         let panel: HUDPanel
         var expiry: Task<Void, Never>?
+        /// The run this panel is showing progress for, while it is still
+        /// showing progress — `nil` once it holds an outcome instead. This is
+        /// what `finishRunning` uses to find the panel to replace.
+        var runningID: UUID?
     }
 
     private static let spacing: CGFloat = 10
 
     private var entries: [Entry] = []
     private let anchor: () -> HUDAnchor
+    private let runningDelay: Duration
+    /// Runs whose HUD has not appeared yet — still inside `runningDelay`.
+    /// Keyed by run id so `finishRunning` can cancel the wait for a run that
+    /// finishes before its HUD would have shown.
+    private var pendingRunning: [UUID: Task<Void, Never>] = [:]
 
-    init(anchor: @escaping () -> HUDAnchor = { Preferences.shared.hudAnchor }) {
+    init(
+        anchor: @escaping () -> HUDAnchor = { Preferences.shared.hudAnchor },
+        runningDelay: Duration = .seconds(1)
+    ) {
         self.anchor = anchor
+        self.runningDelay = runningDelay
     }
 
     var visibleCount: Int { entries.count }
@@ -30,6 +43,79 @@ final class HUDController {
 
     func show(_ presentation: HUDPresentation) {
         let panel = HUDPanel(contentRect: NSRect(origin: .zero, size: .zero))
+        applyOutcome(presentation, to: panel)
+        let entry = Entry(
+            panel: panel,
+            expiry: expiryTask(for: panel, duration: presentation.duration),
+            runningID: nil
+        )
+        entries.insert(entry, at: 0)
+        panel.orderFrontRegardless()
+        layout()
+    }
+
+    /// Called when a run starts. Nothing appears until `runningDelay` has
+    /// passed — most runs finish before that, and a HUD that flashes and
+    /// vanishes is worse than no HUD at all (PIUM-106). If the run is still
+    /// going once the delay elapses, a HUD naming the plugin and counting its
+    /// elapsed time appears, with `onCancel` behind its Cancel button.
+    func showRunning(id: UUID, presentation: RunningPresentation, onCancel: @escaping () -> Void) {
+        let delay = runningDelay
+        pendingRunning[id] = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            self?.presentRunning(id: id, presentation: presentation, onCancel: onCancel)
+        }
+    }
+
+    /// Called when a run ends, whatever it ended as.
+    ///
+    /// A run whose HUD never appeared — it finished inside `runningDelay` —
+    /// simply has its wait cancelled; `presentation`, if any, then shows as a
+    /// fresh HUD exactly as `show(_:)` always has. A run whose HUD is already
+    /// on screen has it replaced in place rather than stacked under a new
+    /// entry, or removed outright when `presentation` is `nil` — a cancelled
+    /// run's existing policy of showing nothing.
+    func finishRunning(id: UUID, with presentation: HUDPresentation?) {
+        pendingRunning.removeValue(forKey: id)?.cancel()
+        guard let index = entries.firstIndex(where: { $0.runningID == id }) else {
+            if let presentation { show(presentation) }
+            return
+        }
+        guard let presentation else {
+            dismiss(entries[index].panel)
+            return
+        }
+        let panel = entries[index].panel
+        applyOutcome(presentation, to: panel)
+        entries[index].runningID = nil
+        entries[index].expiry = expiryTask(for: panel, duration: presentation.duration)
+        layout()
+    }
+
+    func dismissAll() {
+        for pending in pendingRunning.values { pending.cancel() }
+        pendingRunning.removeAll()
+        for entry in entries {
+            entry.expiry?.cancel()
+            entry.panel.orderOut(nil)
+        }
+        entries.removeAll()
+    }
+
+    private func presentRunning(id: UUID, presentation: RunningPresentation, onCancel: @escaping () -> Void) {
+        pendingRunning[id] = nil
+        let panel = HUDPanel(contentRect: NSRect(origin: .zero, size: .zero))
+        panel.contentView = NSHostingView(
+            rootView: RunningHUDView(presentation: presentation, onCancel: onCancel)
+        )
+        panel.setContentSize(panel.contentView?.fittingSize ?? .zero)
+        entries.insert(Entry(panel: panel, expiry: nil, runningID: id), at: 0)
+        panel.orderFrontRegardless()
+        layout()
+    }
+
+    private func applyOutcome(_ presentation: HUDPresentation, to panel: HUDPanel) {
         panel.contentView = NSHostingView(
             rootView: HUDView(presentation: presentation) { [presentation] in
                 NSPasteboard.general.clearContents()
@@ -37,10 +123,11 @@ final class HUDController {
             }
         )
         panel.setContentSize(panel.contentView?.fittingSize ?? .zero)
+    }
 
-        var entry = Entry(panel: panel, expiry: nil)
-        entry.expiry = Task { [weak self] in
-            try? await Task.sleep(for: presentation.duration)
+    private func expiryTask(for panel: HUDPanel, duration: Duration) -> Task<Void, Never> {
+        Task { [weak self] in
+            try? await Task.sleep(for: duration)
             guard !Task.isCancelled else { return }
             // `self` is weak so this task cannot keep the controller alive,
             // but the reverse is not covered: if the controller were ever
@@ -51,17 +138,6 @@ final class HUDController {
             // a deliberate ceiling, not an oversight.
             self?.dismiss(panel)
         }
-        entries.insert(entry, at: 0)
-        panel.orderFrontRegardless()
-        layout()
-    }
-
-    func dismissAll() {
-        for entry in entries {
-            entry.expiry?.cancel()
-            entry.panel.orderOut(nil)
-        }
-        entries.removeAll()
     }
 
     private func dismiss(_ panel: HUDPanel) {

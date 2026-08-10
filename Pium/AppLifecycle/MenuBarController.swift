@@ -57,7 +57,7 @@ final class MenuBarController: NSObject {
     func setActive(_ plugin: String?) {
         activePlugin = plugin
         statusItem.button?.image = NSImage(
-            systemSymbolName: plugin == nil ? "sparkle" : "sparkle.magnifyingglass",
+            systemSymbolName: plugin == nil ? "sparkle" : "hourglass",
             accessibilityDescription: String(localized: "menubar.accessibilityLabel")
         )
         statusItem.menu = buildMenu()

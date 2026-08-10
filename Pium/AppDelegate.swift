@@ -50,10 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             secrets: secrets,
             onFinished: { record, mode in
                 activity.notify(nil)
-                guard let presentation = HUDPresentation.forOutcome(record, mode: mode) else {
-                    return
-                }
-                hud.show(presentation)
+                hud.finishRunning(id: record.id, with: HUDPresentation.forOutcome(record, mode: mode))
             }
         )
         executionManager = executions
@@ -73,8 +70,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         },
                         execute: { record, input in
                             switch executions.run(record, input: input) {
-                            case .success:
-                                activity.notify(record.manifest?.name)
+                            case .success(let id):
+                                // `records[id]` was just set by the call above, so
+                                // this always finds what it is asking about — the
+                                // same record `HUDPresentation.forOutcome` will
+                                // read from later, for the same name and start
+                                // time throughout the run.
+                                guard let started = executions.records[id] else { return }
+                                activity.notify(started.pluginName)
+                                hud.showRunning(
+                                    id: id,
+                                    presentation: RunningPresentation(
+                                        pluginName: started.pluginName, startedAt: started.startedAt
+                                    ),
+                                    onCancel: { executions.cancel(id) }
+                                )
                             case .failure(let failure):
                                 // A refusal here means nothing ever ran, so
                                 // there is no `ExecutionRecord` for a HUD to
