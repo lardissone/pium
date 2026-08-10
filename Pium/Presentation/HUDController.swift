@@ -93,7 +93,22 @@ final class HUDController {
         layout()
     }
 
-    func dismissAll() {
+    deinit {
+        // Same reasoning as `MenuBarController`: `deinit` is not statically
+        // main-actor-isolated, but every instance is created, held, and
+        // released on the main actor. Without this, a controller going out of
+        // scope leaves its panels on screen — the window server holds an
+        // ordered-front panel, so releasing the last Swift reference is not
+        // enough to take it down.
+        MainActor.assumeIsolated {
+            dismissAll()
+        }
+    }
+
+    /// Takes every HUD down at once. Private because the only thing that
+    /// needs it is this controller's own teardown: a caller that wants one
+    /// HUD gone has `finishRunning`, and one that waits has the expiry.
+    private func dismissAll() {
         for pending in pendingRunning.values { pending.cancel() }
         pendingRunning.removeAll()
         for entry in entries {
@@ -155,18 +170,35 @@ final class HUDController {
     /// plugin printed, so a taller panel ahead of this one has to open a wider
     /// gap than a shorter one would.
     private func layout() {
-        guard let screen = NSScreen.main else { return }
+        // `NSScreen.main` is the screen with the key window, and an accessory
+        // app that owns no key window can leave it nil. Falling back to the
+        // first attached screen puts the HUD somewhere a person is looking;
+        // returning early left every panel at its initial (0,0).
+        //
+        // Which screen a HUD *belongs* on is a separate question — the
+        // launcher places itself on its own target screen, so the two can
+        // disagree on a multi-display Mac. That needs deciding, and is
+        // deliberately not answered here (PIUM-104).
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
+        let visible = screen.visibleFrame
         let anchor = anchor()
         var precedingHeights: [CGFloat] = []
         for entry in entries {
+            let size = entry.panel.frame.size
             let origin = anchor.origin(
-                forPanelOfSize: entry.panel.frame.size,
+                forPanelOfSize: size,
                 stackedAfter: precedingHeights,
-                in: screen.visibleFrame,
+                in: visible,
                 spacing: Self.spacing
             )
-            entry.panel.setFrameOrigin(origin)
-            precedingHeights.append(entry.panel.frame.size.height)
+            // A stack tall enough to pass the far edge would otherwise keep
+            // walking off it, one panel at a time, and the oldest HUDs would
+            // be drawn where nobody can read them.
+            entry.panel.setFrameOrigin(CGPoint(
+                x: min(max(origin.x, visible.minX), max(visible.maxX - size.width, visible.minX)),
+                y: min(max(origin.y, visible.minY), max(visible.maxY - size.height, visible.minY))
+            ))
+            precedingHeights.append(size.height)
         }
     }
 }

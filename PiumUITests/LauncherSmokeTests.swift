@@ -657,6 +657,14 @@ final class LauncherSmokeTests: XCTestCase {
         XCTAssertTrue(pluginRow(named: name).waitForExistence(timeout: 10))
 
         searchField.typeKey(.return, modifierFlags: .command)
+        // The positive half, without which the two negative assertions below
+        // would pass just as happily for a keystroke that did nothing at all.
+        // Revealing has no visible effect inside Pium, but running any action
+        // closes the launcher, and that is observable.
+        XCTAssertTrue(
+            searchField.waitForNonExistence(timeout: 5),
+            "⌘ Return must run the reveal action, which closes the launcher"
+        )
         XCTAssertFalse(
             app.staticTexts["Are you sure?"].waitForExistence(timeout: 3),
             "⌘ Return reveals the JSON; it must never ask about the run"

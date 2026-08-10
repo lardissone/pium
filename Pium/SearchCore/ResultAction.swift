@@ -16,6 +16,15 @@ struct ResultAction: Identifiable, Sendable {
     /// Most actions have no use for it; a plugin's execute action does.
     let perform: @Sendable @MainActor (String) -> Void
 
+    /// Whether this is the action plain `Return` runs — the one a required
+    /// argument gates and a confirmation asks about.
+    ///
+    /// Defined by the shortcut rather than by an identifier: `PluginProvider`
+    /// happens to give it the id `"execute"`, but a result's primary action is
+    /// whatever is bound to `Return`, and reading the id here would couple
+    /// every caller to one provider's naming.
+    var isRunAction: Bool { shortcut == .returnKey }
+
     init(
         id: String,
         title: String,

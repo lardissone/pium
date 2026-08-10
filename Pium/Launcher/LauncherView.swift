@@ -303,7 +303,11 @@ struct LauncherView: View {
             if target.argument?.isRequired == true, !state.isArgumentSatisfied {
                 return .handled
             }
-            guard let action = target.actions.first(where: { $0.id == "execute" }) else {
+            // Resolved through the same matcher every other path uses, and
+            // against the modifiers actually held: `⌘ Return` in argument mode
+            // means Reveal JSON here too, not run.
+            guard let action = state.action(matching: .return, modifiers: modifiers, on: target)
+            else {
                 return .handled
             }
             attemptToPerform(action, on: target)
@@ -354,7 +358,7 @@ struct LauncherView: View {
         // `handleReturn` above, which only reaches this once
         // `isArgumentSatisfied` is true — so this does not re-enter a mode
         // that call is already in.
-        if action.shortcut == .returnKey, result.argument?.isRequired == true, !state.isArgumentSatisfied {
+        if action.isRunAction, result.argument?.isRequired == true, !state.isArgumentSatisfied {
             state.enterArgumentMode()
             return
         }
@@ -371,7 +375,7 @@ struct LauncherView: View {
     private func confirmSelected() {
         guard let confirming = state.confirmingResult else { return }
         state.cancelConfirmation()
-        guard let action = confirming.actions.first(where: { $0.shortcut == .returnKey }) else {
+        guard let action = confirming.actions.first(where: \.isRunAction) else {
             return
         }
         perform(action, on: confirming, input: state.argumentText)
