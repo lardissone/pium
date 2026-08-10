@@ -18,7 +18,7 @@ struct LauncherView: View {
     var body: some View {
         VStack(spacing: 0) {
             searchField
-            if !state.results.isEmpty {
+            if !state.presentedResults.isEmpty {
                 Divider()
                 ResultListView(state: state) { result in
                     // Selecting first, then running the same path `Return`
@@ -43,7 +43,7 @@ struct LauncherView: View {
                 ActiveRunView(pluginName: active.pluginName, startedAt: active.startedAt) {
                     executionManager.cancel(active.id)
                 }
-            } else if !state.results.isEmpty {
+            } else if !state.presentedResults.isEmpty {
                 Divider()
                 FooterBarView(primaryAction: state.selectedResult?.primaryAction) {
                     state.presentActionMenu()
@@ -290,7 +290,11 @@ struct LauncherView: View {
     /// With the menu open, `Return` runs whatever is highlighted. With it
     /// closed, the combination is looked up among the selected result's actions
     /// rather than assumed, so a new action needs no change here.
-    private func handleReturn(modifiers: ActionShortcut.Modifiers) -> KeyPress.Result {
+    ///
+    /// Not `private`: this is the launcher's decision path, and constructing
+    /// the view directly to call it is how a test exercises that path without
+    /// a window, the same way `PluginsSettingsView.setEnabled` does.
+    func handleReturn(modifiers: ActionShortcut.Modifiers) -> KeyPress.Result {
         if state.isInArgumentMode {
             guard let target = state.argumentTarget else { return .handled }
             // A required argument that is empty blocks the run — and blocks
@@ -319,12 +323,25 @@ struct LauncherView: View {
 
     /// Resolves the selected result's `Return`-shortcut action — the one
     /// `Return` runs — then routes it through `attemptToPerform`. Shared by
-    /// the keyboard path above and a double click in the result list.
+    /// the keyboard path above and a double click in the result list, so a
+    /// gate added here protects both without either needing its own copy.
+    ///
+    /// Not `private`, for the same reason `handleReturn` above is not.
     @discardableResult
-    private func activateSelected(modifiers: ActionShortcut.Modifiers = []) -> Bool {
+    func activateSelected(modifiers: ActionShortcut.Modifiers = []) -> Bool {
         guard let selected = state.selectedResult else { return false }
         guard let action = state.action(matching: .return, modifiers: modifiers) else {
             return false
+        }
+        // PRD §10.3: required input missing must not run. This only has to
+        // gate the run action itself — `action.shortcut == .returnKey` — and
+        // not the reveal one `⌘ Return` resolves to, which never took an
+        // argument to begin with. Entering argument mode here is exactly what
+        // space already does explicitly; `Return` on the row just does it too
+        // rather than running with nothing typed.
+        if action.shortcut == .returnKey, selected.argument?.isRequired == true {
+            state.enterArgumentMode()
+            return true
         }
         attemptToPerform(action, on: selected)
         return true

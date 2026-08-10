@@ -14,7 +14,7 @@ struct ResultListView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 2) {
-                    ForEach(state.results) { result in
+                    ForEach(state.presentedResults) { result in
                         ResultRowView(result: result, isSelected: result.id == state.selectedID)
                             .id(result.id)
                             // A row with no actions has nothing to activate,

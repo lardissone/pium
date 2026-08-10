@@ -59,6 +59,16 @@ final class LauncherState {
         results.first { $0.id == selectedID }
     }
 
+    /// The rows the list actually shows. Collapsed to just the result asking
+    /// for confirmation while one is pending, so its message is read next to
+    /// the one plugin it is about rather than buried among unrelated rows.
+    /// `results` itself is never touched for this, so cancelling — `Esc` —
+    /// restores exactly what was there before with no bookkeeping of its own.
+    var presentedResults: [SearchResult] {
+        if let confirmingResult { return [confirmingResult] }
+        return results
+    }
+
     /// Every opening starts with an empty query, no results, and focused input.
     func prepareForPresentation() {
         query = ""

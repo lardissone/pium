@@ -191,4 +191,48 @@ struct LauncherConfirmationTests {
         #expect(state.attemptToRun(reveal, on: target) == true)
         #expect(state.confirmingResult == nil)
     }
+
+    // MARK: - presentedResults: what the list shows while confirming
+
+    /// While a confirmation is showing, the list must collapse to just the
+    /// result it is about — not stay full with the message read alongside
+    /// unrelated rows.
+    @Test func whileConfirmingOnlyTheConfirmingResultIsPresented() throws {
+        let state = LauncherState()
+        let resultA = pluginResult(id: "demo.a", confirmation: "This deploys A.")
+        let resultB = pluginResult(id: "demo.b", confirmation: nil)
+        state.setResults([resultA, resultB])
+
+        #expect(state.attemptToRun(runAction(of: resultA), on: resultA) == false)
+
+        let expectedIDs = ["demo.a"]
+        #expect(state.presentedResults.map(\.id) == expectedIDs)
+    }
+
+    /// `Esc` — `cancelConfirmation` — restores the list exactly as it was,
+    /// because collapsing never touched `results` in the first place.
+    @Test func cancellingAConfirmationRestoresThePreviousResults() throws {
+        let state = LauncherState()
+        let resultA = pluginResult(id: "demo.a", confirmation: "This deploys A.")
+        let resultB = pluginResult(id: "demo.b", confirmation: nil)
+        state.setResults([resultA, resultB])
+
+        #expect(state.attemptToRun(runAction(of: resultA), on: resultA) == false)
+        state.cancelConfirmation()
+
+        let expectedIDs = ["demo.a", "demo.b"]
+        #expect(state.presentedResults.map(\.id) == expectedIDs)
+    }
+
+    /// A result with nothing to confirm never collapses the list — there is
+    /// no confirmation state to enter in the first place.
+    @Test func presentedResultsIsTheFullListOutsideConfirmation() {
+        let state = LauncherState()
+        let resultA = pluginResult(id: "demo.a", confirmation: nil)
+        let resultB = pluginResult(id: "demo.b", confirmation: nil)
+        state.setResults([resultA, resultB])
+
+        let expectedIDs = ["demo.a", "demo.b"]
+        #expect(state.presentedResults.map(\.id) == expectedIDs)
+    }
 }
