@@ -33,7 +33,43 @@ struct SearchSettingsTests {
     /// and replace a folder the user has this second granted with an Allow
     /// button.
     @Test func arefreshStandsAsideWhileArequestIsInFlight() {
-        #expect(SearchSettingsView.shouldRefresh(whileRequesting: true) == false)
-        #expect(SearchSettingsView.shouldRefresh(whileRequesting: false))
+        #expect(
+            SearchSettingsView.shouldRefresh(
+                onActivation: false, sentToSystemSettings: false, isRequesting: true
+            ) == false
+        )
+        #expect(
+            SearchSettingsView.shouldRefresh(
+                onActivation: true, sentToSystemSettings: true, isRequesting: true
+            ) == false
+        )
+    }
+
+    /// Refreshing reads the folders, and reading is what makes macOS ask —
+    /// whenever *its* record says undetermined, which is not always what Pium
+    /// remembers. Refreshing on every activation therefore asked on every
+    /// activation, one prompt per folder, with no way out but answering them.
+    ///
+    /// So an activation only earns a refresh when the user was sent to System
+    /// Settings and has come back. Opening the pane always does, because that
+    /// is the user arriving to look at exactly this.
+    @Test func onlyAreturnFromSystemSettingsEarnsArefreshOnActivation() {
+        #expect(
+            SearchSettingsView.shouldRefresh(
+                onActivation: true, sentToSystemSettings: false, isRequesting: false
+            ) == false,
+            "Activating Pium for any other reason must not read the folders"
+        )
+        #expect(
+            SearchSettingsView.shouldRefresh(
+                onActivation: true, sentToSystemSettings: true, isRequesting: false
+            )
+        )
+        #expect(
+            SearchSettingsView.shouldRefresh(
+                onActivation: false, sentToSystemSettings: false, isRequesting: false
+            ),
+            "Opening the pane is the user arriving to look at this"
+        )
     }
 }

@@ -99,6 +99,11 @@ final class ProtectedFolderAccess {
             let reported = folders.map { ($0, Self.status(ofReading: $0.url, with: read)) }
             Task { @MainActor in
                 preferences.requestedFolderAccess.formUnion(folders.map(\.rawValue))
+                // Pium has no Dock icon, so it does not get the front back on
+                // its own when the system's prompt closes: macOS hands it to
+                // whatever ordinary application is next in line, and the
+                // window somebody was reading disappears behind Finder.
+                NSApp.activate()
                 // Uniquing rather than `uniqueKeysWithValues:`, which traps:
                 // the same folder twice in one call is a caller's slip, not
                 // grounds for killing the app inside a permission flow.

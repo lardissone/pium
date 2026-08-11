@@ -15,6 +15,9 @@ struct SearchSettingsView: View {
     @State private var hasErased = false
     @State private var folderStatuses: [ProtectedFolder: ProtectedFolderAccess.Status] = [:]
     @State private var isRequesting = false
+    /// Whether the user has been sent to System Settings, which is what makes
+    /// their return worth reading the folders again for. See `shouldRefresh`.
+    @State private var hasSentUserToSystemSettings = false
 
     /// What a row can offer, given where its folder stands.
     ///
@@ -109,6 +112,7 @@ struct SearchSettingsView: View {
                                 Text(String(localized: "settings.search.folderBlocked"))
                                     .foregroundStyle(.secondary)
                                 Button(String(localized: "settings.search.folderOpenSettings")) {
+                                    hasSentUserToSystemSettings = true
                                     access.openSystemSettings()
                                 }
                             }
@@ -125,36 +129,53 @@ struct SearchSettingsView: View {
         }
         .formStyle(.grouped)
         .onAppear(perform: refreshFolderStatuses)
-        // Granting access in System Settings tells Pium nothing, and coming
-        // back to Pium is what follows it. Without this, a row that sent
-        // somebody to System Settings keeps saying so after they obeyed it.
+        // Coming back from System Settings is the one moment an answer can
+        // have changed without Pium hearing about it. See `shouldRefresh`.
         .onReceive(
             NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
         ) { _ in
-            refreshFolderStatuses()
+            refresh(onActivation: true)
         }
     }
 
-    /// Whether a refresh may replace what is on screen.
+    /// Whether a refresh may read the folders again.
     ///
-    /// A request in flight owns the answer, and a refresh must not race it.
-    /// Answering the system's prompt reactivates Pium, which is what a refresh
-    /// listens for — so the refresh can read what Pium remembers asking about
-    /// *before* the request has recorded the folder it just asked for. It
-    /// would then classify a folder the user has this second granted as one
-    /// nobody ever asked about, and replace `granted` with an Allow button.
+    /// Refreshing is not free of consequence: reading a folder is what makes
+    /// macOS ask, and it asks whenever *its* record says undetermined — which
+    /// is not always what Pium remembers. The two come apart whenever the
+    /// app's code identity changes or somebody removes Pium from System
+    /// Settings. Refreshing on every activation therefore raised a prompt on
+    /// every activation, one per folder, with no way out but answering them
+    /// (PIUM-41).
     ///
-    /// Nothing is lost by skipping: the request reports every folder it was
-    /// given, which is what redraws the rows.
+    /// So a refresh happens on two occasions only, both of which the user
+    /// caused: opening the pane, and returning to Pium after being sent to
+    /// System Settings. Any other activation leaves the rows as they are —
+    /// a stale row is a smaller wrong than a prompt nobody asked for.
+    ///
+    /// `isRequesting` excludes a third occasion: answering the system's own
+    /// prompt reactivates Pium too, and a refresh racing the request that
+    /// raised it can read what Pium remembers *before* the request records
+    /// the folder just granted, and put an Allow button back over it.
     ///
     /// Not `private`, so a test can exercise the decision without a window —
     /// the same reason `action(for:)` is not.
-    static func shouldRefresh(whileRequesting isRequesting: Bool) -> Bool {
-        !isRequesting
+    static func shouldRefresh(onActivation: Bool, sentToSystemSettings: Bool, isRequesting: Bool)
+        -> Bool {
+        guard !isRequesting else { return false }
+        return onActivation ? sentToSystemSettings : true
     }
 
     private func refreshFolderStatuses() {
-        guard Self.shouldRefresh(whileRequesting: isRequesting) else { return }
+        refresh(onActivation: false)
+    }
+
+    private func refresh(onActivation: Bool) {
+        guard Self.shouldRefresh(
+            onActivation: onActivation,
+            sentToSystemSettings: hasSentUserToSystemSettings,
+            isRequesting: isRequesting
+        ) else { return }
         access.statuses(of: ProtectedFolder.allCases) { statuses in
             folderStatuses = statuses
         }
