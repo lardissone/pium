@@ -8,6 +8,7 @@ struct OnboardingView: View {
     let onFinish: () -> Void
 
     @State private var hasAskedForFolders = false
+    @State private var folderStatuses: [ProtectedFolder: ProtectedFolderAccess.Status] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.loose) {
@@ -41,6 +42,14 @@ struct OnboardingView: View {
                 }
                 .disabled(hasAskedForFolders)
 
+                // A greyed-out button on its own leaves somebody who refused
+                // with no idea what happened or what to do about it.
+                if !folderStatuses.isEmpty {
+                    Text(Self.folderOutcome(of: folderStatuses))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 Text(String(localized: "onboarding.allowFoldersExplanation"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -68,10 +77,22 @@ struct OnboardingView: View {
     func requestFolderAccess() async {
         hasAskedForFolders = true
         await withCheckedContinuation { continuation in
-            access.request(ProtectedFolder.allCases) { _ in
+            access.request(ProtectedFolder.allCases) { statuses in
+                folderStatuses = statuses
                 continuation.resume()
             }
         }
+    }
+
+    /// What to say about the answers, once there are any.
+    ///
+    /// Not `private`, so a test can check the wording without a window.
+    static func folderOutcome(
+        of statuses: [ProtectedFolder: ProtectedFolderAccess.Status]
+    ) -> String {
+        statuses.values.allSatisfy { $0 == .granted }
+            ? String(localized: "onboarding.foldersAllowed")
+            : String(localized: "onboarding.foldersBlocked")
     }
 
     /// Creates `~/.config/pium/plugins/` and opens it, so a user who never

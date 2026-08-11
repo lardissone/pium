@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The Search settings section.
@@ -21,14 +22,14 @@ struct SearchSettingsView: View {
     /// the same reason `PluginsSettingsView.setEnabled` is not.
     enum RowAction: Equatable {
         case allow
-        case none
+        case alreadyAllowed
         case openSystemSettings
     }
 
     func action(for status: ProtectedFolderAccess.Status) -> RowAction {
         switch status {
         case .notRequested: .allow
-        case .granted: .none
+        case .granted: .alreadyAllowed
         // macOS does not ask twice, so there is nothing left for Pium to do
         // but point at the place where the answer can be changed.
         case .blocked: .openSystemSettings
@@ -98,12 +99,18 @@ struct SearchSettingsView: View {
                                 request([folder])
                             }
                             .disabled(isRequesting)
-                        case .none:
+                        case .alreadyAllowed:
                             Text(String(localized: "settings.search.folderAllowed"))
                                 .foregroundStyle(.secondary)
                         case .openSystemSettings:
-                            Button(String(localized: "settings.search.folderOpenSettings")) {
-                                access.openSystemSettings()
+                            // The button alone would not say what is wrong, so
+                            // the state is named beside it.
+                            HStack(spacing: Tokens.Spacing.tight) {
+                                Text(String(localized: "settings.search.folderBlocked"))
+                                    .foregroundStyle(.secondary)
+                                Button(String(localized: "settings.search.folderOpenSettings")) {
+                                    access.openSystemSettings()
+                                }
                             }
                         }
                     }
@@ -118,12 +125,20 @@ struct SearchSettingsView: View {
         }
         .formStyle(.grouped)
         .onAppear(perform: refreshFolderStatuses)
+        // Granting access in System Settings tells Pium nothing, and coming
+        // back to Pium is what follows it. Without this, a row that sent
+        // somebody to System Settings keeps saying so after they obeyed it.
+        .onReceive(
+            NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+        ) { _ in
+            refreshFolderStatuses()
+        }
     }
 
     private func refreshFolderStatuses() {
-        folderStatuses = Dictionary(
-            uniqueKeysWithValues: ProtectedFolder.allCases.map { ($0, access.status(of: $0)) }
-        )
+        access.statuses(of: ProtectedFolder.allCases) { statuses in
+            folderStatuses = statuses
+        }
     }
 
     private func request(_ folders: [ProtectedFolder]) {

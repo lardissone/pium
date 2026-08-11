@@ -817,6 +817,40 @@
         }
       }
     },
+    "onboarding.foldersAllowed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium! can search those folders."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium! puede buscar en esas carpetas."
+          }
+        }
+      }
+    },
+    "onboarding.foldersBlocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can change this later in Settings."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podés cambiarlo después en Ajustes."
+          }
+        }
+      }
+    },
     "onboarding.pluginsExplanation": {
       "extractionState": "stale",
       "localizations": {
@@ -2122,6 +2156,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Permitido"
+          }
+        }
+      }
+    },
+    "settings.search.folderBlocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocked"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bloqueado"
           }
         }
       }

@@ -22,7 +22,7 @@ struct SearchSettingsTests {
     @Test func eachStatusOffersTheOnlyActionThatWorksForIt() {
         let view = view()
         #expect(view.action(for: .notRequested) == .allow)
-        #expect(view.action(for: .granted) == .none)
+        #expect(view.action(for: .granted) == .alreadyAllowed)
         #expect(view.action(for: .blocked) == .openSystemSettings)
     }
 }
