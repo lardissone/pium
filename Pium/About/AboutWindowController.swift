@@ -13,8 +13,7 @@ final class AboutWindowController {
         // Reuse the existing window so the menu item raises About rather than
         // stacking a second copy.
         if let window {
-            NSApp.activate()
-            window.makeKeyAndOrderFront(nil)
+            raise(window)
             return
         }
 
@@ -28,6 +27,10 @@ final class AboutWindowController {
         )
         window.title = String(localized: "about.windowTitle")
         window.isReleasedWhenClosed = false
+        // Reachable for the same reason Settings is: an app with no Dock icon
+        // and no place in the application switcher cannot get a window back
+        // once it is behind something. See `SettingsWindowController`.
+        window.level = .floating
         let hosting = NSHostingView(rootView: AboutView())
         window.contentView = hosting
         // Sized from the content: unlike Settings, this view reports a usable
@@ -36,7 +39,14 @@ final class AboutWindowController {
         window.center()
 
         self.window = window
+        raise(window)
+    }
+
+    /// Brings the window to the front and gives it the keyboard. See
+    /// `SettingsWindowController.raise`.
+    private func raise(_ window: NSWindow) {
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
     }
 }
