@@ -5,11 +5,35 @@ struct SearchSettingsView: View {
     /// The same store the launcher records into, so erasing takes effect
     /// without a relaunch.
     let frecency: any FrecencyStoring
+    /// Injected so a test can drive the rows without raising a real prompt.
+    let access: ProtectedFolderAccess
 
     @State private var isFileSearchEnabled = Preferences.shared.isFileSearchEnabled
     @State private var scope = Preferences.shared.fileSearchScope
     @State private var isConfirmingErase = false
     @State private var hasErased = false
+    @State private var folderStatuses: [ProtectedFolder: ProtectedFolderAccess.Status] = [:]
+    @State private var isRequesting = false
+
+    /// What a row can offer, given where its folder stands.
+    ///
+    /// Not `private`, so a test can exercise the decision without a window —
+    /// the same reason `PluginsSettingsView.setEnabled` is not.
+    enum RowAction: Equatable {
+        case allow
+        case none
+        case openSystemSettings
+    }
+
+    func action(for status: ProtectedFolderAccess.Status) -> RowAction {
+        switch status {
+        case .notRequested: .allow
+        case .granted: .none
+        // macOS does not ask twice, so there is nothing left for Pium to do
+        // but point at the place where the answer can be changed.
+        case .blocked: .openSystemSettings
+        }
+    }
 
     var body: some View {
         Form {
@@ -64,8 +88,50 @@ struct SearchSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                ForEach(ProtectedFolder.allCases, id: \.self) { folder in
+                    LabeledContent(folder.title) {
+                        switch action(for: folderStatuses[folder] ?? .notRequested) {
+                        case .allow:
+                            Button(String(localized: "settings.search.folderAllow")) {
+                                request([folder])
+                            }
+                            .disabled(isRequesting)
+                        case .none:
+                            Text(String(localized: "settings.search.folderAllowed"))
+                                .foregroundStyle(.secondary)
+                        case .openSystemSettings:
+                            Button(String(localized: "settings.search.folderOpenSettings")) {
+                                access.openSystemSettings()
+                            }
+                        }
+                    }
+                }
+            } header: {
+                Text(String(localized: "settings.search.folders"))
+            } footer: {
+                Text(String(localized: "settings.search.foldersExplanation"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+        .onAppear(perform: refreshFolderStatuses)
+    }
+
+    private func refreshFolderStatuses() {
+        folderStatuses = Dictionary(
+            uniqueKeysWithValues: ProtectedFolder.allCases.map { ($0, access.status(of: $0)) }
+        )
+    }
+
+    private func request(_ folders: [ProtectedFolder]) {
+        isRequesting = true
+        access.request(folders) { statuses in
+            folderStatuses.merge(statuses) { _, new in new }
+            isRequesting = false
+        }
     }
 }
 

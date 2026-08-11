@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Built once and shared: the coordinator reads it to rank, the panel writes
     /// to it on selection, and Settings erases it.
     private let frecency: FrecencyStore
+    private let folderAccess = ProtectedFolderAccess(preferences: .shared)
     private let panelController: LauncherPanelController
     /// Outlives the launcher panel by design (PRD §11): a HUD it is showing
     /// must not close just because the panel that started it did.
@@ -192,6 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func openSettings() {
         settingsController.present(
             frecency: frecency,
+            access: folderAccess,
             onShortcutChanged: { [weak self] shortcut in
                 self?.registerShortcut(shortcut)
             },

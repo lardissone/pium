@@ -6,6 +6,7 @@ import SwiftUI
 /// they configure, in Phases 5 through 7.
 struct SettingsView: View {
     let frecency: any FrecencyStoring
+    let access: ProtectedFolderAccess
     let onShortcutChanged: (HotkeyShortcut) -> Void
     let pluginIndex: PluginIndex
     let configuration: any PluginConfigurationStoring
@@ -21,7 +22,7 @@ struct SettingsView: View {
                     )
                 }
 
-            SearchSettingsView(frecency: frecency)
+            SearchSettingsView(frecency: frecency, access: access)
                 .tabItem {
                     Label(
                         String(localized: "settings.search.title"),

@@ -15,6 +15,7 @@ final class SettingsWindowController {
 
     func present(
         frecency: any FrecencyStoring,
+        access: ProtectedFolderAccess,
         onShortcutChanged: @escaping (HotkeyShortcut) -> Void,
         pluginIndex: PluginIndex,
         configuration: any PluginConfigurationStoring,
@@ -49,6 +50,7 @@ final class SettingsWindowController {
         window.contentView = NSHostingView(
             rootView: SettingsView(
                 frecency: frecency,
+                access: access,
                 onShortcutChanged: onShortcutChanged,
                 pluginIndex: pluginIndex,
                 configuration: configuration,

@@ -1,0 +1,28 @@
+import Testing
+import Foundation
+@testable import Pium
+
+@Suite("Search settings")
+@MainActor
+struct SearchSettingsTests {
+    private func view(alreadyRequested: Set<String> = []) -> SearchSettingsView {
+        let preferences = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        preferences.requestedFolderAccess = alreadyRequested
+        return SearchSettingsView(
+            frecency: FrecencyStore(
+                fileURL: URL.temporaryDirectory.appending(path: "\(UUID().uuidString).json")
+            ),
+            access: ProtectedFolderAccess(preferences: preferences) { _ in }
+        )
+    }
+
+    /// The three states map to three different things to do. A folder already
+    /// refused is the one that matters: macOS will not ask again, so offering
+    /// "Allow" there would be a button that does nothing.
+    @Test func eachStatusOffersTheOnlyActionThatWorksForIt() {
+        let view = view()
+        #expect(view.action(for: .notRequested) == .allow)
+        #expect(view.action(for: .granted) == .none)
+        #expect(view.action(for: .blocked) == .openSystemSettings)
+    }
+}
