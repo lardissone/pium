@@ -1,11 +1,15 @@
-# Pium
+<p align="center">
+  <img src="assets/pium_logo.png" alt="Pium!" width="420">
+</p>
+
+# Pium!
 
 A small, fast, native macOS launcher. A global shortcut opens a compact floating
 bar above whatever you are doing; typing once searches applications,
 Spotlight-indexed files, and file-based commands in a single ranked list.
 
 Commands are plugins, and a plugin is one readable JSON file. Adding or changing
-one never recompiles Pium.
+one never recompiles Pium!
 
 **Status:** in development. Nothing is released yet.
 

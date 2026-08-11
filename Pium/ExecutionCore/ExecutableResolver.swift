@@ -34,6 +34,11 @@ struct ExecutableResolver {
         }
         for directory in searchPaths {
             let candidate = URL(filePath: directory).appending(path: executable)
+            // Not the same question `verify` asks about existence, which is
+            // why both are here: a plugin that named a path and did not get it
+            // is a failure to report, while a search path that does not hold
+            // the command only means the next one might. Collapsing the two
+            // makes the first directory searched answer for all of them.
             guard fileManager.fileExists(atPath: candidate.path) else { continue }
             return verify(candidate)
         }

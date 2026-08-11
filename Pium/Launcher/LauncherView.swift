@@ -297,13 +297,23 @@ struct LauncherView: View {
     func handleReturn(modifiers: ActionShortcut.Modifiers) -> KeyPress.Result {
         if state.isInArgumentMode {
             guard let target = state.argumentTarget else { return .handled }
+            // Resolved through the same matcher every other path uses, and
+            // against the modifiers actually held: `⌘ Return` in argument mode
+            // means Reveal JSON here too, not run.
+            guard let action = state.action(matching: .return, modifiers: modifiers, on: target)
+            else {
+                return .handled
+            }
             // A required argument that is empty blocks the run — and blocks
             // even asking, per the PRD: confirming is about whether to run,
             // not a way around the gate that decides whether it could.
-            if target.argument?.isRequired == true, !state.isArgumentSatisfied {
-                return .handled
-            }
-            guard let action = target.actions.first(where: { $0.id == "execute" }) else {
+            //
+            // The gate is read after the action is resolved, and applies only
+            // to the run: revealing a plugin's JSON is not a run, and gating
+            // it here left `⌘ Return` doing nothing at all while the field was
+            // still empty — the one moment a person is most likely to want to
+            // look at what they are about to run.
+            if action.isRunAction, target.argument?.isRequired == true, !state.isArgumentSatisfied {
                 return .handled
             }
             attemptToPerform(action, on: target)
@@ -354,7 +364,7 @@ struct LauncherView: View {
         // `handleReturn` above, which only reaches this once
         // `isArgumentSatisfied` is true — so this does not re-enter a mode
         // that call is already in.
-        if action.shortcut == .returnKey, result.argument?.isRequired == true, !state.isArgumentSatisfied {
+        if action.isRunAction, result.argument?.isRequired == true, !state.isArgumentSatisfied {
             state.enterArgumentMode()
             return
         }
@@ -371,7 +381,7 @@ struct LauncherView: View {
     private func confirmSelected() {
         guard let confirming = state.confirmingResult else { return }
         state.cancelConfirmation()
-        guard let action = confirming.actions.first(where: { $0.shortcut == .returnKey }) else {
+        guard let action = confirming.actions.first(where: \.isRunAction) else {
             return
         }
         perform(action, on: confirming, input: state.argumentText)

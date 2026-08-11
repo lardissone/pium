@@ -139,11 +139,40 @@ enum PluginTemplate {
             value
         case .urlEncode:
             // The query-allowed set still permits `&` and `+`, which change the
-            // meaning of the query they land in.
-            value.addingPercentEncoding(
-                withAllowedCharacters: .alphanumerics.union(.init(charactersIn: "-._~"))
-            ) ?? value
+            // meaning of the query they land in, so the allowed set is spelled
+            // out as RFC 3986's unreserved characters.
+            //
+            // Written over UTF-8 bytes rather than through
+            // `addingPercentEncoding`, whose `String?` return exists only
+            // because it is bridged from `NSString` and cannot be nil for a
+            // Swift string. That Optional forces a fallback, and the only
+            // fallback available — the value unescaped — is precisely the
+            // outcome this filter exists to prevent.
+            percentEncoded(value)
         }
+    }
+
+    /// RFC 3986's unreserved set, kept; every other byte percent-encoded.
+    ///
+    /// Encoding runs over UTF-8 bytes rather than characters, which is what
+    /// the escape is defined in terms of: one accented letter becomes two
+    /// escapes, not one.
+    private static func percentEncoded(_ value: String) -> String {
+        let unreserved = Set(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~".utf8
+        )
+        let hex = Array("0123456789ABCDEF".utf8)
+        var encoded: [UInt8] = []
+        for byte in value.utf8 {
+            if unreserved.contains(byte) {
+                encoded.append(byte)
+            } else {
+                encoded.append(contentsOf: [
+                    UInt8(ascii: "%"), hex[Int(byte >> 4)], hex[Int(byte & 0x0F)],
+                ])
+            }
+        }
+        return String(decoding: encoded, as: UTF8.self)
     }
 }
 

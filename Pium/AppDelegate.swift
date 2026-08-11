@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hudController: HUDController
     private let onboardingController = OnboardingWindowController()
     private let settingsController = SettingsWindowController()
+    private let aboutController = AboutWindowController()
     private var menuBarController: MenuBarController?
     /// See `ActivePluginRelay`.
     private let activityRelay: ActivePluginRelay
@@ -86,11 +87,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                     onCancel: { executions.cancel(id) }
                                 )
                             case .failure(let failure):
-                                // A refusal here means nothing ever ran, so
-                                // there is no `ExecutionRecord` for a HUD to
-                                // show — the log is the only place it lands.
                                 Logger(subsystem: Signposts.subsystem, category: "Execution")
                                     .error("\(failure.message, privacy: .public)")
+                                // A refusal means nothing ran, so there is no
+                                // `ExecutionRecord` for `forOutcome` to read
+                                // and the HUD is built here instead. It still
+                                // has to appear: the user asked for a run and
+                                // did not get one, and every reason this can
+                                // happen — a quarantined executable, an
+                                // invalid manifest, another run holding the
+                                // slot — already carries a sentence written
+                                // for a person. Logging alone left all of
+                                // them where nobody would look.
+                                hud.show(HUDPresentation(
+                                    kind: .failure,
+                                    title: record.manifest?.name
+                                        ?? record.fileURL.deletingPathExtension().lastPathComponent,
+                                    body: failure.message,
+                                    duration: HUDPresentation.failureDuration
+                                ))
                             }
                         }
                     ),
@@ -116,7 +131,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onCancel: { [weak self] in
                 guard let self, let active = executionManager.activeRecord else { return }
                 executionManager.cancel(active.id)
-            }
+            },
+            onOpenAbout: { [weak self] in self?.aboutController.present() }
         )
         activityRelay.handler = { [weak self] plugin in self?.menuBarController?.setActive(plugin) }
 

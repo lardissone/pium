@@ -20,13 +20,21 @@ final class OnboardingWindowController {
         // switcher, so a window that slips behind another one cannot be
         // brought back. Floating keeps first launch reachable.
         window.level = .floating
-        window.center()
-        window.contentView = NSHostingView(
+        let hosting = NSHostingView(
             rootView: OnboardingView(shortcut: shortcut) { [weak self] in
                 onFinish()
                 self?.dismiss()
             }
         )
+        window.contentView = hosting
+        // Sized from the content rather than by the number above, which the
+        // content has already outgrown once: a window shorter than what it
+        // holds does not clip in SwiftUI, it squeezes, and the first thing to
+        // give is the wordmark — `scaledToFit` shrinks to the height on offer,
+        // so a 300-point image quietly rendered at a third of that. A longer
+        // translation would do the same.
+        window.setContentSize(hosting.fittingSize)
+        window.center()
 
         self.window = window
         NSApp.activate()

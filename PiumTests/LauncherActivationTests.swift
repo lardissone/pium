@@ -147,6 +147,31 @@ struct LauncherActivationTests {
         #expect(spy.didDismiss)
     }
 
+    /// The required-argument gate is about running, and only about running.
+    /// `⌘ Return` reveals a plugin's JSON, which is not a run — and an empty
+    /// field is exactly when somebody is most likely to want to read what
+    /// they are about to run. Gating every `Return`-family action on the
+    /// argument left that keystroke doing nothing at all.
+    @Test func revealWorksInArgumentModeWhileTheRequiredFieldIsStillEmpty() {
+        let target = pluginResult(argument: ArgumentRequest(placeholder: nil, isRequired: true))
+        let state = LauncherState()
+        state.setResults([target])
+        state.enterArgumentMode()
+        let spy = ActivationSpy()
+        let launcherView = view(state: state, spy: spy)
+
+        _ = launcherView.handleReturn(modifiers: [.command])
+        #expect(spy.performed?.action.id == "reveal", "⌘ Return must reveal, empty field or not")
+
+        // And the gate it is not subject to still holds for the run itself.
+        // A second spy rather than resetting the first: `performed` is
+        // `private(set)`, and a fresh one also proves this call recorded
+        // nothing rather than merely leaving an earlier value in place.
+        let runSpy = ActivationSpy()
+        _ = view(state: state, spy: runSpy).handleReturn(modifiers: [])
+        #expect(runSpy.performed == nil, "An empty required argument must still block the run")
+    }
+
     /// A plugin that both requires input and confirms must ask for the
     /// argument first — you cannot confirm a command whose argument does not
     /// exist yet — and only then ask to confirm.
