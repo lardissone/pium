@@ -766,6 +766,40 @@
         }
       }
     },
+    "onboarding.allowFolders": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Searching Documents, Desktop and Downloads"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir buscar en Documentos, Escritorio y Descargas"
+          }
+        }
+      }
+    },
+    "onboarding.allowFoldersExplanation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS hides these from search until you allow it. You can change this later in Settings."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS las oculta de la búsqueda hasta que lo permitas. Podés cambiarlo después en Ajustes."
+          }
+        }
+      }
+    },
     "onboarding.finish": {
       "extractionState": "stale",
       "localizations": {

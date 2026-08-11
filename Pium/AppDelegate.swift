@@ -161,7 +161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registerShortcut(Preferences.shared.shortcut)
 
         if !Preferences.shared.hasCompletedOnboarding {
-            onboardingController.present(shortcut: Preferences.shared.shortcut) {
+            onboardingController.present(shortcut: Preferences.shared.shortcut, access: folderAccess) {
                 Preferences.shared.hasCompletedOnboarding = true
             }
         }

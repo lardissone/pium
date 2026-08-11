@@ -4,7 +4,10 @@ import SwiftUI
 /// First-launch screen. One page, and it requests no permissions.
 struct OnboardingView: View {
     let shortcut: HotkeyShortcut
+    let access: ProtectedFolderAccess
     let onFinish: () -> Void
+
+    @State private var hasAskedForFolders = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.loose) {
@@ -32,6 +35,17 @@ struct OnboardingView: View {
             Text(String(localized: "plugins.whatIsAplugin"))
                 .foregroundStyle(.secondary)
 
+            VStack(alignment: .leading, spacing: Tokens.Spacing.tight) {
+                Button(String(localized: "onboarding.allowFolders")) {
+                    Task { await requestFolderAccess() }
+                }
+                .disabled(hasAskedForFolders)
+
+                Text(String(localized: "onboarding.allowFoldersExplanation"))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             HStack {
                 Button(String(localized: "onboarding.revealPluginsFolder")) {
                     revealPluginsFolder()
@@ -43,6 +57,21 @@ struct OnboardingView: View {
         }
         .padding(Tokens.Spacing.loose * 2)
         .frame(width: 520)
+    }
+
+    /// Asks about all three folders at once. `async` so the test can wait for
+    /// the prompts to have been raised; the button does not care when they
+    /// finish.
+    ///
+    /// Not `private`, for the same reason `LauncherView.handleReturn` is not:
+    /// this is the decision, and a test reaches it without a window.
+    func requestFolderAccess() async {
+        hasAskedForFolders = true
+        await withCheckedContinuation { continuation in
+            access.request(ProtectedFolder.allCases) { _ in
+                continuation.resume()
+            }
+        }
     }
 
     /// Creates `~/.config/pium/plugins/` and opens it, so a user who never
