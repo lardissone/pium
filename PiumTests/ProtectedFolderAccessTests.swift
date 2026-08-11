@@ -69,4 +69,43 @@ struct ProtectedFolderAccessTests {
         }
         #expect(subject.status(of: .downloads) == .granted)
     }
+
+    /// Asking is what turns `notRequested` into an answer, and the asking is
+    /// recorded so the next launch does not raise the prompt again.
+    @Test func requestingRecordsTheFolderAndReportsItsStatus() async {
+        let preferences = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let subject = ProtectedFolderAccess(preferences: preferences) { _ in }
+        #expect(subject.status(of: .documents) == .notRequested)
+
+        let reported: [ProtectedFolder: ProtectedFolderAccess.Status] = await withCheckedContinuation {
+            continuation in
+            subject.request([.documents]) { statuses in
+                continuation.resume(returning: statuses)
+            }
+        }
+
+        #expect(reported[.documents] == .granted)
+        #expect(preferences.requestedFolderAccess.contains("documents"))
+        #expect(subject.status(of: .documents) == .granted)
+    }
+
+    /// Every folder asked for comes back in the report, including one that
+    /// refused: the caller redraws from this and cannot leave a row blank.
+    @Test func requestingReportsEveryFolderItWasGiven() async {
+        let preferences = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let subject = ProtectedFolderAccess(preferences: preferences) { url in
+            guard url.lastPathComponent != "Desktop" else {
+                throw NSError(domain: NSCocoaErrorDomain, code: NSFileReadNoPermissionError)
+            }
+        }
+
+        let reported: [ProtectedFolder: ProtectedFolderAccess.Status] = await withCheckedContinuation {
+            continuation in
+            subject.request(ProtectedFolder.allCases) { continuation.resume(returning: $0) }
+        }
+
+        #expect(reported.count == 3)
+        #expect(reported[.desktop] == .blocked)
+        #expect(reported[.documents] == .granted)
+    }
 }

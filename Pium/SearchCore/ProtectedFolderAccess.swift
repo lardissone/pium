@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 /// Whether Pium may read the folders macOS protects.
@@ -44,6 +45,48 @@ final class ProtectedFolderAccess {
             return Self.isRefusal(error) ? .blocked : .granted
         }
     }
+
+    /// Asks macOS about each folder in turn, then reports where every one of
+    /// them ended up.
+    ///
+    /// On a thread of its own because the prompt blocks whatever thread made
+    /// the call until the person answers it: asking from the main actor
+    /// freezes the interface for as long as they take to decide. One folder at
+    /// a time, so three dialogs do not land on top of each other.
+    ///
+    /// A thread rather than a share of `DispatchQueue.global`, for the reason
+    /// `ProcessRunner` uses one: a wait that lasts as long as a person takes
+    /// does not belong in a pool of bounded width (PIUM-109).
+    func request(
+        _ folders: [ProtectedFolder],
+        then report: @escaping @MainActor ([ProtectedFolder: Status]) -> Void
+    ) {
+        let read = self.read
+        let thread = Thread { [self] in
+            for folder in folders {
+                // The answer is not read here: what matters is that the ask
+                // happened. `status(of:)` reports it afterwards, from the main
+                // actor, where `preferences` can be touched.
+                try? read(folder.url)
+            }
+            Task { @MainActor in
+                preferences.requestedFolderAccess.formUnion(folders.map(\.rawValue))
+                report(Dictionary(uniqueKeysWithValues: folders.map { ($0, status(of: $0)) }))
+            }
+        }
+        thread.name = "com.pium.folder-access"
+        thread.start()
+    }
+
+    /// Opens Privacy & Security ▸ Files and Folders, which is the only route
+    /// back once a folder has been refused: macOS does not ask a second time.
+    func openSystemSettings() {
+        guard let url = URL(string: Self.filesAndFoldersSettings) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    private static let filesAndFoldersSettings =
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders"
 
     /// A refusal, as opposed to any other reason a read can fail. A folder that
     /// is not there is not blocking anybody, so it counts as granted: reporting
