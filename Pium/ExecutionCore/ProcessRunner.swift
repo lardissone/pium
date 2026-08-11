@@ -14,20 +14,7 @@ struct ExecutionRequest: Sendable {
 
 /// How a run ended, and what it printed.
 struct ExecutionOutcome: Sendable, Equatable {
-    enum Ending: Sendable, Equatable {
-        case exited(Int32)
-        case cancelled
-        case timedOut
-        /// Killed by a signal that was neither the cancellation's nor the
-        /// timeout's escalation — a self-signal, a crash, or a `kill` from
-        /// outside Pium altogether.
-        case signalled(Int32)
-        /// The process never started. Carries the reason `ChildProcess.spawn`
-        /// gave rather than collapsing it to a bare failure code.
-        case failed(ExecutionFailure)
-    }
-
-    let ending: Ending
+    let ending: ExecutionEnding
     let standardOutput: String
     let standardError: String
     /// Whether either stream was cut at the cap, so a reader knows the text is
@@ -81,10 +68,17 @@ struct ProcessRunner {
         /// a signal that starts before `detach` completes still reaches a
         /// live child, and one that starts after finds none. There is no
         /// window where a check succeeds but the signal itself arrives late.
-        fileprivate func signal(_ signal: Int32) {
+        ///
+        /// Returns whether there was anything to signal, which is how the
+        /// timeout tells a command it had to kill from one that had already
+        /// finished on its own.
+        @discardableResult
+        fileprivate func signal(_ signal: Int32) -> Bool {
             lock.lock()
             defer { lock.unlock() }
-            child?.signalGroup(signal)
+            guard let child else { return false }
+            child.signalGroup(signal)
+            return true
         }
 
         fileprivate var wasCancelled: Bool {
@@ -273,19 +267,12 @@ struct ProcessRunner {
                 environment: request.environment
             )
         } catch let failure as ExecutionFailure {
-            return ExecutionOutcome(
-                ending: .failed(failure), standardOutput: "", standardError: "", wasTruncated: false
-            )
+            return Self.didNotStart(.failed(failure), cancellation: cancellation)
         } catch {
             // ChildProcess.spawn only ever throws ExecutionFailure; this
             // branch exists so the catch is exhaustive without silently
             // discarding whatever else somehow reached it.
-            return ExecutionOutcome(
-                ending: .failed(.spawnFailed(code: -1)),
-                standardOutput: "",
-                standardError: "",
-                wasTruncated: false
-            )
+            return Self.didNotStart(.failed(.spawnFailed(code: -1)), cancellation: cancellation)
         }
 
         // Cancelled between the decision to run and the spawn: signal at once
@@ -331,14 +318,19 @@ struct ProcessRunner {
         let timeoutEscalation: Task<Void, Error>? = request.timeoutSeconds.map { seconds in
             Task {
                 try await Task.sleep(for: .seconds(seconds))
+                // Only a timeout that reached a live child is a timeout. A
+                // command that had already exited on its own when the timer
+                // came due has been reaped and detached, and calling it timed
+                // out would report the run as killed at the deadline it
+                // finished just inside of.
+                guard cancellation.signal(SIGTERM) else { return }
                 expiry.markExpired()
-                cancellation.signal(SIGTERM)
                 try await Task.sleep(for: .seconds(Self.graceSeconds))
                 cancellation.signal(SIGKILL)
             }
         }
 
-        let ending = await Self.reap(child)
+        let termination = await Self.reap(child)
         // Nothing sent after this point can reach the pid we just reaped: see
         // `Cancellation.detach`.
         cancellation.detach()
@@ -349,7 +341,7 @@ struct ProcessRunner {
             outDrained, errDrained, out: outCaptured, err: errCaptured, abandonment: abandonment
         )
         return Self.outcome(
-            ending: ending,
+            termination: termination,
             timedOut: expiry.hasExpired,
             cancelled: cancellation.wasCancelled,
             output: output,
@@ -357,18 +349,37 @@ struct ProcessRunner {
         )
     }
 
+    /// The outcome for a run that produced no process, with the empty streams
+    /// that follow from that.
+    ///
+    /// A cancellation outranks the reason the spawn failed. Both are true —
+    /// the command could not start, and the user asked for it to stop — but
+    /// only one of them is news: somebody who pressed Cancel is told what they
+    /// already know, whereas "could not run: no such file" reads as a fault in
+    /// the plugin. What the user asked for wins.
+    private static func didNotStart(
+        _ ending: ExecutionEnding, cancellation: Cancellation
+    ) -> ExecutionOutcome {
+        ExecutionOutcome(
+            ending: cancellation.wasCancelled ? .cancelled : ending,
+            standardOutput: "",
+            standardError: "",
+            wasTruncated: false
+        )
+    }
+
     private static func outcome(
-        ending: ChildProcess.Ending,
+        termination: ChildProcess.Termination,
         timedOut: Bool,
         cancelled: Bool,
         output: (String, Bool),
         error: (String, Bool)
     ) -> ExecutionOutcome {
-        let resolved: ExecutionOutcome.Ending =
+        let resolved: ExecutionEnding =
             if cancelled { .cancelled }
             else if timedOut { .timedOut }
             else {
-                switch ending {
+                switch termination {
                 case .exited(let code): .exited(code)
                 case .signalled(let signal): .signalled(signal)
                 }
@@ -514,7 +525,7 @@ struct ProcessRunner {
     /// runs, which is not a wait a pool of bounded width can absorb. Sharing
     /// one is what fills it, and a reap that cannot start is a run that never
     /// returns.
-    private static func reap(_ child: ChildProcess) async -> ChildProcess.Ending {
+    private static func reap(_ child: ChildProcess) async -> ChildProcess.Termination {
         await withCheckedContinuation { continuation in
             let thread = Thread {
                 continuation.resume(returning: child.waitForExit())

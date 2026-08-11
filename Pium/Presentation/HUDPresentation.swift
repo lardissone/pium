@@ -17,25 +17,22 @@ struct HUDPresentation: Equatable, Sendable {
     let body: String
     let duration: Duration
 
-    static func forOutcome(
-        _ record: ExecutionRecord,
-        mode: PluginOutputMode
-    ) -> HUDPresentation? {
+    static func forOutcome(_ record: ExecutionRecord) -> HUDPresentation? {
         switch record.state {
-        case .running, .cancelled:
+        case .running, .ended(.cancelled):
             nil
-        case .finished(let code) where code == 0:
-            mode == .toast ? success(record) : nil
-        case .finished(let code):
+        case .ended(.exited(let code)) where code == 0:
+            record.outputMode == .toast ? success(record) : nil
+        case .ended(.exited(let code)):
             failure(record, body: exitBody(record, code: code))
-        case .timedOut:
+        case .ended(.timedOut):
             failure(record, body: String(localized: "hud.timedOut"))
-        case .signalled(let signal):
+        case .ended(.signalled(let signal)):
             // An `Int` interpolation asks the catalog for `%lld`, which is how
             // every numeric string in it is keyed. An `Int32` would ask for
             // `%d` and match nothing, leaving the key itself on screen.
             failure(record, body: String(localized: "hud.signalled \(Int(signal))"))
-        case .failed(let cause):
+        case .ended(.failed(let cause)):
             failure(record, body: cause.message)
         }
     }

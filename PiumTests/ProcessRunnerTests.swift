@@ -391,6 +391,19 @@ struct ProcessRunnerTests {
         #expect(outcome.standardOutput == "")
     }
 
+    /// Two things are true at once — the command could not start, and the user
+    /// asked for it to stop — and only one of them is worth saying. Somebody
+    /// who pressed Cancel is not told a spawn failed; that reads as a fault in
+    /// the plugin they just chose to abandon.
+    @Test func acancelDuringAFailedSpawnIsReportedAsCancelled() async {
+        let cancellation = ProcessRunner.Cancellation()
+        cancellation.cancel()
+        let outcome = await ProcessRunner().run(
+            request("/bin/definitely-not-here"), cancellation: cancellation
+        )
+        #expect(outcome.ending == .cancelled)
+    }
+
     /// A signal that is neither the cancellation's nor the timeout's own
     /// escalation — here, the command sending one to itself — is reported as
     /// what it was, not folded into a bare exit code. `SIGKILL` rather than

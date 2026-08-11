@@ -37,21 +37,17 @@ final class ExecutionManager {
     /// The order runs started in, which the dictionary does not keep and
     /// eviction needs.
     private var startOrder: [UUID] = []
-    /// A run's declared output mode, kept only until `finish` reads it — the
-    /// one thing `HUDPresentation.forOutcome` needs that `ExecutionRecord`
-    /// itself does not carry.
-    private var outputModes: [UUID: PluginOutputMode] = [:]
 
-    /// Told once a run reaches a final state, together with the output mode
-    /// its plugin declared. 5b's `AppDelegate` is the only caller; left `nil`
-    /// here so 5a's own tests, which never set it, run unaffected.
-    private let onFinished: ((ExecutionRecord, PluginOutputMode) -> Void)?
+    /// Told once a run reaches a final state. 5b's `AppDelegate` is the only
+    /// caller; left `nil` here so 5a's own tests, which never set it, run
+    /// unaffected.
+    private let onFinished: ((ExecutionRecord) -> Void)?
 
     init(
         configuration: any PluginConfigurationStoring,
         secrets: any PluginSecretStoring,
         searchPaths: [String] = ControlledPath.default,
-        onFinished: ((ExecutionRecord, PluginOutputMode) -> Void)? = nil
+        onFinished: ((ExecutionRecord) -> Void)? = nil
     ) {
         self.configuration = configuration
         self.resolver = ExecutableResolver(searchPaths: searchPaths)
@@ -63,7 +59,7 @@ final class ExecutionManager {
 
     /// The plugin currently holding the single slot, if any.
     var activeRecord: ExecutionRecord? {
-        records.values.first { $0.state == .running }
+        records.values.first(where: \.isRunning)
     }
 
     @discardableResult
@@ -102,6 +98,7 @@ final class ExecutionManager {
             id: id,
             pluginID: manifest.id,
             pluginName: manifest.name,
+            outputMode: manifest.output.mode,
             startedAt: Date(),
             state: .running,
             standardOutput: "",
@@ -109,7 +106,6 @@ final class ExecutionManager {
             wasTruncated: false
         )
         startOrder.append(id)
-        outputModes[id] = manifest.output.mode
         evictOldestRuns()
         let cancellation = ProcessRunner.Cancellation()
         cancellations[id] = cancellation
@@ -131,7 +127,7 @@ final class ExecutionManager {
     /// cancellation is the only handle that can stop it.
     private func evictOldestRuns() {
         while startOrder.count > Self.historyLimit {
-            guard let oldest = startOrder.firstIndex(where: { records[$0]?.state != .running })
+            guard let oldest = startOrder.firstIndex(where: { records[$0]?.isRunning != true })
             else { return }
             records[startOrder.remove(at: oldest)] = nil
         }
@@ -176,13 +172,7 @@ final class ExecutionManager {
 
     private func finish(_ id: UUID, with outcome: ExecutionOutcome) {
         guard var record = records[id] else { return }
-        record.state = switch outcome.ending {
-        case .exited(let code): .finished(exitCode: code)
-        case .cancelled: .cancelled
-        case .timedOut: .timedOut
-        case .signalled(let signal): .signalled(signal)
-        case .failed(let failure): .failed(failure)
-        }
+        record.state = .ended(outcome.ending)
         record.standardOutput = outcome.standardOutput
         record.standardError = outcome.standardError
         record.wasTruncated = outcome.wasTruncated
@@ -193,8 +183,8 @@ final class ExecutionManager {
         // hands the same record to whatever puts it in front of the user.
         // Both still happen — the log outlives any HUD, which times out and
         // closes.
-        switch record.state {
-        case .finished(let code) where code != 0:
+        switch outcome.ending {
+        case .exited(let code) where code != 0:
             // The plugin id is public because it is what makes the line
             // useful. The child's stderr is not, and must not become so: a
             // command that traces itself, or that reports the URL a request
@@ -216,7 +206,6 @@ final class ExecutionManager {
             logger.notice("\(record.pluginID, privacy: .public) finished")
         }
 
-        let mode = outputModes.removeValue(forKey: id) ?? .silent
-        onFinished?(record, mode)
+        onFinished?(record)
     }
 }
