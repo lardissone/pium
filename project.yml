@@ -45,6 +45,12 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.pium.Pium
+        # The name people see — in Finder, in Spotlight, in an alert macOS
+        # raises about the app. The exclamation mark is part of the product
+        # name. Only the display name carries it: the bundle stays `Pium.app`
+        # and the identifier stays `app.pium.Pium`, so nothing that resolves
+        # the app by path or id has to know about it.
+        INFOPLIST_KEY_CFBundleDisplayName: Pium!
         # Menubar agent: no Dock icon, no default main window.
         INFOPLIST_KEY_LSUIElement: YES
         # The catalog is picked up as a resource by the `Pium` source path

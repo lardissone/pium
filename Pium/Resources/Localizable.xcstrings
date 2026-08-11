@@ -75,13 +75,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "About Pium"
+            "value": "About Pium!"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acerca de Pium"
+            "value": "Acerca de Pium!"
           }
         }
       }
@@ -585,13 +585,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "About Pium"
+            "value": "About Pium!"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acerca de Pium"
+            "value": "Acerca de Pium!"
           }
         }
       }
@@ -602,13 +602,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pium"
+            "value": "Pium!"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pium"
+            "value": "Pium!"
           }
         }
       }
@@ -636,13 +636,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open Pium"
+            "value": "Open Pium!"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir Pium"
+            "value": "Abrir Pium!"
           }
         }
       }
@@ -670,13 +670,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quit Pium"
+            "value": "Quit Pium!"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salir de Pium"
+            "value": "Salir de Pium!"
           }
         }
       }
@@ -772,13 +772,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Press %@ from any app to open Pium. You can change this in Settings."
+            "value": "Press %@ from any app to open Pium! You can change this in Settings."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Presioná %@ desde cualquier app para abrir Pium. Podés cambiarlo en Ajustes."
+            "value": "Presioná %@ desde cualquier app para abrir Pium! Podés cambiarlo en Ajustes."
           }
         }
       }
@@ -789,13 +789,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pium"
+            "value": "Pium!"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pium"
+            "value": "Pium!"
           }
         }
       }
@@ -806,13 +806,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Welcome to Pium"
+            "value": "Welcome to Pium!"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bienvenido a Pium"
+            "value": "Bienvenido a Pium!"
           }
         }
       }
@@ -1095,13 +1095,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Schema version %1$lld is not supported. This version of Pium reads version %2$lld."
+            "value": "Schema version %1$lld is not supported. This version of Pium! reads version %2$lld."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La versión de esquema %1$lld no está soportada. Esta versión de Pium lee la versión %2$lld."
+            "value": "La versión de esquema %1$lld no está soportada. Esta versión de Pium! lee la versión %2$lld."
           }
         }
       }
@@ -1299,13 +1299,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A plugin is a command that runs on your Mac as you. Pium does not review what a plugin does — read a plugin before you install it."
+            "value": "A plugin is a command that runs on your Mac as you. Pium! does not review what a plugin does — read a plugin before you install it."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un plugin es un comando que corre en tu Mac con tu usuario. Pium no revisa lo que hace un plugin — leé un plugin antes de instalarlo."
+            "value": "Un plugin es un comando que corre en tu Mac con tu usuario. Pium! no revisa lo que hace un plugin — leé un plugin antes de instalarlo."
           }
         }
       }
@@ -1333,13 +1333,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Language changes take effect the next time Pium starts."
+            "value": "Language changes take effect the next time Pium! starts."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los cambios de idioma se aplican la próxima vez que se inicie Pium."
+            "value": "Los cambios de idioma se aplican la próxima vez que se inicie Pium!."
           }
         }
       }
@@ -1503,13 +1503,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shown as the manifest declares it. Pium resolves the executable when it runs the command."
+            "value": "Shown as the manifest declares it. Pium! resolves the executable when it runs the command."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se muestra tal como lo declara el manifiesto. Pium resuelve el ejecutable cuando ejecuta el comando."
+            "value": "Se muestra tal como lo declara el manifiesto. Pium! resuelve el ejecutable cuando ejecuta el comando."
           }
         }
       }
@@ -1962,13 +1962,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pium learns which results you pick so they come back first. Erasing this cannot be undone."
+            "value": "Pium! learns which results you pick so they come back first. Erasing this cannot be undone."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pium aprende qué resultados elegís para mostrarlos primero. Borrar esto no se puede deshacer."
+            "value": "Pium! aprende qué resultados elegís para mostrarlos primero. Borrar esto no se puede deshacer."
           }
         }
       }
@@ -1996,13 +1996,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uses the existing Spotlight index. Turning this off stops Pium querying Spotlight at all."
+            "value": "Uses the existing Spotlight index. Turning this off stops Pium! querying Spotlight at all."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usa el índice de Spotlight existente. Al desactivarlo, Pium deja de consultar Spotlight por completo."
+            "value": "Usa el índice de Spotlight existente. Al desactivarlo, Pium! deja de consultar Spotlight por completo."
           }
         }
       }
@@ -2148,13 +2148,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pium Settings"
+            "value": "Pium! Settings"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ajustes de Pium"
+            "value": "Ajustes de Pium!"
           }
         }
       }
