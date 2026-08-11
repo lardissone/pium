@@ -7,7 +7,11 @@ import SwiftUI
 final class OnboardingWindowController {
     private var window: NSWindow?
 
-    func present(shortcut: HotkeyShortcut, onFinish: @escaping () -> Void) {
+    func present(
+        shortcut: HotkeyShortcut,
+        access: ProtectedFolderAccess,
+        onFinish: @escaping () -> Void
+    ) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 340),
             styleMask: [.titled, .closable],
@@ -21,7 +25,7 @@ final class OnboardingWindowController {
         // brought back. Floating keeps first launch reachable.
         window.level = .floating
         let hosting = NSHostingView(
-            rootView: OnboardingView(shortcut: shortcut) { [weak self] in
+            rootView: OnboardingView(shortcut: shortcut, access: access) { [weak self] in
                 onFinish()
                 self?.dismiss()
             }

@@ -15,6 +15,7 @@ final class SettingsWindowController {
 
     func present(
         frecency: any FrecencyStoring,
+        access: ProtectedFolderAccess,
         onShortcutChanged: @escaping (HotkeyShortcut) -> Void,
         pluginIndex: PluginIndex,
         configuration: any PluginConfigurationStoring,
@@ -23,8 +24,7 @@ final class SettingsWindowController {
         // Reuse the existing window so the menu item raises Settings rather
         // than stacking a second copy.
         if let window {
-            NSApp.activate()
-            window.makeKeyAndOrderFront(nil)
+            raise(window)
             return
         }
 
@@ -45,10 +45,17 @@ final class SettingsWindowController {
         )
         window.title = String(localized: "settings.windowTitle")
         window.isReleasedWhenClosed = false
+        // Pium has no Dock icon and does not appear in the application
+        // switcher, so a window that slips behind another one cannot be
+        // brought back the ways a person would try. Floating keeps it in
+        // reach, and closing it is the way it goes away — the same reasoning
+        // `OnboardingWindowController` already applies to first launch.
+        window.level = .floating
         window.contentMinSize = NSSize(width: 560, height: 360)
         window.contentView = NSHostingView(
             rootView: SettingsView(
                 frecency: frecency,
+                access: access,
                 onShortcutChanged: onShortcutChanged,
                 pluginIndex: pluginIndex,
                 configuration: configuration,
@@ -63,7 +70,19 @@ final class SettingsWindowController {
         }
 
         self.window = window
+        raise(window)
+    }
+
+    /// Brings the window to the front and gives it the keyboard.
+    ///
+    /// `orderFrontRegardless` as well as activating: an accessory app is not
+    /// always granted the front on asking, and `makeKeyAndOrderFront` obeys
+    /// that refusal — which is how choosing Settings from the menubar could
+    /// leave the window opening behind whatever the person was looking at,
+    /// with no icon in the Dock or the switcher to reach it by.
+    private func raise(_ window: NSWindow) {
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
     }
 }

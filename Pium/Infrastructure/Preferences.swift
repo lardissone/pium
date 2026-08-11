@@ -18,6 +18,7 @@ final class Preferences {
         static let fileSearchScope = "pium.fileSearchScope"
         static let disabledPluginIDs = "pium.disabledPluginIDs"
         static let hudAnchor = "pium.hudAnchor"
+        static let requestedFolderAccess = "pium.requestedFolderAccess"
         /// Read by macOS at launch to pick the application's language.
         static let appleLanguages = "AppleLanguages"
     }
@@ -115,6 +116,16 @@ final class Preferences {
             defaults.string(forKey: Key.hudAnchor).flatMap(HUDAnchor.init(rawValue:)) ?? .topRight
         }
         set { defaults.set(newValue.rawValue, forKey: Key.hudAnchor) }
+    }
+
+    /// Which protected folders Pium has already asked macOS about.
+    ///
+    /// Remembered rather than looked up because there is nothing to look it up
+    /// in: macOS exposes no way to read TCC's answer, and the only way to find
+    /// out is to ask, which is the thing this exists to avoid doing twice.
+    var requestedFolderAccess: Set<String> {
+        get { Set(defaults.stringArray(forKey: Key.requestedFolderAccess) ?? []) }
+        set { defaults.set(newValue.sorted(), forKey: Key.requestedFolderAccess) }
     }
 }
 

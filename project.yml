@@ -59,6 +59,12 @@ targets:
         # the build instead of silently shipping no icon.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 Leandro Ardissone. MIT licensed."
+        # The sentence macOS puts in its own prompt. Without these the prompt
+        # carries no explanation. Per folder rather than Full Disk Access,
+        # which PRD §9 rules out entirely.
+        INFOPLIST_KEY_NSDocumentsFolderUsageDescription: "Pium! searches your Documents folder so its files appear in your results."
+        INFOPLIST_KEY_NSDesktopFolderUsageDescription: "Pium! searches your Desktop so its files appear in your results."
+        INFOPLIST_KEY_NSDownloadsFolderUsageDescription: "Pium! searches your Downloads folder so its files appear in your results."
     # Explicit rather than XcodeGen's auto-generated scheme, so the test
     # action can declare an environment variable: `xcodebuild test` does not
     # forward its own shell environment to a macOS test host on its own, so
