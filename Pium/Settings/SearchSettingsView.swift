@@ -135,7 +135,26 @@ struct SearchSettingsView: View {
         }
     }
 
+    /// Whether a refresh may replace what is on screen.
+    ///
+    /// A request in flight owns the answer, and a refresh must not race it.
+    /// Answering the system's prompt reactivates Pium, which is what a refresh
+    /// listens for — so the refresh can read what Pium remembers asking about
+    /// *before* the request has recorded the folder it just asked for. It
+    /// would then classify a folder the user has this second granted as one
+    /// nobody ever asked about, and replace `granted` with an Allow button.
+    ///
+    /// Nothing is lost by skipping: the request reports every folder it was
+    /// given, which is what redraws the rows.
+    ///
+    /// Not `private`, so a test can exercise the decision without a window —
+    /// the same reason `action(for:)` is not.
+    static func shouldRefresh(whileRequesting isRequesting: Bool) -> Bool {
+        !isRequesting
+    }
+
     private func refreshFolderStatuses() {
+        guard Self.shouldRefresh(whileRequesting: isRequesting) else { return }
         access.statuses(of: ProtectedFolder.allCases) { statuses in
             folderStatuses = statuses
         }
