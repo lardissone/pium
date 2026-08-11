@@ -1,0 +1,27 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSDesktopFolderUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pium! searches your Desktop so its files appear in your results." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pium! busca en tu Escritorio para que sus archivos aparezcan en los resultados." } }
+      }
+    },
+    "NSDocumentsFolderUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pium! searches your Documents folder so its files appear in your results." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pium! busca en tu carpeta Documentos para que sus archivos aparezcan en los resultados." } }
+      }
+    },
+    "NSDownloadsFolderUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pium! searches your Downloads folder so its files appear in your results." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pium! busca en tu carpeta Descargas para que sus archivos aparezcan en los resultados." } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
