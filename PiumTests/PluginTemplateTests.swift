@@ -100,7 +100,7 @@ struct PluginTemplateResolutionTests {
         #expect(resolved == "https://x.com/?q=a%20b%26c")
     }
 
-    @Test func aconfigurationValueIsInterpolated() throws {
+    @Test func aConfigurationValueIsInterpolated() throws {
         let resolved = PluginTemplate.resolve(
             try tokens("{{baseURL}}/status", keys: ["baseURL"]),
             input: "",

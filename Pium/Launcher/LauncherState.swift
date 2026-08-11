@@ -216,7 +216,7 @@ final class LauncherState {
     /// Returns whether the caller should perform `action` now.
     @discardableResult
     func attemptToRun(_ action: ResultAction, on result: SearchResult) -> Bool {
-        guard action.shortcut == .returnKey, result.confirmation != nil else { return true }
+        guard action.isRunAction, result.confirmation != nil else { return true }
         if confirmingResult?.id == result.id {
             cancelConfirmation()
             return true
@@ -284,11 +284,15 @@ final class LauncherState {
 
     /// The action a pressed combination runs, if any. Key routing asks this
     /// rather than branching per key, so a new action needs no view change.
+    /// `result` names what to resolve against, for the callers that have one
+    /// in hand: argument mode has a target but no selected row, since
+    /// `results` is empty there by PRD §10.3.
     func action(
         matching key: ActionShortcut.Key,
-        modifiers: ActionShortcut.Modifiers
+        modifiers: ActionShortcut.Modifiers,
+        on result: SearchResult? = nil
     ) -> ResultAction? {
-        selectedResult?.actions.first {
+        (result ?? selectedResult)?.actions.first {
             $0.shortcut?.matches(key: key, modifiers: modifiers) == true
         }
     }
@@ -311,6 +315,14 @@ final class LauncherState {
         guard !results.isEmpty else { return }
         let current = results.firstIndex { $0.id == selectedID } ?? 0
         let next = min(max(current + offset, 0), results.count - 1)
+        // Same reason as `select(id:)`: an answer about the row being left
+        // must not be read as permission for the row arrived at. Movement is
+        // blocked while a confirmation is pending today, and `attemptToRun`
+        // re-checks identity besides, so this closes the gap by construction
+        // rather than fixing a reachable bug.
+        if results[next].id != selectedID {
+            cancelConfirmation()
+        }
         selectedID = results[next].id
     }
 }

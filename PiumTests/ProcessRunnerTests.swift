@@ -107,6 +107,63 @@ struct ProcessRunnerTests {
         #expect(outcome.standardOutput.allSatisfy { $0 == "€" })
     }
 
+    /// Every length of dangling byte the cap can leave, not just the one the
+    /// obvious fixture happens to produce.
+    ///
+    /// How many bytes dangle is `(cap - prefix) % width` for a run of
+    /// `width`-byte characters, so a few ASCII characters in front of the run
+    /// choose it: 64 KB of three-byte `€` leaves one, two ASCII first leaves
+    /// two, and one ASCII in front of four-byte characters leaves three. A
+    /// UTF-8 sequence is at most four bytes, so those are all of them.
+    ///
+    /// The assertion is the same in every case: whatever survives decodes to
+    /// characters the command actually printed, never to U+FFFD.
+    @Test(arguments: [("€", 0, 1), ("€", 2, 2), ("😀", 1, 3)])
+    func aDanglingByteOfAnyLengthIsDroppedWhole(
+        character: String, prefix: Int, expectedDangle: Int
+    ) async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let width = character.utf8.count
+        #expect(
+            (ProcessRunner.outputCap - prefix) % width == expectedDangle,
+            "Fixture no longer produces the \(expectedDangle)-byte dangle it is here to cover"
+        )
+        let url = try script(
+            """
+            printf '%\(prefix)s' ''
+            for i in $(seq 1 30000); do printf '\(character)'; done
+            """,
+            in: directory
+        )
+
+        let outcome = await ProcessRunner().run(
+            request(url.path, in: directory), cancellation: .init()
+        )
+        #expect(outcome.wasTruncated)
+        #expect(!outcome.standardOutput.contains("\u{FFFD}"))
+        #expect(outcome.standardOutput.dropFirst(prefix).allSatisfy { String($0) == character })
+    }
+
+    /// Bytes that are not UTF-8 at all — a command printing binary, which
+    /// nothing stops it from doing. Dropping up to three trailing bytes
+    /// cannot rescue this, so the decoder's replacement characters are the
+    /// honest answer; what matters is that the run still completes and
+    /// reports the rest.
+    @Test func invalidUtf8DoesNotLoseTheRunOrTheValidTextAroundIt() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = try script("printf 'before\\377\\376after'", in: directory)
+
+        let outcome = await ProcessRunner().run(
+            request(url.path, in: directory), cancellation: .init()
+        )
+        #expect(outcome.ending == .exited(0))
+        #expect(outcome.wasTruncated == false)
+        #expect(outcome.standardOutput.hasPrefix("before"))
+        #expect(outcome.standardOutput.hasSuffix("after"))
+    }
+
     /// The two streams arrive as two strings, neither folded into the other:
     /// stderr is where a failing command explains itself, and the interface
     /// shows it on its own.

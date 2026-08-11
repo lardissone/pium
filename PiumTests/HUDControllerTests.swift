@@ -35,7 +35,6 @@ struct HUDControllerTests {
         let controller = HUDController()
         controller.show(presentation("done", duration: .seconds(60)))
         #expect(controller.visibleCount == 1)
-        controller.dismissAll()
     }
 
     /// Three results in a row leave three panels — the reason they stack
@@ -46,7 +45,6 @@ struct HUDControllerTests {
             controller.show(presentation("\(index)", duration: .seconds(60)))
         }
         #expect(controller.visibleCount == 3)
-        controller.dismissAll()
     }
 
     @Test func apanelGoesAwayWhenItsTimeIsUp() async throws {
@@ -66,7 +64,6 @@ struct HUDControllerTests {
         try await Task.sleep(for: .milliseconds(700))
         #expect(controller.visibleCount == 1)
         #expect(controller.frames.first != secondBefore)
-        controller.dismissAll()
     }
 
     /// Most plugins run and finish well inside the delay — the reason it
@@ -102,7 +99,6 @@ struct HUDControllerTests {
         #expect(controller.visibleCount == 1)
         controller.finishRunning(id: id, with: presentation("done", duration: .seconds(60)))
         #expect(controller.visibleCount == 1)
-        controller.dismissAll()
     }
 
     /// Exercises the real `HUDPresentation.forOutcome` path for a cancelled

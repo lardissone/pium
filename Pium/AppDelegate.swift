@@ -87,11 +87,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                     onCancel: { executions.cancel(id) }
                                 )
                             case .failure(let failure):
-                                // A refusal here means nothing ever ran, so
-                                // there is no `ExecutionRecord` for a HUD to
-                                // show — the log is the only place it lands.
                                 Logger(subsystem: Signposts.subsystem, category: "Execution")
                                     .error("\(failure.message, privacy: .public)")
+                                // A refusal means nothing ran, so there is no
+                                // `ExecutionRecord` for `forOutcome` to read
+                                // and the HUD is built here instead. It still
+                                // has to appear: the user asked for a run and
+                                // did not get one, and every reason this can
+                                // happen — a quarantined executable, an
+                                // invalid manifest, another run holding the
+                                // slot — already carries a sentence written
+                                // for a person. Logging alone left all of
+                                // them where nobody would look.
+                                hud.show(HUDPresentation(
+                                    kind: .failure,
+                                    title: record.manifest?.name
+                                        ?? record.fileURL.deletingPathExtension().lastPathComponent,
+                                    body: failure.message,
+                                    duration: HUDPresentation.failureDuration
+                                ))
                             }
                         }
                     ),

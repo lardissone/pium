@@ -62,9 +62,29 @@ struct HUDPresentation: Equatable, Sendable {
         return error.isEmpty ? String(localized: "hud.exited \(Int(code))") : error
     }
 
+    /// How many lines of a command's output a HUD can hold, matching
+    /// `HUDView`'s own limit. Beyond it the text is not drawn, but it is still
+    /// measured: `fittingSize` walks the whole string to size the panel, so a
+    /// 64 KB body costs that walk on every layout pass to show eight lines.
+    private static let bodyLineLimit = 8
+
+    /// A ceiling on characters as well as lines: eight lines is no bound at
+    /// all when a command prints 64 KB without a single newline, which is
+    /// ordinary for a program piping JSON. Generous enough that eight full
+    /// lines at the HUD's width always survive it.
+    private static let bodyCharacterLimit = 2_000
+
     private static func text(_ raw: String, truncated: Bool) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard truncated, !trimmed.isEmpty else { return trimmed }
-        return trimmed + "\n" + String(localized: "hud.truncated")
+        var shown = String(trimmed.prefix(bodyCharacterLimit))
+        let lines = shown.split(separator: "\n", omittingEmptySubsequences: false)
+        if lines.count > bodyLineLimit {
+            shown = lines.prefix(bodyLineLimit).joined(separator: "\n")
+        }
+        // Cut past what can be shown, and say so — the same sentence a run
+        // truncated at the byte cap already uses, since from the reader's side
+        // the two are one fact: this is not all of it.
+        guard truncated || shown.count < trimmed.count, !shown.isEmpty else { return shown }
+        return shown + "\n" + String(localized: "hud.truncated")
     }
 }

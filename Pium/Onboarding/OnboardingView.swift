@@ -8,12 +8,17 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Spacing.loose) {
+            // Centred across the full width rather than sharing the text's
+            // left edge: it is the header of this screen, not another
+            // paragraph of it.
+            //
             // The wordmark repeats what the title says, so it is decoration to
             // a screen reader rather than a second announcement of the name.
             Image(.piumWordmark)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 180)
+                .frame(width: 300)
+                .frame(maxWidth: .infinity)
                 .accessibilityHidden(true)
 
             Text(String(localized: "onboarding.title"))

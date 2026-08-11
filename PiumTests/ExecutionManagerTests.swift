@@ -77,6 +77,56 @@ struct ExecutionManagerTests {
         #expect(try await finalState(of: id, in: manager) == .finished(exitCode: 0))
     }
 
+    /// The slot is a slot, not a one-shot: finishing a run has to hand it
+    /// back. Both runs are asserted individually, because a second run that
+    /// never started would leave the first one's record as the only evidence
+    /// and a count alone would not notice.
+    @Test func theSlotIsFreeAgainOnceARunFinishes() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = manager()
+
+        let first = try manager.run(
+            record(executable: "echo", arguments: ["one"], in: directory), input: ""
+        ).get()
+        #expect(try await finalState(of: first, in: manager) == .finished(exitCode: 0))
+        #expect(manager.activeRecord == nil, "A finished run must not still hold the slot")
+
+        let second = try manager.run(
+            record(executable: "echo", arguments: ["two"], in: directory), input: ""
+        ).get()
+        #expect(second != first)
+        #expect(try await finalState(of: second, in: manager) == .finished(exitCode: 0))
+    }
+
+    /// A refused second run must change nothing about the first: the menubar
+    /// reads `activeRecord` to name what its Cancel entry would stop, so a
+    /// refusal that disturbed it would leave Cancel offering to stop a run
+    /// that was never started.
+    @Test func arefusedSecondRunLeavesTheFirstHoldingTheSlot() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = manager()
+
+        let first = try manager.run(
+            record(executable: "sleep", arguments: ["30"], in: directory), input: ""
+        ).get()
+        defer { manager.cancel(first) }
+        #expect(manager.activeRecord?.id == first)
+
+        guard case .failure(let failure) = manager.run(
+            record(executable: "echo", arguments: ["two"], in: directory), input: ""
+        ) else {
+            Issue.record("A second run must be refused while the slot is held")
+            return
+        }
+        #expect(failure == .alreadyRunning(plugin: "Probe"))
+        #expect(
+            manager.activeRecord?.id == first,
+            "The refusal must leave the first run holding the slot"
+        )
+    }
+
     @Test func anUnresolvableExecutableFailsBeforeAnyProcessExists() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
