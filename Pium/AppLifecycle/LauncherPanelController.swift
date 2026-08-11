@@ -19,6 +19,12 @@ final class LauncherPanelController: NSObject {
 
     var isVisible: Bool { panel.isVisible }
 
+    /// The display the launcher last opened on, which outlives the opening: a
+    /// run started here can finish long after the panel closed, and whatever
+    /// it puts on screen belongs where the user was looking when they asked
+    /// for it.
+    private(set) var targetScreen: NSScreen?
+
     init(
         coordinator: SearchCoordinator,
         frecency: any FrecencyStoring,
@@ -160,6 +166,7 @@ final class LauncherPanelController: NSObject {
         ) else {
             return
         }
+        targetScreen = screens[targetIndex]
 
         let origin = ScreenPlacement.origin(
             panelSize: panel.frame.size,

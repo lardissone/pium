@@ -23,12 +23,65 @@ struct HUDControllerTests {
             id: id,
             pluginID: "demo.probe",
             pluginName: "Probe",
+            outputMode: .toast,
             startedAt: Date(),
-            state: .cancelled,
+            state: .ended(.cancelled),
             standardOutput: "",
             standardError: "",
             wasTruncated: false
         )
+    }
+
+    /// The whole path a real run takes to the screen, with a real process at
+    /// the far end: the manager keeps the mode the manifest declared on the
+    /// run's own record, `HUDPresentation` reads it there, and the panel that
+    /// results is placed inside a screen somebody can read it on.
+    @Test func atoastRunPutsWhatItPrintedOnScreen() async throws {
+        let manifest = PluginManifest(
+            schemaVersion: 1,
+            id: "demo.probe",
+            name: "Probe",
+            description: nil,
+            keywords: [],
+            aliases: [],
+            icon: nil,
+            input: PluginInput(mode: .none, placeholder: nil),
+            command: PluginCommand(executable: "echo", arguments: ["hola"], workingDirectory: nil),
+            configuration: [],
+            output: PluginOutput(mode: .toast),
+            timeoutSeconds: nil,
+            confirmBeforeRun: nil
+        )
+        // Long enough that the running HUD never appears: this is about what a
+        // *finished* run leaves behind.
+        let controller = HUDController(runningDelay: .seconds(60))
+        let manager = ExecutionManager(
+            configuration: PluginConfigurationStore(
+                defaults: UserDefaults(suiteName: UUID().uuidString)!
+            ),
+            secrets: InMemorySecretStore(secrets: [:]),
+            searchPaths: ["/usr/bin", "/bin"],
+            onFinished: { record in
+                controller.finishRunning(id: record.id, with: HUDPresentation.forOutcome(record))
+            }
+        )
+
+        _ = try manager.run(
+            PluginRecord(
+                fileURL: URL(filePath: "/tmp/probe.pium.json"), manifest: manifest, diagnostic: nil
+            ),
+            input: ""
+        ).get()
+
+        let deadline = ContinuousClock.now + .seconds(10)
+        while controller.visibleCount == 0, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(controller.visibleCount == 1, "A toast run that printed must leave a HUD")
+
+        let frame = try #require(controller.frames.first)
+        let visible = try #require(NSScreen.main ?? NSScreen.screens.first).visibleFrame
+        #expect(visible.contains(frame), "The HUD is off the screen it was placed on: \(frame)")
     }
 
     @Test func showingOneMakesOnePanel() {
@@ -110,7 +163,7 @@ struct HUDControllerTests {
         controller.showRunning(id: id, presentation: running(), onCancel: {})
         try await Task.sleep(for: .milliseconds(400))
         #expect(controller.visibleCount == 1)
-        let outcome = HUDPresentation.forOutcome(cancelledRecord(id: id), mode: .toast)
+        let outcome = HUDPresentation.forOutcome(cancelledRecord(id: id))
         controller.finishRunning(id: id, with: outcome)
         #expect(controller.visibleCount == 0)
     }

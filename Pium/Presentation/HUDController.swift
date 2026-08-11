@@ -16,6 +16,11 @@ final class HUDController {
         /// showing progress — `nil` once it holds an outcome instead. This is
         /// what `finishRunning` uses to find the panel to replace.
         var runningID: UUID?
+        /// The display this HUD belongs on, fixed when it was added. Stored as
+        /// an id rather than an `NSScreen`, which is a snapshot: the object is
+        /// replaced when displays change, and a HUD outliving that would be
+        /// laid out against a screen that no longer describes anything.
+        let displayID: CGDirectDisplayID?
     }
 
     private static let spacing: CGFloat = 10
@@ -23,6 +28,14 @@ final class HUDController {
     private var entries: [Entry] = []
     private let anchor: () -> HUDAnchor
     private let runningDelay: Duration
+    /// Which display the launcher is on, asked the moment a HUD is added.
+    ///
+    /// A HUD belongs where the user was looking when they started the run,
+    /// which is where the launcher was — not `NSScreen.main`, which follows
+    /// the key window and can be a different display altogether. Asked per
+    /// HUD rather than read once at layout because a run's answer is the one
+    /// it had when it started, however long it takes to finish.
+    var launcherScreen: () -> NSScreen? = { nil }
     /// Runs whose HUD has not appeared yet — still inside `runningDelay`.
     /// Keyed by run id so `finishRunning` can cancel the wait for a run that
     /// finishes before its HUD would have shown.
@@ -47,7 +60,8 @@ final class HUDController {
         let entry = Entry(
             panel: panel,
             expiry: expiryTask(for: panel, duration: presentation.duration),
-            runningID: nil
+            runningID: nil,
+            displayID: launcherScreen()?.displayID
         )
         entries.insert(entry, at: 0)
         panel.orderFrontRegardless()
@@ -61,10 +75,16 @@ final class HUDController {
     /// elapsed time appears, with `onCancel` behind its Cancel button.
     func showRunning(id: UUID, presentation: RunningPresentation, onCancel: @escaping () -> Void) {
         let delay = runningDelay
+        // Read now rather than inside the task: the display that matters is
+        // the one the run was started from, and by the time the delay elapses
+        // the launcher may be closed or somewhere else.
+        let displayID = launcherScreen()?.displayID
         pendingRunning[id] = Task { [weak self] in
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
-            self?.presentRunning(id: id, presentation: presentation, onCancel: onCancel)
+            self?.presentRunning(
+                id: id, presentation: presentation, onCancel: onCancel, displayID: displayID
+            )
         }
     }
 
@@ -118,14 +138,19 @@ final class HUDController {
         entries.removeAll()
     }
 
-    private func presentRunning(id: UUID, presentation: RunningPresentation, onCancel: @escaping () -> Void) {
+    private func presentRunning(
+        id: UUID,
+        presentation: RunningPresentation,
+        onCancel: @escaping () -> Void,
+        displayID: CGDirectDisplayID?
+    ) {
         pendingRunning[id] = nil
         let panel = HUDPanel(contentRect: NSRect(origin: .zero, size: .zero))
         panel.contentView = NSHostingView(
             rootView: RunningHUDView(presentation: presentation, onCancel: onCancel)
         )
         panel.setContentSize(panel.contentView?.fittingSize ?? .zero)
-        entries.insert(Entry(panel: panel, expiry: nil, runningID: id), at: 0)
+        entries.insert(Entry(panel: panel, expiry: nil, runningID: id, displayID: displayID), at: 0)
         panel.orderFrontRegardless()
         layout()
     }
@@ -165,40 +190,41 @@ final class HUDController {
 
     /// Newest nearest the anchored edge; the rest drift toward the middle.
     ///
-    /// Each panel is placed after the real heights of the ones already laid
-    /// out this pass, not after its own — HUDs vary in height with how much a
-    /// plugin printed, so a taller panel ahead of this one has to open a wider
-    /// gap than a shorter one would.
+    /// Where each panel lands is `HUDAnchor.origins`, which is pure and
+    /// tested. What this adds is the part only the live app knows: which
+    /// display each HUD belongs on.
     private func layout() {
-        // `NSScreen.main` is the screen with the key window, and an accessory
-        // app that owns no key window can leave it nil. Falling back to the
-        // first attached screen puts the HUD somewhere a person is looking;
-        // returning early left every panel at its initial (0,0).
-        //
-        // Which screen a HUD *belongs* on is a separate question — the
-        // launcher places itself on its own target screen, so the two can
-        // disagree on a multi-display Mac. That needs deciding, and is
-        // deliberately not answered here (PIUM-104).
-        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
-        let visible = screen.visibleFrame
-        let anchor = anchor()
-        var precedingHeights: [CGFloat] = []
-        for entry in entries {
-            let size = entry.panel.frame.size
-            let origin = anchor.origin(
-                forPanelOfSize: size,
-                stackedAfter: precedingHeights,
-                in: visible,
-                spacing: Self.spacing
-            )
-            // A stack tall enough to pass the far edge would otherwise keep
-            // walking off it, one panel at a time, and the oldest HUDs would
-            // be drawn where nobody can read them.
-            entry.panel.setFrameOrigin(CGPoint(
-                x: min(max(origin.x, visible.minX), max(visible.maxX - size.width, visible.minX)),
-                y: min(max(origin.y, visible.minY), max(visible.maxY - size.height, visible.minY))
-            ))
-            precedingHeights.append(size.height)
+        // With no screen to lay out against — a headless host, or a Mac mid
+        // display change — every panel would be pushed to the origin of a
+        // frame that describes nothing. Leaving them where they are is better.
+        guard !NSScreen.screens.isEmpty else { return }
+        let panels = entries.map {
+            HUDAnchor.Panel(size: $0.panel.frame.size, visibleFrame: visibleFrame(of: $0.displayID))
         }
+        for (entry, origin) in zip(entries, anchor().origins(for: panels, spacing: Self.spacing)) {
+            entry.panel.setFrameOrigin(origin)
+        }
+    }
+
+    /// The usable area of the display a HUD belongs on.
+    ///
+    /// A display can be unplugged while its HUD is still up, and a HUD added
+    /// with no launcher on screen has no display of its own to name. Both fall
+    /// back to where the user is most likely looking: the screen with the key
+    /// window, or failing that the first attached one. `layout` has already
+    /// established there is one.
+    private func visibleFrame(of displayID: CGDirectDisplayID?) -> CGRect {
+        let screens = NSScreen.screens
+        let screen = screens.first { $0.displayID == displayID } ?? NSScreen.main ?? screens.first
+        return screen?.visibleFrame ?? .zero
+    }
+}
+
+extension NSScreen {
+    /// The display this screen describes, which outlives the `NSScreen` object
+    /// itself: AppKit replaces those when the display configuration changes,
+    /// so anything holding on to a screen over time has to hold the id.
+    var displayID: CGDirectDisplayID? {
+        (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
     }
 }

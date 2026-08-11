@@ -81,6 +81,52 @@ struct HUDAnchorTests {
         #expect(origin.y == -180)
     }
 
+    /// A HUD belongs on the display its run started from, so a stack can span
+    /// two of them — and each display has to stack on its own. Sharing one
+    /// running offset would push the second monitor's only HUD down the screen
+    /// to clear a panel it cannot collide with.
+    @Test func eachDisplayStacksIndependently() {
+        let secondary = CGRect(x: 1000, y: 0, width: 800, height: 600)
+        let origins = HUDAnchor.topRight.origins(
+            for: [
+                HUDAnchor.Panel(size: panel, visibleFrame: screen),
+                HUDAnchor.Panel(size: panel, visibleFrame: secondary),
+                HUDAnchor.Panel(size: panel, visibleFrame: screen),
+            ],
+            spacing: 10
+        )
+        let topOfPrimary: CGFloat = 800 - 100 - 20
+        let topOfSecondary: CGFloat = 600 - 100 - 20
+        #expect(origins[0].y == topOfPrimary)
+        // Alone on its display, however many panels are on the other one.
+        #expect(origins[1].y == topOfSecondary)
+        #expect(origins[2].y == topOfPrimary - 110)
+    }
+
+    /// A stack taller than the screen would otherwise keep walking past the
+    /// far edge, one panel at a time, and the oldest HUDs would be drawn where
+    /// nobody can read them.
+    @Test func astackTallerThanTheScreenStopsAtItsEdge() {
+        let short = CGRect(x: 0, y: 0, width: 1000, height: 300)
+        let origins = HUDAnchor.topRight.origins(
+            for: Array(repeating: HUDAnchor.Panel(size: panel, visibleFrame: short), count: 5),
+            spacing: 10
+        )
+        #expect(origins.allSatisfy { $0.y >= short.minY })
+        #expect(origins.allSatisfy { $0.y + panel.height <= short.maxY })
+    }
+
+    /// A panel bigger than the screen it is on shows its beginning rather than
+    /// its middle: the top edge is the part worth reading.
+    @Test func apanelTallerThanItsScreenIsPinnedToTheLowEdge() {
+        let tiny = CGRect(x: 0, y: 0, width: 200, height: 80)
+        let origins = HUDAnchor.topRight.origins(
+            for: [HUDAnchor.Panel(size: panel, visibleFrame: tiny)], spacing: 10
+        )
+        #expect(origins[0].x == tiny.minX)
+        #expect(origins[0].y == tiny.minY)
+    }
+
     @Test func thedefaultAnchorIsTopRight() {
         let preferences = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
         #expect(preferences.hudAnchor == .topRight)
