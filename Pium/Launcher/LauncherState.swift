@@ -9,6 +9,22 @@ import Foundation
 @MainActor
 @Observable
 final class LauncherState {
+    /// `nil` for the tests and previews that have nothing to do with
+    /// updating — threading a stub through all of them would be noise.
+    private let updates: (any UpdateAvailability)?
+
+    init(updates: (any UpdateAvailability)? = nil) {
+        self.updates = updates
+    }
+
+    /// The update notice PRD §13 asks for: shown when the launcher opens,
+    /// never as a window over whatever the user was doing.
+    var pendingUpdate: PendingUpdate? { updates?.pendingUpdate }
+
+    func installPendingUpdate() { updates?.installPendingUpdate() }
+
+    func dismissPendingUpdate() { updates?.dismissPendingUpdate() }
+
     /// Setting this always answers "not now" for any confirmation on screen:
     /// the message is about a specific result, and once the user is typing a
     /// different search that answer no longer applies — left standing, the
