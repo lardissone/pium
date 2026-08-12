@@ -178,8 +178,20 @@ export REHEARSAL_DIR=/tmp/pium-rehearsal  # the 0.1.0 and 0.2.0 archives
 All three must already hold what the automated section built:
 `$SPARKLE_BIN/generate_appcast` and `$SPARKLE_BIN/sign_update` from Sparkle's
 distribution, `$FEED_DIR/Pium-0.2.0.zip`, and the two `.xcarchive`s in
-`$REHEARSAL_DIR`. If any of them is gone, rebuild it by following sections 1–3
-above with these variables in place of the literal paths. `/Applications/Pium.app`
+`$REHEARSAL_DIR`. If the archives or the zip are gone, rebuild them by following
+sections 1–3 above with these variables in place of the literal paths. The tools
+are not built here — they ship in Sparkle's own release, and `$SPARKLE_BIN` is
+where that tarball was unpacked:
+
+```bash
+curl -fsSL -o /tmp/Sparkle.tar.xz \
+  https://github.com/sparkle-project/Sparkle/releases/download/2.9.5/Sparkle-2.9.5.tar.xz
+mkdir -p "$(dirname "$SPARKLE_BIN")"
+tar -xJf /tmp/Sparkle.tar.xz -C "$(dirname "$SPARKLE_BIN")"
+```
+
+The version must match the one `project.yml` pins, because the appcast is
+signed by these tools and verified by the app. `/Applications/Pium.app`
 must be the 0.1.0 build, and the feed default must point into `$FEED_DIR`:
 
 ```bash
@@ -299,10 +311,15 @@ run:
 
 ```bash
 defaults delete com.lardissone.pium SUFeedURL
-rm -rf "$FEED_DIR" "$REHEARSAL_DIR" "$(dirname "$SPARKLE_BIN")"
+rm -rf "$FEED_DIR" "$REHEARSAL_DIR"
 rm -rf /Applications/Pium.app
 ```
 
 The last line removes the rehearsal install. It is safe once the walk above
 is done — nothing about the real release depends on this copy of `Pium.app`
 surviving.
+
+`$SPARKLE_BIN` is deliberately not removed here. It may point at a directory
+holding more than Sparkle's tools, and deleting the parent of a path someone
+else supplied is not a thing a checklist should do. Unpacked under `/tmp`, it
+goes on its own at the next restart.
