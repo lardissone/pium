@@ -91,8 +91,19 @@ final class SearchCoordinator {
             // What the user typed, not what normalisation made of it: the bug
             // most often reported is "this should have ranked first", and the
             // raw query is what makes it legible.
+            //
+            // A newer query having started means this one never got to answer,
+            // and `published` is then a count nobody finished — recording it
+            // as a result would give an abandoned search the same line as one
+            // that genuinely matched nothing. Typing produces one of these per
+            // keystroke, so that is most of the log.
             DebugLog.record(
-                .search(query: text, results: published, duration: ContinuousClock.now - started)
+                .search(
+                    query: text,
+                    results: published,
+                    duration: ContinuousClock.now - started,
+                    superseded: generation != currentGeneration
+                )
             )
             publish.finish()
         }

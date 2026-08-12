@@ -12,7 +12,11 @@ enum DebugEvent: Sendable {
         case dismissed
     }
 
-    case search(query: String, results: Int, duration: Duration)
+    /// `superseded` marks a search the user typed past before it answered.
+    /// Its count is not a finding: nothing counted it, and reporting `0
+    /// results` gives an abandoned query the same sentence as one that
+    /// genuinely matched nothing.
+    case search(query: String, results: Int, duration: Duration, superseded: Bool = false)
     case run(plugin: String, executable: String, arguments: [String], environmentKeys: [String])
     case finished(plugin: String, ending: ExecutionEnding, output: String, error: String)
     case pluginsReloaded(count: Int, invalid: Int)
@@ -24,8 +28,10 @@ enum DebugEvent: Sendable {
 
     private var body: String {
         switch self {
-        case .search(let query, let results, let duration):
-            "search  \"\(Self.oneLine(query))\"  \(results) results in \(Self.milliseconds(duration)) ms"
+        case .search(let query, let results, let duration, let superseded):
+            superseded
+                ? "search  \"\(Self.oneLine(query))\"  superseded after \(Self.milliseconds(duration)) ms"
+                : "search  \"\(Self.oneLine(query))\"  \(results) results in \(Self.milliseconds(duration)) ms"
         case .run(let plugin, let executable, let arguments, let environmentKeys):
             "run  \(plugin)  \(executable) \(arguments.map(Self.oneLine).joined(separator: " "))  "
                 + "env: \(environmentKeys.sorted().joined(separator: ", "))"

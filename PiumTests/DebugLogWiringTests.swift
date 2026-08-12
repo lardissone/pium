@@ -61,6 +61,45 @@ struct DebugLogWiringTests {
         }
     }
 
+    /// Typing is a stream of searches, most of which are abandoned before they
+    /// answer. Recording an abandoned one by its count says it found nothing,
+    /// which reads exactly like a query that genuinely matched nothing.
+    @Test func asearchTypedPastIsRecordedAsSupersededRatherThanEmpty() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        try await withRecording(into: directory) {
+            let coordinator = SearchCoordinator(
+                providers: [
+                    StubProvider(
+                        kind: .application,
+                        results: [stubResult("Safari", kind: .application, score: 0.9)],
+                        // Slow enough that the second search starts first.
+                        delay: .milliseconds(200)
+                    )
+                ],
+                frecency: FrecencyStore(
+                    fileURL: URL.temporaryDirectory.appending(path: "\(UUID().uuidString).json")
+                )
+            )
+
+            // The first is abandoned by the second, exactly as a keystroke
+            // abandons the query before it.
+            let abandoned = Task { for await _ in coordinator.search("s") {} }
+            try await Task.sleep(for: .milliseconds(20))
+            for await _ in coordinator.search("safari") {}
+            await abandoned.value
+            try await Task.sleep(for: .milliseconds(200))
+
+            let exported = String(decoding: try await DebugLog.store.export(), as: UTF8.self)
+            let first = try #require(
+                exported.split(separator: "\n").first { $0.contains("\"s\"") }
+            )
+            #expect(first.contains("superseded"))
+            #expect(!first.contains("0 results"))
+        }
+    }
+
     /// The phase's whole promise, at the level of one run: the log says what
     /// ran and what came back, and the token that made it work is nowhere in
     /// it — not in the environment, and not in the output the command printed

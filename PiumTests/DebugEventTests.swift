@@ -26,6 +26,18 @@ struct DebugEventTests {
         #expect(rendered.contains("12 ms"))
     }
 
+    /// A search the user typed past never finished, and reporting its count
+    /// says it found nothing — which is the same sentence a real empty result
+    /// gets, and the wrong one to read while chasing a ranking bug.
+    @Test func asupersededSearchDoesNotClaimItFoundNothing() {
+        let rendered = line(
+            .search(query: "s", results: 0, duration: .milliseconds(3), superseded: true)
+        )
+        #expect(rendered.contains("\"s\""))
+        #expect(rendered.contains("superseded"))
+        #expect(!rendered.contains("0 results"), "an abandoned search counted nothing, it did not find nothing")
+    }
+
     /// The environment is recorded as names. A value never reaches the logger
     /// at all — that is the first of redaction's three layers, and it is
     /// enforced by this type having nowhere to put one.
