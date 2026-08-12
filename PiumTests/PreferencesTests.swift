@@ -10,7 +10,7 @@ struct PreferencesTests {
     /// Each test gets an isolated defaults domain so runs cannot see each
     /// other's writes or the developer's real settings.
     private func makeIsolatedPreferences() -> (Preferences, UserDefaults, String) {
-        let suiteName = "app.pium.tests.\(UUID().uuidString)"
+        let suiteName = "com.lardissone.pium.tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         return (Preferences(defaults: defaults), defaults, suiteName)
     }

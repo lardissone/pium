@@ -278,7 +278,7 @@ final class LauncherSmokeTests: XCTestCase {
     /// The real home, not the container the test runner reports.
     ///
     /// `PiumUITests-Runner` is sandboxed, so `NSHomeDirectory()` here is
-    /// `~/Library/Containers/app.pium.PiumUITests.xctrunner/Data`. Pium is not
+    /// `~/Library/Containers/com.lardissone.PiumUITests.xctrunner/Data`. Pium is not
     /// sandboxed and reads the real home, so anything a test writes to the
     /// runner's home is something the app can never see. `getpwuid` reports the
     /// account's own directory and is not redirected. See PIUM-62.

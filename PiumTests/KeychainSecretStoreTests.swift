@@ -12,7 +12,7 @@ struct KeychainSecretStoreTests {
     private func makeStore() -> KeychainSecretStore {
         KeychainSecretStore(
             defaults: UserDefaults(suiteName: UUID().uuidString)!,
-            service: "app.pium.Pium.tests.\(UUID().uuidString)"
+            service: "com.lardissone.pium.tests.\(UUID().uuidString)"
         )
     }
 
@@ -84,7 +84,7 @@ struct KeychainSecretStoreTests {
     /// Access. Reconciling is what the Plugins section does when it appears.
     @Test func reconcileRebuildsTheIndexFromTheKeychain() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
-        let service = "app.pium.Pium.tests.\(UUID().uuidString)"
+        let service = "com.lardissone.pium.tests.\(UUID().uuidString)"
         let store = KeychainSecretStore(defaults: defaults, service: service)
         defer { try? store.removeSecrets(pluginID: "a.one") }
 

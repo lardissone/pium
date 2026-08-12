@@ -15,6 +15,6 @@ struct ProjectConfigurationTests {
     }
 
     @Test func bundleIdentifierIsStable() {
-        #expect(Bundle.main.bundleIdentifier == "app.pium.Pium")
+        #expect(Bundle.main.bundleIdentifier == "com.lardissone.pium")
     }
 }

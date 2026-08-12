@@ -7,7 +7,7 @@ import OSLog
 /// compiled into Release builds; `OSSignposter` is inert unless a trace is
 /// recording.
 enum Signposts {
-    static let subsystem = "app.pium.Pium"
+    static let subsystem = "com.lardissone.pium"
 
     /// Shortcut press through visible, focused panel. Budget: p95 ≤ 100 ms.
     static let launcher = OSSignposter(subsystem: subsystem, category: "Launcher")
