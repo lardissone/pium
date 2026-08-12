@@ -15,6 +15,18 @@ enum ResultKind: String, Sendable, CaseIterable {
         case .file: 2
         }
     }
+
+    /// What this kind is called out loud. The row's icon carries it visually
+    /// and is hidden from VoiceOver as decoration, so without words the
+    /// difference between an app called Notes and a file called Notes is
+    /// simply lost.
+    var spokenName: String {
+        switch self {
+        case .plugin: String(localized: "result.kind.plugin")
+        case .application: String(localized: "result.kind.application")
+        case .file: String(localized: "result.kind.file")
+        }
+    }
 }
 
 /// Where a row's icon comes from. Resolving it is the view's job, so the model
@@ -89,4 +101,17 @@ struct SearchResult: Identifiable, Sendable {
 
     /// What `Return` runs. By convention the first action.
     var primaryAction: ResultAction? { actions.first }
+
+    /// How this row reads to a screen reader: the title, what kind of thing it
+    /// is, and whatever the subtitle was distinguishing it from.
+    ///
+    /// Assembled here rather than in the view so it can be read in a test. The
+    /// view combines its own children by default, which produces the title and
+    /// subtitle and silently drops the kind with the icon.
+    var accessibilityDescription: String {
+        [title, kind.spokenName, subtitle]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+    }
 }

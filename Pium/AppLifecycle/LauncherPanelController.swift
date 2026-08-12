@@ -96,6 +96,7 @@ final class LauncherPanelController: NSObject {
     /// debounce here. The file provider debounces itself.
     private func runSearch(_ text: String) {
         searchTask?.cancel()
+        state.beginSearch()
         searchTask = Task { [weak self] in
             guard let self else { return }
             for await results in coordinator.search(text) {
@@ -103,6 +104,12 @@ final class LauncherPanelController: NSObject {
                 state.setResults(results)
                 resizePanelToContent()
             }
+            // The stream is finished, so an empty list is now a fact rather
+            // than a moment in the middle of one. A cancelled search says
+            // nothing: a newer query is already in flight and owns the phase.
+            guard !Task.isCancelled else { return }
+            state.endSearch()
+            resizePanelToContent()
         }
     }
 

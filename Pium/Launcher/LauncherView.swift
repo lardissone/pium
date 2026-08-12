@@ -18,6 +18,10 @@ struct LauncherView: View {
     var body: some View {
         VStack(spacing: 0) {
             searchField
+            if state.showsNoResults {
+                Divider()
+                NoResultsView()
+            }
             if !state.presentedResults.isEmpty {
                 Divider()
                 ResultListView(state: state) { result in

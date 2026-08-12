@@ -78,6 +78,10 @@ targets:
         - PiumTests
       environmentVariables:
         CI: $(CI)
+        # Same trick as `CI` above, for the same reason: the latency
+        # measurements are off unless asked for, and `xcodebuild` does not
+        # forward its own environment to a macOS test host on its own.
+        PIUM_MEASURE: $(PIUM_MEASURE)
 
   PiumTests:
     type: bundle.unit-test

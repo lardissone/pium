@@ -17,8 +17,41 @@ final class LauncherState {
     /// freezes rather than cancels while confirming (see `appendToArgument`),
     /// so this does not reach it.
     var query = "" {
-        didSet { cancelConfirmation() }
+        didSet {
+            cancelConfirmation()
+            // A query being typed is a search that has not answered yet, so
+            // whatever the last one concluded stops applying here rather than
+            // when the next one starts. Otherwise "No results" stays on screen
+            // over the results arriving underneath it.
+            searchPhase = query.isEmpty ? .idle : .searching
+        }
     }
+
+    /// How far the current query has got.
+    ///
+    /// A phase rather than reading `results.isEmpty`, because providers
+    /// stream: applications and plugins answer in single-digit milliseconds
+    /// while Spotlight is still working, and a view driven by "empty right
+    /// now" would say there are no results on the way to showing some.
+    enum SearchPhase: Sendable, Equatable {
+        /// Nothing has been typed. PRD §6.2: no results, no recents, nothing.
+        case idle
+        /// A query is in flight; some providers may already have answered.
+        case searching
+        /// Every provider has finished. Only now is an empty list a fact.
+        case settled
+    }
+
+    private(set) var searchPhase: SearchPhase = .idle
+
+    /// Whether the launcher should say the search found nothing.
+    ///
+    /// Argument mode is excluded: the list is deliberately empty there (PRD
+    /// §10.3), and the plugin pill is what says why.
+    var showsNoResults: Bool {
+        searchPhase == .settled && results.isEmpty && !isInArgumentMode
+    }
+
     private(set) var results: [SearchResult] = []
 
     /// Selection is a stable result ID rather than an index, because results
@@ -88,7 +121,21 @@ final class LauncherState {
         query = ""
         exitArgumentMode()
         setResults([])
+        searchPhase = .idle
         presentationToken = UUID()
+    }
+
+    /// Called when a query's providers are asked, and again when the last of
+    /// them has finished. The controller drives both, because it owns the
+    /// stream and is the only thing that knows it ended.
+    func beginSearch() {
+        guard !query.isEmpty else { return }
+        searchPhase = .searching
+    }
+
+    func endSearch() {
+        guard searchPhase == .searching else { return }
+        searchPhase = .settled
     }
 
     func setResults(_ newResults: [SearchResult]) {
