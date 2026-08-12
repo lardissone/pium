@@ -41,6 +41,14 @@ struct SettingsView: View {
                     systemImage: "puzzlepiece.extension"
                 )
             }
+
+            AdvancedSettingsView()
+                .tabItem {
+                    Label(
+                        String(localized: "settings.advanced.title"),
+                        systemImage: "gearshape.2"
+                    )
+                }
         }
     }
 }
