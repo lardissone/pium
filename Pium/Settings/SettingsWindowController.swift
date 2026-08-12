@@ -20,6 +20,7 @@ final class SettingsWindowController {
         pluginIndex: PluginIndex,
         configuration: any PluginConfigurationStoring,
         secrets: any PluginSecretStoring,
+        updates: any UpdateAvailability,
         onPreviewHUD: @escaping () -> Void
     ) {
         // Reuse the existing window so the menu item raises Settings rather
@@ -61,6 +62,7 @@ final class SettingsWindowController {
                 pluginIndex: pluginIndex,
                 configuration: configuration,
                 secrets: secrets,
+                updates: updates,
                 onPreviewHUD: onPreviewHUD
             )
         )
