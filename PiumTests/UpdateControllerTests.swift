@@ -1,0 +1,55 @@
+import Testing
+import Foundation
+@testable import Pium
+
+/// The controller is tested through the protocol and through the one decision
+/// that is Pium's rather than Sparkle's: whether a relaunch may proceed.
+@MainActor
+@Suite("Update controller")
+struct UpdateControllerTests {
+    @Test func aFoundUpdateIsHeldRatherThanInstalled() {
+        let controller = UpdateController(isBusy: { false })
+        #expect(controller.pendingUpdate == nil)
+
+        controller.noteUpdateFound(PendingUpdate(version: "0.2.0", build: "2"))
+
+        // PRD §13: found is not downloaded, and not installed.
+        #expect(controller.pendingUpdate == PendingUpdate(version: "0.2.0", build: "2"))
+    }
+
+    @Test func dismissingClearsTheNotice() {
+        let controller = UpdateController(isBusy: { false })
+        controller.noteUpdateFound(PendingUpdate(version: "0.2.0", build: "2"))
+
+        controller.dismissPendingUpdate()
+
+        #expect(controller.pendingUpdate == nil)
+    }
+
+    /// PRD §13: an update must not interrupt an active command.
+    @Test func aRelaunchWaitsWhileACommandRuns() {
+        var busy = true
+        let controller = UpdateController(isBusy: { busy })
+        var relaunched = false
+
+        let postponed = controller.postponeRelaunch { relaunched = true }
+
+        #expect(postponed == true)
+        #expect(relaunched == false)
+
+        busy = false
+        controller.commandFinished()
+
+        #expect(relaunched == true)
+    }
+
+    @Test func aRelaunchWithNothingRunningProceedsImmediately() {
+        let controller = UpdateController(isBusy: { false })
+        var relaunched = false
+
+        let postponed = controller.postponeRelaunch { relaunched = true }
+
+        #expect(postponed == false)
+        #expect(relaunched == false)  // Sparkle relaunches; Pium does not.
+    }
+}
