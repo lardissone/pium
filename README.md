@@ -11,6 +11,19 @@ Spotlight-indexed files, and file-based commands in a single ranked list.
 Commands are plugins, and a plugin is one readable JSON file. Adding or changing
 one never recompiles Pium!
 
+```json
+{
+  "schemaVersion": 1,
+  "id": "demo.hello",
+  "name": "Say hello",
+  "command": { "executable": "say", "arguments": ["Hello"] }
+}
+```
+
+Drop that in `~/.config/pium/plugins/hello.pium.json` and it is searchable
+without a restart. The whole format is in
+[docs/plugin-format-v1.md](docs/plugin-format-v1.md).
+
 **Status:** in development. Nothing is released yet.
 
 ## Debug logging
@@ -29,6 +42,14 @@ Secrets a plugin declares are removed — both where Pium uses them and from
 whatever a command prints them into. **A secret you type by hand into a
 plugin's argument cannot be removed**, because Pium cannot tell it apart from
 anything else you typed. Read an export before you send it to anyone.
+
+## Documentation
+
+- [Plugin format v1](docs/plugin-format-v1.md) — every key, with what Pium enforces
+- [Troubleshooting](docs/troubleshooting.md) — the messages Pium shows, and what to do about them
+- [Security](SECURITY.md) — what Pium guarantees, and what it deliberately does not
+- [Contributing](CONTRIBUTING.md) — house style and local hazards
+- [Measuring latency](docs/measuring-latency.md) — the budgets and the recorded figures
 
 ## Building
 

@@ -24,6 +24,14 @@ struct PluginTemplateTests {
         #expect(try tokens("{{input|url_encode}}") == [.input(.urlEncode)])
     }
 
+    /// `docs/plugin-format-v1.md` tells authors that spaces inside the braces
+    /// are allowed, which makes it a promise rather than an implementation
+    /// detail. Somebody writing a manifest by hand spaces things out.
+    @Test func spacesInsideTheBracesAreAllowed() throws {
+        #expect(try tokens("{{ input }}") == [.input(.raw)])
+        #expect(try tokens("{{ input | url_encode }}") == [.input(.urlEncode)])
+    }
+
     @Test func literalsAndPlaceholdersInterleave() throws {
         #expect(
             try tokens("https://x.com/?q={{input|url_encode}}&safe=1") == [
