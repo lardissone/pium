@@ -50,6 +50,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let executions = ExecutionManager(
             configuration: configuration,
             secrets: secrets,
+            searchPaths: {
+                ControlledPath.effective(adding: Preferences.shared.additionalSearchPaths)
+            },
             onFinished: { record in
                 activity.notify(nil)
                 hud.finishRunning(id: record.id, with: HUDPresentation.forOutcome(record))

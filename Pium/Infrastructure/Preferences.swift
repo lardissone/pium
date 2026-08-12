@@ -20,6 +20,7 @@ final class Preferences {
         static let hudAnchor = "pium.hudAnchor"
         static let requestedFolderAccess = "pium.requestedFolderAccess"
         static let debugLoggingExpiry = "pium.debugLoggingExpiry"
+        static let additionalSearchPaths = "pium.additionalSearchPaths"
         /// Read by macOS at launch to pick the application's language.
         static let appleLanguages = "AppleLanguages"
     }
@@ -125,6 +126,12 @@ final class Preferences {
     var debugLoggingExpiry: Date? {
         get { defaults.object(forKey: Key.debugLoggingExpiry) as? Date }
         set { defaults.set(newValue, forKey: Key.debugLoggingExpiry) }
+    }
+
+    /// Directories added to the controlled `PATH`, searched after the defaults.
+    var additionalSearchPaths: [String] {
+        get { defaults.stringArray(forKey: Key.additionalSearchPaths) ?? [] }
+        set { defaults.set(newValue, forKey: Key.additionalSearchPaths) }
     }
 
     /// Which protected folders Pium has already asked macOS about.
