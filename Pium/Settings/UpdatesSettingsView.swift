@@ -5,16 +5,20 @@ import SwiftUI
 struct UpdatesSettingsView: View {
     let updates: any UpdateAvailability
 
-    /// The switch's position, so flipping it redraws. The value it starts from
-    /// is read from the updater rather than remembered: Sparkle asks for this
-    /// permission itself on a first launch, and the Settings window is built
-    /// once and reused, so a position captured at first open would still be on
-    /// screen long after it stopped being true.
+    /// Held rather than read straight from the updater, for two reasons that
+    /// apply to both: flipping the switch has to redraw, and nothing here is
+    /// observable — both values live behind stored references the `@Observable`
+    /// macro does not see, one of them in shared user defaults that another
+    /// process can write. The Settings window is built once and reused for the
+    /// life of the app, so whatever is captured stays on screen until
+    /// something puts it back in touch with the updater; `onAppear` is that.
     @State private var automatic: Bool
+    @State private var lastCheck: Date?
 
     init(updates: any UpdateAvailability) {
         self.updates = updates
         _automatic = State(initialValue: updates.automaticallyChecks)
+        _lastCheck = State(initialValue: updates.lastCheck)
     }
 
     var body: some View {
@@ -25,13 +29,16 @@ struct UpdatesSettingsView: View {
                 }
 
                 LabeledContent(String(localized: "settings.updates.lastCheck")) {
-                    Text(Self.lastCheck(updates.lastCheck))
+                    Text(Self.lastCheck(lastCheck))
                 }
             }
 
             Section {
                 Toggle(
                     String(localized: "settings.updates.automatic"),
+                    // The setter is a closure rather than the method itself:
+                    // passing `setAutomatic` directly crashes the compiler in
+                    // IRGen, on the thunk for the isolated method value.
                     isOn: Binding(get: { automatic }, set: { setAutomatic($0) })
                 )
 
@@ -45,7 +52,10 @@ struct UpdatesSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .onAppear { automatic = updates.automaticallyChecks }
+        .onAppear {
+            automatic = updates.automaticallyChecks
+            lastCheck = updates.lastCheck
+        }
     }
 
     /// Written through, then read back: what the switch shows is what the
@@ -61,7 +71,9 @@ struct UpdatesSettingsView: View {
         return "\(short) (\(build))"
     }
 
-    private static func lastCheck(_ date: Date?) -> String {
+    /// Not private, so the decision is testable without a window — the same
+    /// reason `AdvancedSettingsView.remaining` is not.
+    static func lastCheck(_ date: Date?) -> String {
         guard let date else { return String(localized: "settings.updates.lastCheck.never") }
         return date.formatted(date: .abbreviated, time: .shortened)
     }

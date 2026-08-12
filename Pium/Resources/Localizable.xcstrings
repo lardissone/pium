@@ -647,23 +647,6 @@
         }
       }
     },
-    "menu.checkForUpdates": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Check for Updates…"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buscar actualizaciones…"
-          }
-        }
-      }
-    },
     "menubar.about": {
       "extractionState": "manual",
       "localizations": {
@@ -711,6 +694,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cancelar «%@»"
+          }
+        }
+      }
+    },
+    "menubar.checkForUpdates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check for Updates…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar actualizaciones…"
           }
         }
       }

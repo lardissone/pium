@@ -81,7 +81,7 @@ final class MenuBarController: NSObject {
             menu.addItem(cancelItem)
         }
         let updatesItem = menuItem(
-            title: String(localized: "menu.checkForUpdates"),
+            title: String(localized: "menubar.checkForUpdates"),
             action: #selector(checkForUpdates)
         )
         updatesItem.identifier = NSUserInterfaceItemIdentifier("checkForUpdates")
