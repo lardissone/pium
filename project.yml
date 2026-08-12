@@ -1,7 +1,7 @@
 name: Pium
 
 options:
-  bundleIdPrefix: app.pium
+  bundleIdPrefix: com.lardissone
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
@@ -44,11 +44,11 @@ targets:
         type: folder
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.pium.Pium
+        PRODUCT_BUNDLE_IDENTIFIER: com.lardissone.pium
         # The name people see — in Finder, in Spotlight, in an alert macOS
         # raises about the app. The exclamation mark is part of the product
         # name. Only the display name carries it: the bundle stays `Pium.app`
-        # and the identifier stays `app.pium.Pium`, so nothing that resolves
+        # and the identifier stays `com.lardissone.pium`, so nothing that resolves
         # the app by path or id has to know about it.
         INFOPLIST_KEY_CFBundleDisplayName: Pium!
         # Menubar agent: no Dock icon, no default main window.

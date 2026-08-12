@@ -104,7 +104,7 @@ Files come from Spotlight, and Pium creates no index of its own.
 | Plugins | `~/.config/pium/plugins/` |
 | Usage history | `~/Library/Application Support/Pium/frecency.json` |
 | Debug logs | `~/Library/Application Support/Pium/DebugLogs/` |
-| Settings | `defaults read app.pium.Pium` |
+| Settings | `defaults read com.lardissone.pium` |
 | Secrets | macOS Keychain, one item per plugin field |
 
 Deleting the usage history is a button in Settings → Search. Deleting the logs

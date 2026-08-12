@@ -14,7 +14,7 @@ Budget: p95 ≤ 100 ms. Debug builds are not representative — measure Release.
 2. Open Instruments and choose the **os_signpost** template. Attach to `Pium`.
 3. Record, then press the shortcut 20 times with roughly a second between
    presses. Discard the first press: it is cold, and the budget is for warm.
-4. Filter to subsystem `app.pium.Pium`, category `Launcher`, interval `show`.
+4. Filter to subsystem `com.lardissone.pium`, category `Launcher`, interval `show`.
 5. Read the p95 of the interval durations.
 6. Record the number, the machine, and the macOS version in the phase's
    completion notes. A miss is investigated with a time profile before any
@@ -23,7 +23,7 @@ Budget: p95 ≤ 100 ms. Debug builds are not representative — measure Release.
 # Measuring search latency
 
 Budget: p95 ≤ 50 ms, from query to merged results. `SearchCoordinator.search`
-brackets its work with the `query` interval of subsystem `app.pium.Pium`,
+brackets its work with the `query` interval of subsystem `com.lardissone.pium`,
 category `Search`, so the Instruments procedure above applies unchanged — swap
 the category and interval, and type one- and two-character queries instead of
 pressing the shortcut.

@@ -25,10 +25,9 @@ enum SecretStoreError: Error, Equatable {
 
 @MainActor
 final class KeychainSecretStore: PluginSecretStoring {
-    /// The bundle identifier is a placeholder until the signing domain is
-    /// chosen (architecture §2.1) and it appears here, so it is written once.
-    /// Changing it later means migrating items under the old service name.
-    static let defaultService = "app.pium.Pium.plugin-secrets"
+    /// The bundle identifier appears here, so it is written once. Changing it
+    /// means migrating items stored under the old service name.
+    static let defaultService = "com.lardissone.pium.plugin-secrets"
 
     private static let indexKey = "pium.plugin.storedSecrets"
 
