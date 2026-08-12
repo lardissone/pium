@@ -22,8 +22,7 @@ struct LauncherView: View {
                 Divider()
                 UpdateNoticeView(
                     update: update,
-                    onInstall: { state.installPendingUpdate() },
-                    onDismiss: { state.dismissPendingUpdate() }
+                    onInstall: { state.installPendingUpdate() }
                 )
             }
             if state.showsNoResults {

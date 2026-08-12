@@ -14,5 +14,4 @@ protocol UpdateAvailability: AnyObject {
     var lastCheck: Date? { get }
     func checkForUpdates()
     func installPendingUpdate()
-    func dismissPendingUpdate()
 }

@@ -42,7 +42,7 @@ final class UpdateController: NSObject, UpdateAvailability {
     /// in `Info.plist` as `SUScheduledCheckInterval`, with the rest of the
     /// Sparkle configuration.
     func start() {
-        guard controller == nil else { return }
+        guard controller == nil, !Self.isRunningTests else { return }
 
         controller = SPUStandardUpdaterController(
             startingUpdater: true,
@@ -51,29 +51,19 @@ final class UpdateController: NSObject, UpdateAvailability {
         )
     }
 
-    /// Before `start()` there is no updater to ask, so this reads and writes
-    /// the same key in the same order Sparkle's own `SUHost` does — user
-    /// defaults, then the bundle. A Settings toggle bound to this must not
-    /// report a value nobody chose, or discard one the user did.
-    var automaticallyChecks: Bool {
-        get {
-            guard let updater = controller?.updater else {
-                return UserDefaults.standard.object(forKey: Self.automaticChecksKey) as? Bool
-                    ?? Bundle.main.object(forInfoDictionaryKey: Self.automaticChecksKey) as? Bool
-                    ?? false
-            }
-            return updater.automaticallyChecksForUpdates
-        }
-        set {
-            guard let updater = controller?.updater else {
-                UserDefaults.standard.set(newValue, forKey: Self.automaticChecksKey)
-                return
-            }
-            updater.automaticallyChecksForUpdates = newValue
-        }
+    /// `PiumTests` runs inside the app, so launching it launches the updater
+    /// too. A started updater whose last check is unknown — every fresh CI
+    /// runner — decides it is overdue and asks the real feed immediately, then
+    /// records the check in that machine's defaults. Neither belongs to a test
+    /// run, so the updater is left unstarted there.
+    private static var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
-    private static let automaticChecksKey = "SUEnableAutomaticChecks"
+    var automaticallyChecks: Bool {
+        get { controller?.updater.automaticallyChecksForUpdates ?? false }
+        set { controller?.updater.automaticallyChecksForUpdates = newValue }
+    }
 
     var lastCheck: Date? { controller?.updater.lastUpdateCheckDate }
 
@@ -84,13 +74,14 @@ final class UpdateController: NSObject, UpdateAvailability {
     /// The notice was activated: hand it back to Sparkle, which owns
     /// downloading, verifying, and installing. Clearing the notice first
     /// means Sparkle's own window is not shadowed by Pium's row.
+    ///
+    /// The only way out of a notice, deliberately. Sparkle keeps the update
+    /// session open — and its scheduled-check timer stopped — for as long as
+    /// the reminder goes unanswered, so this is what lets the next check ever
+    /// happen. See `UpdateNoticeView` on why there is nothing to dismiss with.
     func installPendingUpdate() {
         pendingUpdate = nil
         controller?.updater.checkForUpdates()
-    }
-
-    func dismissPendingUpdate() {
-        pendingUpdate = nil
     }
 
     // MARK: - The decisions, separated from Sparkle so they can be tested
@@ -162,12 +153,7 @@ extension UpdateController: SPUStandardUserDriverDelegate {
         guard !handleShowingUpdate else { return }
 
         MainActor.assumeIsolated {
-            noteUpdateFound(
-                PendingUpdate(
-                    version: update.displayVersionString,
-                    build: update.versionString
-                )
-            )
+            noteUpdateFound(PendingUpdate(version: update.displayVersionString))
         }
     }
 

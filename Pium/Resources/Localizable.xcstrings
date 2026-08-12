@@ -3179,23 +3179,6 @@
         }
       }
     },
-    "update.notice.dismiss": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dismiss"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Descartar"
-          }
-        }
-      }
-    },
     "update.notice.install": {
       "extractionState": "manual",
       "localizations": {

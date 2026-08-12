@@ -16,10 +16,12 @@
 	     things the user sees. Without this key Sparkle infers permission to
 	     auto-install from SUEnableAutomaticChecks above, and offers "download
 	     and install automatically" as a checkbox in its update window. One
-	     tick would write that choice to user defaults, where it outranks
-	     anything a later build ships here — so every future update would
-	     install itself with no notice and no way back. False both hides the
-	     checkbox and pins automatic downloading off. -->
+	     tick would write that choice to user defaults and every later update
+	     would arrive already downloaded, with no notice — the user's own
+	     doing, but a decision PRD §13 says Pium does not offer. False both
+	     hides the checkbox and pins automatic downloading off, and it is read
+	     from the bundle alone, so this file stays the one place that answers
+	     the question. -->
 	<key>SUAllowsAutomaticUpdates</key>
 	<false/>
 	<!-- PRD §13: six hours. -->

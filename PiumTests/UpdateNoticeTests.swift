@@ -14,7 +14,6 @@ private final class StubUpdates: UpdateAvailability {
 
     func checkForUpdates() { checked += 1 }
     func installPendingUpdate() { installed += 1; pendingUpdate = nil }
-    func dismissPendingUpdate() { pendingUpdate = nil }
 }
 
 @MainActor
@@ -26,29 +25,19 @@ struct UpdateNoticeTests {
     }
 
     @Test func theNoticeCarriesTheVersionOnOpen() {
-        let updates = StubUpdates(pending: PendingUpdate(version: "0.2.0", build: "2"))
+        let updates = StubUpdates(pending: PendingUpdate(version: "0.2.0"))
         let state = LauncherState(updates: updates)
 
         #expect(state.pendingUpdate?.version == "0.2.0")
     }
 
     @Test func activatingTheNoticeAsksForTheInstall() {
-        let updates = StubUpdates(pending: PendingUpdate(version: "0.2.0", build: "2"))
+        let updates = StubUpdates(pending: PendingUpdate(version: "0.2.0"))
         let state = LauncherState(updates: updates)
 
         state.installPendingUpdate()
 
         #expect(updates.installed == 1)
         #expect(state.pendingUpdate == nil)
-    }
-
-    @Test func dismissingLeavesTheUpdateFoundButUnshown() {
-        let updates = StubUpdates(pending: PendingUpdate(version: "0.2.0", build: "2"))
-        let state = LauncherState(updates: updates)
-
-        state.dismissPendingUpdate()
-
-        #expect(state.pendingUpdate == nil)
-        #expect(updates.installed == 0)
     }
 }

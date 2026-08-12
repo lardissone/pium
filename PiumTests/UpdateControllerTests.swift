@@ -11,19 +11,10 @@ struct UpdateControllerTests {
         let controller = UpdateController(isBusy: { false })
         #expect(controller.pendingUpdate == nil)
 
-        controller.noteUpdateFound(PendingUpdate(version: "0.2.0", build: "2"))
+        controller.noteUpdateFound(PendingUpdate(version: "0.2.0"))
 
         // PRD §13: found is not downloaded, and not installed.
-        #expect(controller.pendingUpdate == PendingUpdate(version: "0.2.0", build: "2"))
-    }
-
-    @Test func dismissingClearsTheNotice() {
-        let controller = UpdateController(isBusy: { false })
-        controller.noteUpdateFound(PendingUpdate(version: "0.2.0", build: "2"))
-
-        controller.dismissPendingUpdate()
-
-        #expect(controller.pendingUpdate == nil)
+        #expect(controller.pendingUpdate == PendingUpdate(version: "0.2.0"))
     }
 
     /// PRD §13: an update must not interrupt an active command.
@@ -80,7 +71,7 @@ struct UpdateControllerTests {
     /// the window it is about to open.
     @Test func installingClearsTheNotice() {
         let controller = UpdateController(isBusy: { false })
-        controller.noteUpdateFound(PendingUpdate(version: "0.2.0", build: "2"))
+        controller.noteUpdateFound(PendingUpdate(version: "0.2.0"))
 
         controller.installPendingUpdate()
 
