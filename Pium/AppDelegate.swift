@@ -50,9 +50,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let executions = ExecutionManager(
             configuration: configuration,
             secrets: secrets,
-            onFinished: { record, mode in
+            onFinished: { record in
                 activity.notify(nil)
-                hud.finishRunning(id: record.id, with: HUDPresentation.forOutcome(record, mode: mode))
+                hud.finishRunning(id: record.id, with: HUDPresentation.forOutcome(record))
             }
         )
         executionManager = executions
@@ -136,6 +136,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onOpenAbout: { [weak self] in self?.aboutController.present() }
         )
         activityRelay.handler = { [weak self] plugin in self?.menuBarController?.setActive(plugin) }
+        // Wired here rather than in `init`: the HUD controller is built before
+        // the panel it asks about. A HUD belongs on the display the launcher
+        // that started the run was on (PIUM-104).
+        hudController.launcherScreen = { [weak self] in self?.panelController.targetScreen }
 
         // Done here rather than in `PiumApp`: the menu exists only once the app
         // has finished launching, and it is `AppDelegate` that owns the window

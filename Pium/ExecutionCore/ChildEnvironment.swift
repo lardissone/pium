@@ -45,6 +45,15 @@ struct ChildEnvironment {
                 // `secret(pluginID:key:)` throws: a Keychain that refuses is not
                 // a field the user never filled, and reporting it as empty would
                 // send them to retype a token that is already stored.
+                //
+                // This stops the run even for an *optional* field, which is not
+                // an oversight. Optional means the plugin works without the
+                // value, not that any answer will do: a stored secret that
+                // cannot be read is a machine in a state the user did not
+                // choose, and running anyway means authenticating as nobody —
+                // hitting a live endpoint unauthenticated, or writing as the
+                // wrong identity. Better to say which field the Keychain
+                // refused and let the user decide.
                 do {
                     value = try secrets.secret(pluginID: manifest.id, key: field.key)
                 } catch {

@@ -12,7 +12,11 @@ import Foundation
 /// No shell is involved anywhere: the executable and its arguments are handed to
 /// the kernel as an `argv` array.
 final class ChildProcess: @unchecked Sendable {
-    enum Ending: Sendable, Equatable {
+    /// What `wait(2)` says about a process that is gone: it ran and returned a
+    /// code, or a signal ended it. Deliberately narrower than
+    /// `ExecutionEnding` — cancelling, timing out, and failing to spawn are
+    /// Pium's own accounts of a run, and no wait status can report them.
+    enum Termination: Sendable, Equatable {
         case exited(Int32)
         case signalled(Int32)
     }
@@ -110,7 +114,7 @@ final class ChildProcess: @unchecked Sendable {
     }
 
     /// Blocks until the child is reaped. Callers run this off the main actor.
-    func waitForExit() -> Ending {
+    func waitForExit() -> Termination {
         var status: Int32 = 0
         while waitpid(pid, &status, 0) == -1 && errno == EINTR { continue }
         if status & 0x7f == 0 {

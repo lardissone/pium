@@ -17,6 +17,7 @@ struct ExecutionManagerTests {
         configuration: [PluginConfigurationField] = [],
         timeoutSeconds: Int? = nil,
         workingDirectory: String? = nil,
+        outputMode: PluginOutputMode = .silent,
         in directory: URL
     ) -> PluginRecord {
         let manifest = PluginManifest(
@@ -32,7 +33,7 @@ struct ExecutionManagerTests {
                 executable: executable, arguments: arguments, workingDirectory: workingDirectory
             ),
             configuration: configuration,
-            output: PluginOutput(mode: .silent),
+            output: PluginOutput(mode: outputMode),
             timeoutSeconds: timeoutSeconds,
             confirmBeforeRun: nil
         )
@@ -53,19 +54,19 @@ struct ExecutionManagerTests {
         )
     }
 
-    /// Waits for a record to reach a final state rather than sleeping a fixed
-    /// amount, so a slow machine does not turn into a flaky test.
-    private func finalState(
+    /// Waits for a record to end rather than sleeping a fixed amount, so a
+    /// slow machine does not turn into a flaky test. `nil` means it never did.
+    private func finalEnding(
         of id: UUID,
         in manager: ExecutionManager,
         timeout: Duration = .seconds(10)
-    ) async throws -> ExecutionRecord.State {
+    ) async throws -> ExecutionEnding? {
         let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline {
-            if let state = manager.records[id]?.state, state != .running { return state }
+            if case .ended(let ending) = manager.records[id]?.state { return ending }
             try await Task.sleep(for: .milliseconds(50))
         }
-        return manager.records[id]?.state ?? .running
+        return nil
     }
 
     @Test func asuccessfulRunEndsFinished() async throws {
@@ -74,7 +75,23 @@ struct ExecutionManagerTests {
         let manager = manager()
 
         let id = try manager.run(record(executable: "echo", arguments: ["hola"], in: directory), input: "").get()
-        #expect(try await finalState(of: id, in: manager) == .finished(exitCode: 0))
+        #expect(try await finalEnding(of: id, in: manager) == .exited(0))
+    }
+
+    /// What a plugin declared about its output is a fact about the run, and
+    /// lives on the run's own record. Keeping it in a second collection keyed
+    /// by the same id was a place for the two to disagree — an eviction, a
+    /// missing entry, a default standing in for something the manifest
+    /// actually said.
+    @Test func arunCarriesTheOutputModeItsManifestDeclared() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = manager()
+
+        let id = try manager.run(
+            record(executable: "echo", outputMode: .toast, in: directory), input: ""
+        ).get()
+        #expect(manager.records[id]?.outputMode == .toast)
     }
 
     /// The slot is a slot, not a one-shot: finishing a run has to hand it
@@ -89,14 +106,14 @@ struct ExecutionManagerTests {
         let first = try manager.run(
             record(executable: "echo", arguments: ["one"], in: directory), input: ""
         ).get()
-        #expect(try await finalState(of: first, in: manager) == .finished(exitCode: 0))
+        #expect(try await finalEnding(of: first, in: manager) == .exited(0))
         #expect(manager.activeRecord == nil, "A finished run must not still hold the slot")
 
         let second = try manager.run(
             record(executable: "echo", arguments: ["two"], in: directory), input: ""
         ).get()
         #expect(second != first)
-        #expect(try await finalState(of: second, in: manager) == .finished(exitCode: 0))
+        #expect(try await finalEnding(of: second, in: manager) == .exited(0))
     }
 
     /// A refused second run must change nothing about the first: the menubar
@@ -170,7 +187,7 @@ struct ExecutionManagerTests {
         let manager = manager()
 
         let first = try manager.run(record(executable: "echo", in: directory), input: "").get()
-        _ = try await finalState(of: first, in: manager)
+        _ = try await finalEnding(of: first, in: manager)
         #expect(throws: Never.self) {
             _ = try manager.run(record(executable: "echo", in: directory), input: "").get()
         }
@@ -184,7 +201,7 @@ struct ExecutionManagerTests {
         let id = try manager.run(record(executable: "sleep", arguments: ["30"], in: directory), input: "").get()
         try await Task.sleep(for: .milliseconds(300))
         manager.cancel(id)
-        #expect(try await finalState(of: id, in: manager) == .cancelled)
+        #expect(try await finalEnding(of: id, in: manager) == .cancelled)
     }
 
     @Test func arunPastItsTimeoutEndsTimedOut() async throws {
@@ -196,7 +213,7 @@ struct ExecutionManagerTests {
             record(executable: "sleep", arguments: ["30"], timeoutSeconds: 1, in: directory),
             input: ""
         ).get()
-        #expect(try await finalState(of: id, in: manager) == .timedOut)
+        #expect(try await finalEnding(of: id, in: manager) == .timedOut)
     }
 
     /// A double space in the input is what makes this discriminate: `echo`
@@ -213,7 +230,7 @@ struct ExecutionManagerTests {
         let id = try manager.run(
             record(executable: "echo", arguments: ["{{input}}"], in: directory), input: "a  b"
         ).get()
-        _ = try await finalState(of: id, in: manager)
+        _ = try await finalEnding(of: id, in: manager)
         #expect(manager.records[id]?.standardOutput == "a  b\n")
     }
 
@@ -231,7 +248,7 @@ struct ExecutionManagerTests {
             record(executable: "pwd", workingDirectory: workingDirectory.path, in: pluginDirectory),
             input: ""
         ).get()
-        #expect(try await finalState(of: id, in: manager) == .finished(exitCode: 0))
+        #expect(try await finalEnding(of: id, in: manager) == .exited(0))
         let output = manager.records[id]?.standardOutput ?? ""
         // Compared as `.path` strings after resolving symlinks, not as `URL`s:
         // `pwd` reports the kernel's physical path (through /private), the same
@@ -254,7 +271,7 @@ struct ExecutionManagerTests {
         var started: [UUID] = []
         for _ in 0..<(ExecutionManager.historyLimit + 5) {
             let id = try manager.run(record(executable: "echo", in: directory), input: "").get()
-            _ = try await finalState(of: id, in: manager)
+            _ = try await finalEnding(of: id, in: manager)
             started.append(id)
         }
 
@@ -273,7 +290,7 @@ struct ExecutionManagerTests {
 
         for _ in 0..<(ExecutionManager.historyLimit + 5) {
             let id = try manager.run(record(executable: "echo", in: directory), input: "").get()
-            _ = try await finalState(of: id, in: manager)
+            _ = try await finalEnding(of: id, in: manager)
         }
 
         let inFlight = try manager.run(
