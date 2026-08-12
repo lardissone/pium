@@ -6,6 +6,16 @@ options:
     macOS: "26.0"
   createIntermediateGroups: true
 
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    # Exact, not `from:`. The resolved-version file Xcode would normally
+    # record lives inside Pium.xcodeproj, which is generated and gitignored —
+    # so a range would leave the dependency unpinned for CI and for every
+    # fresh clone. project.yml is the only reviewable place a version can
+    # live, which is the same argument ADR-2 makes for the project itself.
+    exactVersion: 2.9.5
+
 # Project-wide, so every target signs with the same team. See the file itself
 # for why the team is not written here.
 configFiles:
@@ -42,8 +52,11 @@ targets:
       # the whole set and a reader can be pointed at one place.
       - path: Pium/Resources/ExamplePlugins
         type: folder
+    dependencies:
+      - package: Sparkle
     settings:
       base:
+        INFOPLIST_FILE: Pium/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.lardissone.pium
         # The name people see — in Finder, in Spotlight, in an alert macOS
         # raises about the app. The exclamation mark is part of the product

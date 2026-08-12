@@ -17,4 +17,22 @@ struct ProjectConfigurationTests {
     @Test func bundleIdentifierIsStable() {
         #expect(Bundle.main.bundleIdentifier == "com.lardissone.pium")
     }
+
+    /// Sparkle reads both of these from the bundle and there is no code path
+    /// that can supply them instead. A missing public key does not fail the
+    /// build; it fails every update, at the point where a signature is
+    /// checked, on a user's machine.
+    @Test func theBundleCarriesSparkleConfiguration() {
+        let feed = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String
+        #expect(feed?.hasPrefix("https://") == true)
+
+        let key = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String
+        #expect(key?.isEmpty == false)
+    }
+
+    /// PRD §13: every six hours.
+    @Test func updatesAreCheckedEverySixHours() {
+        let interval = Bundle.main.object(forInfoDictionaryKey: "SUScheduledCheckInterval") as? Int
+        #expect(interval == 21600)
+    }
 }
