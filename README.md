@@ -43,6 +43,14 @@ whatever a command prints them into. **A secret you type by hand into a
 plugin's argument cannot be removed**, because Pium cannot tell it apart from
 anything else you typed. Read an export before you send it to anyone.
 
+## Documentation
+
+- [Plugin format v1](docs/plugin-format-v1.md) — every key, with what Pium enforces
+- [Troubleshooting](docs/troubleshooting.md) — the messages Pium shows, and what to do about them
+- [Security](SECURITY.md) — what Pium guarantees, and what it deliberately does not
+- [Contributing](CONTRIBUTING.md) — house style and local hazards
+- [Measuring latency](docs/measuring-latency.md) — the budgets and the recorded figures
+
 ## Building
 
 Requires macOS 26 and Xcode 26.
