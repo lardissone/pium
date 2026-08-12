@@ -50,6 +50,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let executions = ExecutionManager(
             configuration: configuration,
             secrets: secrets,
+            searchPaths: {
+                ControlledPath.effective(adding: Preferences.shared.additionalSearchPaths)
+            },
             onFinished: { record in
                 activity.notify(nil)
                 hud.finishRunning(id: record.id, with: HUDPresentation.forOutcome(record))
@@ -203,7 +206,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             pluginIndex: pluginIndex,
             configuration: pluginConfiguration,
-            secrets: pluginSecrets
+            secrets: pluginSecrets,
+            onPreviewHUD: { [weak self] in
+                self?.hudController.show(
+                    HUDPresentation(
+                        kind: .success,
+                        title: String(localized: "settings.appearance.previewTitle"),
+                        body: String(localized: "settings.appearance.previewBody"),
+                        duration: HUDPresentation.successDuration
+                    )
+                )
+            }
         )
     }
 }

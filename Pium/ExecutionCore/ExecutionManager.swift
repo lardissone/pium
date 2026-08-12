@@ -14,9 +14,13 @@ import OSLog
 @Observable
 final class ExecutionManager {
     private let logger = Logger(subsystem: Signposts.subsystem, category: "Execution")
-    private let resolver: ExecutableResolver
-    private let environment: ChildEnvironment
     private let configuration: any PluginConfigurationStoring
+    private let secrets: any PluginSecretStoring
+    /// Asked once per run rather than read once at launch: the moment a user
+    /// adds a directory in Advanced is the moment they are looking at a plugin
+    /// that cannot find its executable, and a resolver frozen at launch would
+    /// tell them the setting did not work.
+    private let searchPaths: @MainActor () -> [String]
     private let runner = ProcessRunner()
 
     /// How many runs are remembered.
@@ -46,14 +50,12 @@ final class ExecutionManager {
     init(
         configuration: any PluginConfigurationStoring,
         secrets: any PluginSecretStoring,
-        searchPaths: [String] = ControlledPath.default,
+        searchPaths: @escaping @MainActor () -> [String] = { ControlledPath.default },
         onFinished: ((ExecutionRecord) -> Void)? = nil
     ) {
         self.configuration = configuration
-        self.resolver = ExecutableResolver(searchPaths: searchPaths)
-        self.environment = ChildEnvironment(
-            configuration: configuration, secrets: secrets, searchPaths: searchPaths
-        )
+        self.secrets = secrets
+        self.searchPaths = searchPaths
         self.onFinished = onFinished
     }
 
@@ -72,6 +74,12 @@ final class ExecutionManager {
         }
 
         let directory = record.fileURL.deletingLastPathComponent()
+        let paths = searchPaths()
+        let resolver = ExecutableResolver(searchPaths: paths)
+        let environment = ChildEnvironment(
+            configuration: configuration, secrets: secrets, searchPaths: paths
+        )
+
         let executable: URL
         switch resolver.resolve(manifest.command.executable, relativeTo: directory) {
         case .success(let url): executable = url
@@ -83,6 +91,15 @@ final class ExecutionManager {
         case .success(let built): childEnvironment = built
         case .failure(let failure): return .failure(failure)
         }
+
+        // The values this run is about to hand its command, kept only long
+        // enough to take them back out of what the command prints. They live
+        // in the closure below and never on the record, which the interface
+        // reads.
+        let secretKeys = Set(
+            manifest.configuration.filter { $0.type == .secret }.map(\.environmentVariable)
+        )
+        let redaction = SecretRedaction(values: secretKeys.compactMap { childEnvironment[$0] })
 
         let arguments = resolvedArguments(of: manifest, input: input)
         let request = ExecutionRequest(
@@ -111,9 +128,17 @@ final class ExecutionManager {
         cancellations[id] = cancellation
 
         logger.notice("Running \(manifest.id, privacy: .public)")
+        DebugLog.record(
+            .run(
+                plugin: manifest.id,
+                executable: executable.path,
+                arguments: arguments,
+                environmentKeys: Array(childEnvironment.keys)
+            )
+        )
         Task { [runner] in
             let outcome = await runner.run(request, cancellation: cancellation)
-            finish(id, with: outcome)
+            finish(id, with: outcome, redaction: redaction)
         }
         return .success(id)
     }
@@ -170,7 +195,9 @@ final class ExecutionManager {
         }
     }
 
-    private func finish(_ id: UUID, with outcome: ExecutionOutcome) {
+    private func finish(
+        _ id: UUID, with outcome: ExecutionOutcome, redaction: SecretRedaction
+    ) {
         guard var record = records[id] else { return }
         record.state = .ended(outcome.ending)
         record.standardOutput = outcome.standardOutput
@@ -205,6 +232,18 @@ final class ExecutionManager {
         default:
             logger.notice("\(record.pluginID, privacy: .public) finished")
         }
+
+        // Scrubbed on the way in rather than on the way out: what reaches the
+        // file is what a person will read, and a redaction applied at export
+        // would leave the value on disk in the meantime.
+        DebugLog.record(
+            .finished(
+                plugin: record.pluginID,
+                ending: outcome.ending,
+                output: redaction.scrub(record.standardOutput),
+                error: redaction.scrub(record.standardError)
+            )
+        )
 
         onFinished?(record)
     }

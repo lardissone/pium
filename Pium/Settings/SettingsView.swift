@@ -2,8 +2,8 @@ import SwiftUI
 
 /// The Settings content.
 ///
-/// The Appearance, Updates, and Advanced sections arrive with the features
-/// they configure, in Phases 5 through 7.
+/// The Updates section arrives with Sparkle, in Phase 7: a section that
+/// configures update checks cannot be written before there are any.
 struct SettingsView: View {
     let frecency: any FrecencyStoring
     let access: ProtectedFolderAccess
@@ -11,6 +11,9 @@ struct SettingsView: View {
     let pluginIndex: PluginIndex
     let configuration: any PluginConfigurationStoring
     let secrets: any PluginSecretStoring
+    /// Shows a real HUD where the chosen anchor puts it. Owned by
+    /// `AppDelegate`, which holds the controller that outlives this window.
+    let onPreviewHUD: () -> Void
 
     var body: some View {
         TabView {
@@ -41,6 +44,22 @@ struct SettingsView: View {
                     systemImage: "puzzlepiece.extension"
                 )
             }
+
+            AppearanceSettingsView(onPreview: onPreviewHUD)
+                .tabItem {
+                    Label(
+                        String(localized: "settings.appearance.title"),
+                        systemImage: "paintbrush"
+                    )
+                }
+
+            AdvancedSettingsView()
+                .tabItem {
+                    Label(
+                        String(localized: "settings.advanced.title"),
+                        systemImage: "gearshape.2"
+                    )
+                }
         }
     }
 }

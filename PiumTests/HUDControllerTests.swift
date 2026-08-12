@@ -60,7 +60,7 @@ struct HUDControllerTests {
                 defaults: UserDefaults(suiteName: UUID().uuidString)!
             ),
             secrets: InMemorySecretStore(secrets: [:]),
-            searchPaths: ["/usr/bin", "/bin"],
+            searchPaths: { ["/usr/bin", "/bin"] },
             onFinished: { record in
                 controller.finishRunning(id: record.id, with: HUDPresentation.forOutcome(record))
             }

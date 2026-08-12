@@ -47,6 +47,7 @@ final class SearchCoordinator {
         let usage = frecency.snapshot()
 
         let signpost = Signposts.search.beginInterval("query")
+        let started = ContinuousClock.now
         let (batches, reportBatch) = AsyncStream<(ResultKind, [SearchResult])>.makeStream()
 
         // One drain per provider rather than a task group: an `addTask` closure
@@ -72,20 +73,27 @@ final class SearchCoordinator {
         // keeps this free of actors and locks under strict concurrency.
         let consumer = Task {
             var contributions: [ResultKind: [SearchResult]] = [:]
+            var published = 0
             for await (kind, batch) in batches {
                 // A newer query started while this one was running.
                 guard generation == currentGeneration else { break }
                 contributions[kind] = batch
-                publish.yield(
-                    ResultRanker.rank(
-                        contributions.values.flatMap(\.self),
-                        for: query,
-                        usage: usage,
-                        now: now()
-                    )
+                let ranked = ResultRanker.rank(
+                    contributions.values.flatMap(\.self),
+                    for: query,
+                    usage: usage,
+                    now: now()
                 )
+                published = ranked.count
+                publish.yield(ranked)
             }
             Signposts.search.endInterval("query", signpost)
+            // What the user typed, not what normalisation made of it: the bug
+            // most often reported is "this should have ranked first", and the
+            // raw query is what makes it legible.
+            DebugLog.record(
+                .search(query: text, results: published, duration: ContinuousClock.now - started)
+            )
             publish.finish()
         }
 

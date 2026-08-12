@@ -19,7 +19,8 @@ final class SettingsWindowController {
         onShortcutChanged: @escaping (HotkeyShortcut) -> Void,
         pluginIndex: PluginIndex,
         configuration: any PluginConfigurationStoring,
-        secrets: any PluginSecretStoring
+        secrets: any PluginSecretStoring,
+        onPreviewHUD: @escaping () -> Void
     ) {
         // Reuse the existing window so the menu item raises Settings rather
         // than stacking a second copy.
@@ -59,7 +60,8 @@ final class SettingsWindowController {
                 onShortcutChanged: onShortcutChanged,
                 pluginIndex: pluginIndex,
                 configuration: configuration,
-                secrets: secrets
+                secrets: secrets,
+                onPreviewHUD: onPreviewHUD
             )
         )
         // Whatever size the user settles on is the size they get next time;
