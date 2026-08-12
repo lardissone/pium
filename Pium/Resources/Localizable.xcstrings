@@ -562,6 +562,23 @@
         }
       }
     },
+    "launcher.noResults": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No results"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin resultados"
+          }
+        }
+      }
+    },
     "launcher.placeholder": {
       "extractionState": "stale",
       "localizations": {
