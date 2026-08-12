@@ -11,6 +11,9 @@ struct SettingsView: View {
     let pluginIndex: PluginIndex
     let configuration: any PluginConfigurationStoring
     let secrets: any PluginSecretStoring
+    /// Shows a real HUD where the chosen anchor puts it. Owned by
+    /// `AppDelegate`, which holds the controller that outlives this window.
+    let onPreviewHUD: () -> Void
 
     var body: some View {
         TabView {
@@ -42,7 +45,7 @@ struct SettingsView: View {
                 )
             }
 
-            AppearanceSettingsView()
+            AppearanceSettingsView(onPreview: onPreviewHUD)
                 .tabItem {
                     Label(
                         String(localized: "settings.appearance.title"),

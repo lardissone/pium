@@ -2,6 +2,11 @@ import SwiftUI
 
 /// The Appearance settings section: where HUDs appear.
 struct AppearanceSettingsView: View {
+    /// Shows a real HUD at the chosen anchor. Handed in rather than reached
+    /// for: the controller that owns the panels outlives this window, and a
+    /// preview is the one thing here that has to touch it.
+    let onPreview: () -> Void
+
     @State private var anchor = Preferences.shared.hudAnchor
 
     /// The six anchors in the arrangement they occupy on a screen, so the
@@ -39,6 +44,9 @@ struct AppearanceSettingsView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
+
+                Button(String(localized: "settings.appearance.preview"), action: onPreview)
+                    .frame(maxWidth: .infinity, alignment: .center)
             } header: {
                 Text(String(localized: "settings.appearance.hudPosition"))
             } footer: {

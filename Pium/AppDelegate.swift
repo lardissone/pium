@@ -206,7 +206,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             pluginIndex: pluginIndex,
             configuration: pluginConfiguration,
-            secrets: pluginSecrets
+            secrets: pluginSecrets,
+            onPreviewHUD: { [weak self] in
+                self?.hudController.show(
+                    HUDPresentation(
+                        kind: .success,
+                        title: String(localized: "settings.appearance.previewTitle"),
+                        body: String(localized: "settings.appearance.previewBody"),
+                        duration: HUDPresentation.successDuration
+                    )
+                )
+            }
         )
     }
 }

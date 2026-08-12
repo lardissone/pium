@@ -1922,6 +1922,57 @@
         }
       }
     },
+    "settings.appearance.preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Me"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrame"
+          }
+        }
+      }
+    },
+    "settings.appearance.previewBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A result appears here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un resultado aparece acá."
+          }
+        }
+      }
+    },
+    "settings.appearance.previewTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium"
+          }
+        }
+      }
+    },
     "settings.appearance.title": {
       "extractionState": "manual",
       "localizations": {
