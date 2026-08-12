@@ -12,6 +12,16 @@
 	<string>e+uU8/nj3yePBYLz1yV9EZZM824YeiqQj68wzqtjGbE=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
+	<!-- PRD §13 keeps finding an update and installing one as two separate
+	     things the user sees. Without this key Sparkle infers permission to
+	     auto-install from SUEnableAutomaticChecks above, and offers "download
+	     and install automatically" as a checkbox in its update window. One
+	     tick would write that choice to user defaults, where it outranks
+	     anything a later build ships here — so every future update would
+	     install itself with no notice and no way back. False both hides the
+	     checkbox and pins automatic downloading off. -->
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
 	<!-- PRD §13: six hours. -->
 	<key>SUScheduledCheckInterval</key>
 	<integer>21600</integer>

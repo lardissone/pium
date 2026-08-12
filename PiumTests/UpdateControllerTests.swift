@@ -43,6 +43,50 @@ struct UpdateControllerTests {
         #expect(relaunched == true)
     }
 
+    /// A run ending is not proof the slot is free — another command can claim
+    /// it in the same breath. The relaunch stays armed until it really is.
+    @Test func aRelaunchStaysArmedWhileTheSlotIsClaimedAgain() {
+        var busy = true
+        let controller = UpdateController(isBusy: { busy })
+        var relaunched = false
+        _ = controller.postponeRelaunch { relaunched = true }
+
+        controller.commandFinished()
+
+        #expect(relaunched == false)
+
+        busy = false
+        controller.commandFinished()
+
+        #expect(relaunched == true)
+    }
+
+    /// Runs keep ending after the one that was holding the relaunch. Only the
+    /// first of them may resume it.
+    @Test func aResumedRelaunchDoesNotFireTwice() {
+        var busy = true
+        let controller = UpdateController(isBusy: { busy })
+        var relaunches = 0
+        _ = controller.postponeRelaunch { relaunches += 1 }
+
+        busy = false
+        controller.commandFinished()
+        controller.commandFinished()
+
+        #expect(relaunches == 1)
+    }
+
+    /// Installing is Sparkle's job. All Pium does is stand out of the way of
+    /// the window it is about to open.
+    @Test func installingClearsTheNotice() {
+        let controller = UpdateController(isBusy: { false })
+        controller.noteUpdateFound(PendingUpdate(version: "0.2.0", build: "2"))
+
+        controller.installPendingUpdate()
+
+        #expect(controller.pendingUpdate == nil)
+    }
+
     @Test func aRelaunchWithNothingRunningProceedsImmediately() {
         let controller = UpdateController(isBusy: { false })
         var relaunched = false

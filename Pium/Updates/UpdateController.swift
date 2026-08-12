@@ -31,19 +31,49 @@ final class UpdateController: NSObject, UpdateAvailability {
 
     /// Separate from `init` because a test wants the decisions without the
     /// framework, and because starting the updater begins network activity.
+    ///
+    /// A second updater would run a scheduled-check timer of its own against
+    /// the same bundle, so starting twice is ignored rather than replacing
+    /// the first.
+    ///
+    /// The check interval is not set here. Sparkle's setter writes to user
+    /// defaults, which outrank `Info.plist` — an interval set in code would
+    /// stick to the machine and quietly overrule every later build. It lives
+    /// in `Info.plist` as `SUScheduledCheckInterval`, with the rest of the
+    /// Sparkle configuration.
     func start() {
+        guard controller == nil else { return }
+
         controller = SPUStandardUpdaterController(
             startingUpdater: true,
             updaterDelegate: self,
             userDriverDelegate: self
         )
-        controller?.updater.updateCheckInterval = 21600
     }
 
+    /// Before `start()` there is no updater to ask, so this reads and writes
+    /// the same key in the same order Sparkle's own `SUHost` does — user
+    /// defaults, then the bundle. A Settings toggle bound to this must not
+    /// report a value nobody chose, or discard one the user did.
     var automaticallyChecks: Bool {
-        get { controller?.updater.automaticallyChecksForUpdates ?? true }
-        set { controller?.updater.automaticallyChecksForUpdates = newValue }
+        get {
+            guard let updater = controller?.updater else {
+                return UserDefaults.standard.object(forKey: Self.automaticChecksKey) as? Bool
+                    ?? Bundle.main.object(forInfoDictionaryKey: Self.automaticChecksKey) as? Bool
+                    ?? false
+            }
+            return updater.automaticallyChecksForUpdates
+        }
+        set {
+            guard let updater = controller?.updater else {
+                UserDefaults.standard.set(newValue, forKey: Self.automaticChecksKey)
+                return
+            }
+            updater.automaticallyChecksForUpdates = newValue
+        }
     }
+
+    private static let automaticChecksKey = "SUEnableAutomaticChecks"
 
     var lastCheck: Date? { controller?.updater.lastUpdateCheckDate }
 
@@ -79,8 +109,13 @@ final class UpdateController: NSObject, UpdateAvailability {
 
     /// Called when the run slot empties. Resumes a relaunch that was waiting
     /// on it, and does nothing otherwise.
+    ///
+    /// Busy-ness is checked again rather than inferred from being called: if
+    /// another command has claimed the slot by now, the relaunch stays armed
+    /// for the next time it empties. That keeps "an update never interrupts a
+    /// command" true here rather than in whoever calls this.
     func commandFinished() {
-        guard let resume = resumeRelaunch else { return }
+        guard !isBusy(), let resume = resumeRelaunch else { return }
         resumeRelaunch = nil
         resume()
     }
@@ -111,9 +146,11 @@ extension UpdateController: SPUStandardUserDriverDelegate {
         _ update: SUAppcastItem,
         andInImmediateFocus immediateFocus: Bool
     ) -> Bool {
-        // Let Sparkle take anything it would put in immediate focus; Pium
-        // shows everything else in the launcher.
-        immediateFocus
+        // Never Sparkle's window, whatever it thinks of the moment. Pium has
+        // no window the user is already looking at, so Sparkle showing this
+        // one means activating a menubar app over whatever they were doing
+        // instead. A check the user asked for does not come through here.
+        false
     }
 
     nonisolated func standardUserDriverWillHandleShowingUpdate(
