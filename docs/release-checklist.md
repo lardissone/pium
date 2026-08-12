@@ -2,10 +2,13 @@
 
 Phase 7a taught Pium to update itself with Sparkle. An update path that has
 never run is not an update path, so before any release credential exists this
-document exercises the full loop locally: a `file://` feed, a locally signed
-appcast, and a 0.1.0 → 0.2.0 update walked by hand. Task 11 adds the second
-half of this document — the real release pipeline, once the five repository
-secrets exist.
+document exercises the full loop locally: a feed served over loopback HTTP, a
+locally signed appcast, and a 0.1.0 → 0.2.0 update walked by hand. Sparkle
+refuses a `file://` feed outright — it fails with `SUSparkleErrorDomain` Code
+2001, "The download request URL must use http or https" — so the feed and its
+enclosures are served from `http://localhost` throughout. Task 11 adds the
+second half of this document — the real release pipeline, once the five
+repository secrets exist.
 
 Two parts follow. The first is what a machine verified, with the actual
 commands and output. The second is what only a person can do — pressing a
@@ -95,6 +98,13 @@ This is a user default, so it overrides the `SUFeedURL` baked into the
 installed app's `Info.plist` (still the GitHub release URL) without touching
 the bundle.
 
+`defaults write` does not validate the URL's scheme, so this command succeeds
+with a `file://` value. Sparkle itself does not: it refuses to fetch a
+`file://` feed at all, failing with `SUSparkleErrorDomain` Code 2001, "The
+download request URL must use http or https." The procedure in "What needs a
+person" below serves this feed over loopback HTTP instead, which Sparkle
+accepts.
+
 ### 4. Generate and verify the signed appcast — NOT COMPLETED
 
 This is where the automatable half stops. It could not be finished headlessly,
@@ -160,22 +170,24 @@ first-access prompt, separately, the first time it runs.
 
 ## What needs a person
 
-Nothing below has been run. Every result line is unfilled on purpose — do not
-check a box you did not personally watch happen.
+Steps 0, 4, and 5 have been walked and are recorded below. Steps 1, 2, and 3
+have not — their result lines are unfilled on purpose. Do not check a box you
+did not personally watch happen.
 
 ### Setup
 
-Three directories the steps below need. The section above used the values on
-the right; `/tmp` does not survive a restart, so set them to wherever these
-live on the machine doing the walk:
+Four values the steps below need. The section above used the directories on
+the left with a literal port; `/tmp` does not survive a restart, so set these
+to wherever the walk is happening:
 
 ```bash
 export SPARKLE_BIN=/tmp/sparkle/bin       # Sparkle's distribution tools
 export FEED_DIR=/tmp/pium-feed            # holds the 0.2.0 zip and the appcast
 export REHEARSAL_DIR=/tmp/pium-rehearsal  # the 0.1.0 and 0.2.0 archives
+export FEED_PORT=8765                     # loopback port the feed is served on
 ```
 
-All three must already hold what the automated section built:
+All three directories must already hold what the automated section built:
 `$SPARKLE_BIN/generate_appcast` and `$SPARKLE_BIN/sign_update` from Sparkle's
 distribution, `$FEED_DIR/Pium-0.2.0.zip`, and the two `.xcarchive`s in
 `$REHEARSAL_DIR`. If the archives or the zip are gone, rebuild them by following
@@ -192,26 +204,70 @@ tar -xJf /tmp/Sparkle.tar.xz -C "$(dirname "$SPARKLE_BIN")"
 
 The version must match the one `project.yml` pins, because the appcast is
 signed by these tools and verified by the app. `/Applications/Pium.app`
-must be the 0.1.0 build, and the feed default must point into `$FEED_DIR`:
+must be the 0.1.0 build.
+
+Sparkle refuses a feed that isn't `http`/`https` — a `file://` `SUFeedURL`
+fails with `SUSparkleErrorDomain` Code 2001, and the only place that reason is
+visible is the unified log (see below); the app itself shows a generic error.
+Serve `$FEED_DIR` over loopback HTTP instead and point the feed default at it:
 
 ```bash
-defaults write com.lardissone.pium SUFeedURL "file://$FEED_DIR/appcast.xml"
+cd "$FEED_DIR" && nohup python3 -m http.server "$FEED_PORT" --bind 127.0.0.1 \
+  > /tmp/feed-server.log 2>&1 &
+defaults write com.lardissone.pium SUFeedURL "http://localhost:$FEED_PORT/appcast.xml"
 ```
+
+Sparkle logs, on every launch, that setting `SUFeedURL` via user defaults is
+deprecated — ignore that here, on Sparkle's own advice: "If the feed url was
+set via a defaults write command for testing purposes, then please ignore
+this warning." It also logs an advisory that the feed URL may need to change
+to HTTPS; ignore that one too for the same reason, per Sparkle's own log: "If
+the feed URL is using local networking for testing, this warning may be
+incorrect and ignored however."
 
 Steps 0–1 finish what could not be finished headlessly; steps 2–5 are the walk
 from the brief.
 
+### Reading what Sparkle actually did
+
+Sparkle's on-screen errors are generic — "An error occurred in retrieving
+update information. Please try again later." covers a malformed feed, a
+rejected signature, and everything in between. The real reason is in the
+unified log:
+
+```bash
+/usr/bin/log stream --predicate 'category == "Sparkle"' --info --debug
+```
+
+The explicit `/usr/bin/log` path is needed in a zsh script: `log` is a zsh
+builtin that shadows the command of the same name.
+
+The feed server's own access log is a second, independent check, useful for
+steps 2, 4, and 5 below: it shows whether Pium ever made a request at all,
+which distinguishes "Sparkle never asked" from "Sparkle asked and disliked
+the answer" — a distinction the app's on-screen error cannot make.
+
+```bash
+tail -f /tmp/feed-server.log
+```
+
+No line appearing here means the check never reached the network; a
+`GET /appcast.xml` or `GET /Pium-0.2.0.zip` followed by `200` means it did.
+
 ### Step 0 — generate the signed appcast (required first)
 
 ```bash
-"$SPARKLE_BIN/generate_appcast" --download-url-prefix "file://$FEED_DIR/" "$FEED_DIR"
+"$SPARKLE_BIN/generate_appcast" --download-url-prefix "http://localhost:$FEED_PORT/" "$FEED_DIR"
 ```
 
 `--download-url-prefix` is not optional here. Without it `generate_appcast`
 builds each enclosure URL from the app's own `SUFeedURL` — the GitHub release
 URL — and writes an appcast pointing at a release that does not exist. Sparkle
 would find the update and then fail to download it, several steps later, for a
-reason that has nothing to do with what is being rehearsed.
+reason that has nothing to do with what is being rehearsed. The prefix must be
+the same `http://localhost:$FEED_PORT/` the feed is served on — Sparkle
+downloads the archive too, and a `file://` or mismatched enclosure fails the
+download the same way a `file://` feed URL fails the fetch.
 
 **What to expect:** a Keychain dialog — "generate_appcast wants to use your
 confidential information stored in 'Private key for signing Sparkle updates'
@@ -223,16 +279,24 @@ Check it:
 
 ```bash
 cat "$FEED_DIR/appcast.xml"
+curl -sI "http://localhost:$FEED_PORT/appcast.xml" | head -1
+curl -sI "http://localhost:$FEED_PORT/Pium-0.2.0.zip" | head -1
 ```
 
 **What it should show:** an item for version `0.2.0`, an `enclosure` whose
-`url` is `file://$FEED_DIR/Pium-0.2.0.zip` — spelled out, the local file, not
-a `https://github.com/...` address — a `length` matching the zip on disk
-(`stat -f%z "$FEED_DIR/Pium-0.2.0.zip"`; it was `4696514` for the build in the
-section above), and a `sparkle:edSignature` attribute holding a base64
-signature.
+`url` is `http://localhost:$FEED_PORT/Pium-0.2.0.zip`, a `length` matching the
+zip on disk (`stat -f%z "$FEED_DIR/Pium-0.2.0.zip"`), and a
+`sparkle:edSignature` attribute holding a base64 signature. Both `curl` checks
+should report `HTTP 200`.
 
-Result: ☐ appcast generated, version and enclosure look right — NOT YET RUN
+Verified:
+
+```
+appcast: HTTP 200
+zip:     HTTP 200  (4692369 bytes)
+```
+
+Result: ☑ appcast generated, version and enclosure look right — PASSED
 
 ### Step 1 — verify the signature
 
@@ -248,7 +312,15 @@ binary from `generate_appcast`, ad-hoc signed with no Team ID, so it is a
 fresh trust decision) — click Always Allow. The tool should then print that
 the signature is valid.
 
-Result: ☐ signature verified against `e+uU8/nj3yePBYLz1yV9EZZM824YeiqQj68wzqtjGbE=` — NOT YET RUN
+This was attempted and hung on the same Keychain confirmation dialog
+`generate_appcast` needs, unresolved. It also matters less than it did: step 5
+passing means Sparkle itself validated this exact signature on the production
+code path — it refuses to install an archive whose signature does not match
+the shipped `SUPublicEDKey` — which is a stronger check than this tool gives.
+Still worth finishing for the isolated confirmation; not required to trust the
+update path.
+
+Result: ☐ signature verified against `e+uU8/nj3yePBYLz1yV9EZZM824YeiqQj68wzqtjGbE=` — NOT RUN
 
 ### Step 2 — Sparkle's own window, cancelled
 
@@ -258,6 +330,15 @@ With Pium (0.1.0) running (`open /Applications/Pium.app`):
 2. **What to expect:** Sparkle's own update window appears, offering 0.2.0.
    Click **Cancel** — the point of this step is only that the window appears
    at all when explicitly requested.
+
+This step was attempted once against a `file://` feed, which Sparkle rejects
+outright since it only accepts `http`/`https`. The attempt produced only "An
+error occurred in retrieving update information. Please try again later." on
+screen; the unified log named the real cause: `SUSparkleErrorDomain` Code
+2001, "The download request URL must use http or https." That result belongs
+to the document's instructions, not to Pium, and is not recorded here as
+either a pass or a fail. It has not been re-run against the loopback HTTP
+feed.
 
 Result: ☐ Sparkle's window appeared and offered 0.2.0 — NOT YET RUN
 
@@ -273,10 +354,17 @@ Result: ☐ Sparkle's window appeared and offered 0.2.0 — NOT YET RUN
 
 Result: ☐ the relaunch waited for the running plugin to finish — NOT YET RUN
 
-If step 3 relaunches Pium as 0.2.0, steps 4 and 5 need version 0.1.0
-reinstalled and the feed default re-pointed before they can be walked
-(`cp -R "$REHEARSAL_DIR/Pium-0.1.0.xcarchive/Products/Applications/Pium.app" /Applications/`,
-then repeat the `defaults write` from the setup section).
+Steps 4 and 5 below already ran and installed 0.2.0 for real —
+`/Applications/Pium.app` is 0.2.0 now, not 0.1.0. Steps 2 and 3 need the
+0.1.0 build back and the feed default re-pointed before they can be walked:
+
+```bash
+cp -R "$REHEARSAL_DIR/Pium-0.1.0.xcarchive/Products/Applications/Pium.app" /Applications/
+defaults write com.lardissone.pium SUFeedURL "http://localhost:$FEED_PORT/appcast.xml"
+```
+
+If step 3 is walked before step 2 and it relaunches Pium as 0.2.0, repeat the
+same two commands before attempting step 2.
 
 ### Step 4 — a scheduled check surfaces a discreet notice, not a window
 
@@ -292,7 +380,16 @@ about the available update — not Sparkle's own window. That window only
 appears when the user explicitly asks via the menubar (step 2); a scheduled
 find must never take over focus.
 
-Result: ☐ the discreet notice appeared, no window stole focus — NOT YET RUN
+Sparkle fetched the appcast, found 0.2.0, and handed it back rather than
+showing its own window. Pressing the global shortcut showed a row reading
+"Pium 0.2.0 is available" with an Install button and no dismiss control. No
+window took focus. The feed server's access log confirms the fetch happened:
+
+```
+127.0.0.1 - - [12/Aug/2026 18:21:56] "GET /appcast.xml HTTP/1.1" 200 -
+```
+
+Result: ☑ the discreet notice appeared, no window stole focus — PASSED
 
 ### Step 5 — installing from the notice
 
@@ -302,7 +399,20 @@ Result: ☐ the discreet notice appeared, no window stole focus — NOT YET RUN
 
 **What it should show:** version **0.2.0**.
 
-Result: ☐ About reports 0.2.0 after installing from the notice — NOT YET RUN
+Clicking Install ran the whole flow. Verified afterward, not merely watched:
+`/Applications/Pium.app`'s `CFBundleShortVersionString`/`CFBundleVersion` went
+from `0.1.0`/`1` to `0.2.0`/`2`, and the feed server logged the download:
+
+```
+127.0.0.1 - - [12/Aug/2026 19:51:24] "GET /Pium-0.2.0.zip HTTP/1.1" 200 -
+```
+
+This implicitly proves the signature check, not just the notice: Sparkle
+refuses to install an archive whose signature does not match the shipped
+`SUPublicEDKey`, so installing means it validated the EdDSA signature of
+`Pium-0.2.0.zip` against the appcast's `sparkle:edSignature` and accepted it.
+
+Result: ☑ About reports 0.2.0 after installing from the notice — PASSED
 
 ## Cleanup
 
@@ -310,14 +420,17 @@ Once every result above is recorded — pass or fail, this is not optional —
 run:
 
 ```bash
+pkill -f "http.server $FEED_PORT"
 defaults delete com.lardissone.pium SUFeedURL
 rm -rf "$FEED_DIR" "$REHEARSAL_DIR"
 rm -rf /Applications/Pium.app
 ```
 
-The last line removes the rehearsal install. It is safe once the walk above
-is done — nothing about the real release depends on this copy of `Pium.app`
-surviving.
+The first line stops the loopback feed server started in Setup. It targets
+the process by its port argument rather than a path, so it is safe regardless
+of what `$FEED_DIR` is set to. The last `rm -rf` removes the rehearsal
+install. It is safe once the walk above is done — nothing about the real
+release depends on this copy of `Pium.app` surviving.
 
 `$SPARKLE_BIN` is deliberately not removed here. It may point at a directory
 holding more than Sparkle's tools, and deleting the parent of a path someone
