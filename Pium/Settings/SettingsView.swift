@@ -2,8 +2,8 @@ import SwiftUI
 
 /// The Settings content.
 ///
-/// The Appearance, Updates, and Advanced sections arrive with the features
-/// they configure, in Phases 5 through 7.
+/// The Updates section arrives with Sparkle, in Phase 7: a section that
+/// configures update checks cannot be written before there are any.
 struct SettingsView: View {
     let frecency: any FrecencyStoring
     let access: ProtectedFolderAccess
@@ -41,6 +41,14 @@ struct SettingsView: View {
                     systemImage: "puzzlepiece.extension"
                 )
             }
+
+            AppearanceSettingsView()
+                .tabItem {
+                    Label(
+                        String(localized: "settings.appearance.title"),
+                        systemImage: "paintbrush"
+                    )
+                }
 
             AdvancedSettingsView()
                 .tabItem {
