@@ -19,6 +19,7 @@ final class Preferences {
         static let disabledPluginIDs = "pium.disabledPluginIDs"
         static let hudAnchor = "pium.hudAnchor"
         static let requestedFolderAccess = "pium.requestedFolderAccess"
+        static let debugLoggingExpiry = "pium.debugLoggingExpiry"
         /// Read by macOS at launch to pick the application's language.
         static let appleLanguages = "AppleLanguages"
     }
@@ -116,6 +117,14 @@ final class Preferences {
             defaults.string(forKey: Key.hudAnchor).flatMap(HUDAnchor.init(rawValue:)) ?? .topRight
         }
         set { defaults.set(newValue.rawValue, forKey: Key.hudAnchor) }
+    }
+
+    /// When the current debug logging session ends; `nil` when there is none.
+    ///
+    /// A deadline rather than a switch: see `DebugLogging`.
+    var debugLoggingExpiry: Date? {
+        get { defaults.object(forKey: Key.debugLoggingExpiry) as? Date }
+        set { defaults.set(newValue, forKey: Key.debugLoggingExpiry) }
     }
 
     /// Which protected folders Pium has already asked macOS about.
