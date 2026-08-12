@@ -163,42 +163,72 @@ first-access prompt, separately, the first time it runs.
 Nothing below has been run. Every result line is unfilled on purpose — do not
 check a box you did not personally watch happen.
 
-The installed `Pium.app` (0.1.0), `/tmp/pium-feed/Pium-0.2.0.zip`, and the
-`SUFeedURL` default from the previous section are already in place. Steps 0–1
-finish what could not be finished headlessly; steps 2–5 are the walk from the
-brief.
+### Setup
+
+Three directories the steps below need. The section above used the values on
+the right; `/tmp` does not survive a restart, so set them to wherever these
+live on the machine doing the walk:
+
+```bash
+export SPARKLE_BIN=/tmp/sparkle/bin       # Sparkle's distribution tools
+export FEED_DIR=/tmp/pium-feed            # holds the 0.2.0 zip and the appcast
+export REHEARSAL_DIR=/tmp/pium-rehearsal  # the 0.1.0 and 0.2.0 archives
+```
+
+All three must already hold what the automated section built:
+`$SPARKLE_BIN/generate_appcast` and `$SPARKLE_BIN/sign_update` from Sparkle's
+distribution, `$FEED_DIR/Pium-0.2.0.zip`, and the two `.xcarchive`s in
+`$REHEARSAL_DIR`. If any of them is gone, rebuild it by following sections 1–3
+above with these variables in place of the literal paths. `/Applications/Pium.app`
+must be the 0.1.0 build, and the feed default must point into `$FEED_DIR`:
+
+```bash
+defaults write com.lardissone.pium SUFeedURL "file://$FEED_DIR/appcast.xml"
+```
+
+Steps 0–1 finish what could not be finished headlessly; steps 2–5 are the walk
+from the brief.
 
 ### Step 0 — generate the signed appcast (required first)
 
 ```bash
-/tmp/sparkle/bin/generate_appcast /tmp/pium-feed
+"$SPARKLE_BIN/generate_appcast" --download-url-prefix "file://$FEED_DIR/" "$FEED_DIR"
 ```
+
+`--download-url-prefix` is not optional here. Without it `generate_appcast`
+builds each enclosure URL from the app's own `SUFeedURL` — the GitHub release
+URL — and writes an appcast pointing at a release that does not exist. Sparkle
+would find the update and then fail to download it, several steps later, for a
+reason that has nothing to do with what is being rehearsed.
 
 **What to expect:** a Keychain dialog — "generate_appcast wants to use your
 confidential information stored in 'Private key for signing Sparkle updates'
 in your keychain." Click **Always Allow** (Allow works too, but you will be
 asked again on the next release). The command then prints what it wrote and
-exits; `/tmp/pium-feed/appcast.xml` should exist afterward.
+exits; `$FEED_DIR/appcast.xml` should exist afterward.
 
 Check it:
 
 ```bash
-cat /tmp/pium-feed/appcast.xml
+cat "$FEED_DIR/appcast.xml"
 ```
 
 **What it should show:** an item for version `0.2.0`, an `enclosure` whose
-`url` points at `Pium-0.2.0.zip`, a `length` of `4696514`, and a
-`sparkle:edSignature` attribute holding a base64 signature.
+`url` is `file://$FEED_DIR/Pium-0.2.0.zip` — spelled out, the local file, not
+a `https://github.com/...` address — a `length` matching the zip on disk
+(`stat -f%z "$FEED_DIR/Pium-0.2.0.zip"`; it was `4696514` for the build in the
+section above), and a `sparkle:edSignature` attribute holding a base64
+signature.
 
 Result: ☐ appcast generated, version and enclosure look right — NOT YET RUN
 
 ### Step 1 — verify the signature
 
-Open `/tmp/pium-feed/appcast.xml`, find the `enclosure` element for 0.2.0, and
+Open `$FEED_DIR/appcast.xml`, find the `enclosure` element for 0.2.0, and
 copy its `sparkle:edSignature` value. Then:
 
 ```bash
-/tmp/sparkle/bin/sign_update --verify /tmp/pium-feed/Pium-0.2.0.zip '<paste the edSignature value here>'
+"$SPARKLE_BIN/sign_update" --verify "$FEED_DIR/Pium-0.2.0.zip" '<paste the edSignature value here>'
 ```
 
 **What to expect:** a second, separate Keychain dialog (this is a different
@@ -233,8 +263,8 @@ Result: ☐ the relaunch waited for the running plugin to finish — NOT YET RUN
 
 If step 3 relaunches Pium as 0.2.0, steps 4 and 5 need version 0.1.0
 reinstalled and the feed default re-pointed before they can be walked
-(`cp -R /tmp/pium-rehearsal/Pium-0.1.0.xcarchive/Products/Applications/Pium.app /Applications/`,
-then repeat the `defaults write` from the automated section).
+(`cp -R "$REHEARSAL_DIR/Pium-0.1.0.xcarchive/Products/Applications/Pium.app" /Applications/`,
+then repeat the `defaults write` from the setup section).
 
 ### Step 4 — a scheduled check surfaces a discreet notice, not a window
 
@@ -269,7 +299,7 @@ run:
 
 ```bash
 defaults delete com.lardissone.pium SUFeedURL
-rm -rf /tmp/pium-feed /tmp/pium-rehearsal /tmp/sparkle
+rm -rf "$FEED_DIR" "$REHEARSAL_DIR" "$(dirname "$SPARKLE_BIN")"
 rm -rf /Applications/Pium.app
 ```
 
