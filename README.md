@@ -13,6 +13,23 @@ one never recompiles Pium!
 
 **Status:** in development. Nothing is released yet.
 
+## Debug logging
+
+Pium keeps no logs of what you do. When something goes wrong and you want to
+report it, Settings → Advanced turns on debug logging for **24 hours**, after
+which it stops on its own.
+
+While it is on, Pium records what you type, the arguments you pass a plugin,
+the commands it runs, and what they print, in
+`~/Library/Application Support/Pium/DebugLogs/`. Nothing leaves your Mac: the
+files are yours to export, read, and delete, and they are kept for seven days
+or 20 MB, whichever comes first.
+
+Secrets a plugin declares are removed — both where Pium uses them and from
+whatever a command prints them into. **A secret you type by hand into a
+plugin's argument cannot be removed**, because Pium cannot tell it apart from
+anything else you typed. Read an export before you send it to anyone.
+
 ## Building
 
 Requires macOS 26 and Xcode 26.
