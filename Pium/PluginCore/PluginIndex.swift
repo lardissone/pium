@@ -30,6 +30,12 @@ final class PluginIndex {
     func refresh() {
         records = resolvingConflicts(in: loader(root))
         logger.notice("Loaded \(self.records.count, privacy: .public) plugins")
+        DebugLog.record(
+            .pluginsReloaded(
+                count: records.count,
+                invalid: records.count { $0.manifest == nil }
+            )
+        )
     }
 
     func startObserving() {

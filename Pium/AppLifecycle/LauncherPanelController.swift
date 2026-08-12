@@ -83,11 +83,13 @@ final class LauncherPanelController: NSObject {
         // search field: reopening while a plugin is running must show its
         // footer too (PRD §11), and nothing types anything on that path.
         resizePanelToContent()
+        DebugLog.record(.launcher(.opened))
     }
 
     func hide() {
         guard panel.isVisible else { return }
         panel.orderOut(nil)
+        DebugLog.record(.launcher(.dismissed))
     }
 
     /// Applications and plugins search from the first character, so there is no
