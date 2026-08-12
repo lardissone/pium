@@ -92,6 +92,15 @@ final class ExecutionManager {
         case .failure(let failure): return .failure(failure)
         }
 
+        // The values this run is about to hand its command, kept only long
+        // enough to take them back out of what the command prints. They live
+        // in the closure below and never on the record, which the interface
+        // reads.
+        let secretKeys = Set(
+            manifest.configuration.filter { $0.type == .secret }.map(\.environmentVariable)
+        )
+        let redaction = SecretRedaction(values: secretKeys.compactMap { childEnvironment[$0] })
+
         let arguments = resolvedArguments(of: manifest, input: input)
         let request = ExecutionRequest(
             executable: executable,
@@ -119,9 +128,17 @@ final class ExecutionManager {
         cancellations[id] = cancellation
 
         logger.notice("Running \(manifest.id, privacy: .public)")
+        DebugLog.record(
+            .run(
+                plugin: manifest.id,
+                executable: executable.path,
+                arguments: arguments,
+                environmentKeys: Array(childEnvironment.keys)
+            )
+        )
         Task { [runner] in
             let outcome = await runner.run(request, cancellation: cancellation)
-            finish(id, with: outcome)
+            finish(id, with: outcome, redaction: redaction)
         }
         return .success(id)
     }
@@ -178,7 +195,9 @@ final class ExecutionManager {
         }
     }
 
-    private func finish(_ id: UUID, with outcome: ExecutionOutcome) {
+    private func finish(
+        _ id: UUID, with outcome: ExecutionOutcome, redaction: SecretRedaction
+    ) {
         guard var record = records[id] else { return }
         record.state = .ended(outcome.ending)
         record.standardOutput = outcome.standardOutput
@@ -213,6 +232,18 @@ final class ExecutionManager {
         default:
             logger.notice("\(record.pluginID, privacy: .public) finished")
         }
+
+        // Scrubbed on the way in rather than on the way out: what reaches the
+        // file is what a person will read, and a redaction applied at export
+        // would leave the value on disk in the meantime.
+        DebugLog.record(
+            .finished(
+                plugin: record.pluginID,
+                ending: outcome.ending,
+                output: redaction.scrub(record.standardOutput),
+                error: redaction.scrub(record.standardError)
+            )
+        )
 
         onFinished?(record)
     }
