@@ -39,7 +39,12 @@ struct ResultRowView: View {
             }
         }
         .contentShape(.rect)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        // Spelled out rather than combined from the children: combining reads
+        // the title and subtitle and drops the kind along with the icon, which
+        // is hidden as decoration — and the kind is the only thing separating
+        // an application called Notes from a file called Notes.
+        .accessibilityLabel(result.accessibilityDescription)
         .accessibilityIdentifier(Self.accessibilityIdentifier)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }

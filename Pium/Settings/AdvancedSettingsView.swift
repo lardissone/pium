@@ -48,6 +48,12 @@ struct AdvancedSettingsView: View {
                             Button(String(localized: "settings.advanced.pathRemove")) {
                                 remove(path)
                             }
+                            // Every row's button says "Remove" and they are
+                            // told apart by the path beside them, which a
+                            // screen reader reads separately or not at all.
+                            .accessibilityLabel(
+                                String(localized: "settings.advanced.pathRemoveLabel \(path)")
+                            )
                         }
                     }
                 }
