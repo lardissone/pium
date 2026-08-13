@@ -1,9 +1,6 @@
 import SwiftUI
 
 /// The Settings content.
-///
-/// The Updates section arrives with Sparkle, in Phase 7: a section that
-/// configures update checks cannot be written before there are any.
 struct SettingsView: View {
     let frecency: any FrecencyStoring
     let access: ProtectedFolderAccess
@@ -11,6 +8,7 @@ struct SettingsView: View {
     let pluginIndex: PluginIndex
     let configuration: any PluginConfigurationStoring
     let secrets: any PluginSecretStoring
+    let updates: any UpdateAvailability
     /// Shows a real HUD where the chosen anchor puts it. Owned by
     /// `AppDelegate`, which holds the controller that outlives this window.
     let onPreviewHUD: () -> Void
@@ -50,6 +48,14 @@ struct SettingsView: View {
                     Label(
                         String(localized: "settings.appearance.title"),
                         systemImage: "paintbrush"
+                    )
+                }
+
+            UpdatesSettingsView(updates: updates)
+                .tabItem {
+                    Label(
+                        String(localized: "settings.updates.title"),
+                        systemImage: "arrow.down.circle"
                     )
                 }
 

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Only the keys Xcode's generated Info.plist cannot express. Everything
+	     else — LSUIElement, CFBundleDisplayName, the usage descriptions —
+	     stays in project.yml as INFOPLIST_KEY_* and is merged in at build
+	     time. Verified: the two mechanisms combine rather than replace. -->
+	<key>SUFeedURL</key>
+	<string>https://github.com/lardissone/pium/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>e+uU8/nj3yePBYLz1yV9EZZM824YeiqQj68wzqtjGbE=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<!-- PRD §13 keeps finding an update and installing one as two separate
+	     things the user sees. Without this key Sparkle infers permission to
+	     auto-install from SUEnableAutomaticChecks above, and offers "download
+	     and install automatically" as a checkbox in its update window. One
+	     tick would write that choice to user defaults and every later update
+	     would arrive already downloaded, with no notice — the user's own
+	     doing, but a decision PRD §13 says Pium does not offer. False both
+	     hides the checkbox and pins automatic downloading off, and it is read
+	     from the bundle alone, so this file stays the one place that answers
+	     the question. -->
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
+	<!-- PRD §13: six hours. -->
+	<key>SUScheduledCheckInterval</key>
+	<integer>21600</integer>
+</dict>
+</plist>

@@ -1,9 +1,6 @@
 import AppKit
 
 /// Pium's menubar item and its menu.
-///
-/// The PRD's update entry ships with the feature that makes it meaningful, in
-/// Phase 7.
 @MainActor
 final class MenuBarController: NSObject {
     private let statusItem: NSStatusItem
@@ -13,6 +10,7 @@ final class MenuBarController: NSObject {
     private let onReloadPlugins: () -> Void
     private let onCancel: () -> Void
     private let onOpenAbout: () -> Void
+    private let onCheckForUpdates: () -> Void
     /// The plugin holding the run slot, by name, or `nil` while nothing runs.
     private var activePlugin: String?
 
@@ -26,7 +24,8 @@ final class MenuBarController: NSObject {
         onOpenPluginsFolder: @escaping () -> Void,
         onReloadPlugins: @escaping () -> Void,
         onCancel: @escaping () -> Void,
-        onOpenAbout: @escaping () -> Void
+        onOpenAbout: @escaping () -> Void,
+        onCheckForUpdates: @escaping () -> Void
     ) {
         self.onOpenLauncher = onOpenLauncher
         self.onOpenSettings = onOpenSettings
@@ -34,6 +33,7 @@ final class MenuBarController: NSObject {
         self.onReloadPlugins = onReloadPlugins
         self.onCancel = onCancel
         self.onOpenAbout = onOpenAbout
+        self.onCheckForUpdates = onCheckForUpdates
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
@@ -80,6 +80,12 @@ final class MenuBarController: NSObject {
             cancelItem.identifier = NSUserInterfaceItemIdentifier("cancel")
             menu.addItem(cancelItem)
         }
+        let updatesItem = menuItem(
+            title: String(localized: "menubar.checkForUpdates"),
+            action: #selector(checkForUpdates)
+        )
+        updatesItem.identifier = NSUserInterfaceItemIdentifier("checkForUpdates")
+        menu.addItem(updatesItem)
         menu.addItem(menuItem(
             title: String(localized: "menubar.settings"),
             action: #selector(openSettings)
@@ -134,6 +140,10 @@ final class MenuBarController: NSObject {
 
     @objc private func cancelRun() {
         onCancel()
+    }
+
+    @objc private func checkForUpdates() {
+        onCheckForUpdates()
     }
 
     @objc private func openAbout() {

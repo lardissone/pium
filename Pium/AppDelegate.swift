@@ -24,6 +24,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settingsController = SettingsWindowController()
     private let aboutController = AboutWindowController()
     private var menuBarController: MenuBarController?
+    /// Built here but only started once the app has finished launching, so a
+    /// scheduled check does not race the launch it would slow down.
+    private let updates: UpdateController
     /// See `ActivePluginRelay`.
     private let activityRelay: ActivePluginRelay
 
@@ -59,6 +62,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         )
         executionManager = executions
+        // Weakly, because the closure lives as long as the updater does and
+        // the execution manager is owned here, not by it.
+        let updates = UpdateController(isBusy: { [weak executions] in
+            executions?.activeRecord != nil
+        })
+        self.updates = updates
         panelController = LauncherPanelController(
             coordinator: SearchCoordinator(
                 providers: [
@@ -119,7 +128,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 frecency: frecency
             ),
             frecency: frecency,
-            executionManager: executions
+            executionManager: executions,
+            updates: updates
         )
         super.init()
     }
@@ -136,9 +146,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self, let active = executionManager.activeRecord else { return }
                 executionManager.cancel(active.id)
             },
-            onOpenAbout: { [weak self] in self?.aboutController.present() }
+            onOpenAbout: { [weak self] in self?.aboutController.present() },
+            onCheckForUpdates: { [weak self] in self?.updates.checkForUpdates() }
         )
-        activityRelay.handler = { [weak self] plugin in self?.menuBarController?.setActive(plugin) }
+        updates.start()
+        activityRelay.handler = { [weak self] plugin in
+            guard let self else { return }
+            menuBarController?.setActive(plugin)
+            // An empty run slot is what a relaunch postponed by a running
+            // command was waiting for.
+            if plugin == nil { updates.commandFinished() }
+        }
         // Wired here rather than in `init`: the HUD controller is built before
         // the panel it asks about. A HUD belongs on the display the launcher
         // that started the run was on (PIUM-104).
@@ -207,6 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pluginIndex: pluginIndex,
             configuration: pluginConfiguration,
             secrets: pluginSecrets,
+            updates: updates,
             onPreviewHUD: { [weak self] in
                 self?.hudController.show(
                     HUDPresentation(

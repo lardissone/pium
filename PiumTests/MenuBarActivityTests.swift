@@ -5,11 +5,15 @@ import AppKit
 @Suite("Menubar activity")
 @MainActor
 struct MenuBarActivityTests {
-    private func controller(onOpenAbout: @escaping () -> Void = {}) -> MenuBarController {
+    private func controller(
+        onOpenAbout: @escaping () -> Void = {},
+        onCheckForUpdates: @escaping () -> Void = {}
+    ) -> MenuBarController {
         MenuBarController(
             onOpenLauncher: {}, onOpenSettings: {},
             onOpenPluginsFolder: {}, onReloadPlugins: {}, onCancel: {},
-            onOpenAbout: onOpenAbout
+            onOpenAbout: onOpenAbout,
+            onCheckForUpdates: onCheckForUpdates
         )
     }
 
@@ -32,6 +36,18 @@ struct MenuBarActivityTests {
         )
         _ = item.target?.perform(item.action, with: item)
         #expect(opened.value)
+    }
+
+    /// PRD §6.1 lists "check for updates" among the menu's entries.
+    @Test func theMenuOffersToCheckForUpdates() throws {
+        final class Checks { var count = 0 }
+        let checks = Checks()
+        let controller = controller(onCheckForUpdates: { checks.count += 1 })
+        let item = try #require(
+            controller.menu.items.first { $0.identifier?.rawValue == "checkForUpdates" }
+        )
+        _ = item.target?.perform(item.action, with: item)
+        #expect(checks.count == 1)
     }
 
     @Test func thereIsNoCancelItemWhileNothingRuns() {

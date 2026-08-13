@@ -44,13 +44,16 @@ struct ExecutionManagerTests {
         )
     }
 
-    private func manager() -> ExecutionManager {
+    private func manager(
+        onFinished: ((ExecutionRecord) -> Void)? = nil
+    ) -> ExecutionManager {
         ExecutionManager(
             configuration: PluginConfigurationStore(
                 defaults: UserDefaults(suiteName: UUID().uuidString)!
             ),
             secrets: InMemorySecretStore(secrets: [:]),
-            searchPaths: { ["/usr/bin", "/bin"] }
+            searchPaths: { ["/usr/bin", "/bin"] },
+            onFinished: onFinished
         )
     }
 
@@ -114,6 +117,38 @@ struct ExecutionManagerTests {
         ).get()
         #expect(second != first)
         #expect(try await finalEnding(of: second, in: manager) == .exited(0))
+    }
+
+    /// The slot is handed back before the end is announced, not after.
+    ///
+    /// Whoever hears `onFinished` is entitled to act on an idle Pium: a
+    /// relaunch postponed because a command was running is released from
+    /// there, and it asks `activeRecord` whether it is safe. Announcing first
+    /// and clearing after would answer "still busy" for that one call and for
+    /// no later one — the relaunch would stay armed until some other command
+    /// happened to end, with nothing logged and nothing on screen.
+    ///
+    /// `theSlotIsFreeAgainOnceARunFinishes` cannot catch that: it looks after
+    /// the run is over, by which time both orders agree.
+    @Test func theSlotIsFreeByTheTimeTheEndIsAnnounced() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        final class Observed {
+            var manager: ExecutionManager?
+            var slotWasFree: Bool?
+        }
+        let observed = Observed()
+        let manager = manager { _ in
+            observed.slotWasFree = observed.manager?.activeRecord == nil
+        }
+        observed.manager = manager
+
+        let id = try manager.run(
+            record(executable: "echo", arguments: ["done"], in: directory), input: ""
+        ).get()
+        #expect(try await finalEnding(of: id, in: manager) == .exited(0))
+        #expect(observed.slotWasFree == true, "the run still held the slot when its end was announced")
     }
 
     /// A refused second run must change nothing about the first: the menubar

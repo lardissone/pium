@@ -6,7 +6,7 @@ import SwiftUI
 @MainActor
 final class LauncherPanelController: NSObject {
     private let panel: LauncherPanel
-    private let state = LauncherState()
+    private let state: LauncherState
     private let coordinator: SearchCoordinator
     /// The same store the coordinator ranks against, so what is recorded here
     /// is what the next search sees.
@@ -25,14 +25,18 @@ final class LauncherPanelController: NSObject {
     /// for it.
     private(set) var targetScreen: NSScreen?
 
+    /// `updates` reaches the launcher's state because PRD §13 shows a found
+    /// version here, the next time the launcher opens.
     init(
         coordinator: SearchCoordinator,
         frecency: any FrecencyStoring,
-        executionManager: ExecutionManager
+        executionManager: ExecutionManager,
+        updates: any UpdateAvailability
     ) {
         self.coordinator = coordinator
         self.frecency = frecency
         self.executionManager = executionManager
+        state = LauncherState(updates: updates)
         let size = CGSize(
             width: Tokens.Size.panelWidth,
             height: Tokens.Size.searchFieldHeight

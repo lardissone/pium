@@ -18,6 +18,13 @@ struct LauncherView: View {
     var body: some View {
         VStack(spacing: 0) {
             searchField
+            if let update = state.pendingUpdate {
+                Divider()
+                UpdateNoticeView(
+                    update: update,
+                    onInstall: { state.installPendingUpdate() }
+                )
+            }
             if state.showsNoResults {
                 Divider()
                 NoResultsView()
