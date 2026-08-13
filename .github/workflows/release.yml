@@ -55,6 +55,78 @@ jobs:
             exit 1
           fi
 
+      # Both credential checks run before anything is generated, built, or
+      # tested. A wrong notarization key or an unreadable certificate is a
+      # thirty-second failure here and a five-minute one after the suite, and
+      # the fix is the same either way.
+      - name: Verify the notarization credentials
+        env:
+          NOTARY_API_KEY: ${{ secrets.NOTARY_API_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          umask 077
+          printf '%s' "$NOTARY_API_KEY" > "$RUNNER_TEMP/notary.p8"
+          # Asking for history submits nothing and costs a round trip. It
+          # fails the same way a real submission would when the key, the key
+          # id, or the issuer is wrong.
+          xcrun notarytool history \
+            --key "$RUNNER_TEMP/notary.p8" \
+            --key-id "$NOTARY_KEY_ID" \
+            --issuer "$NOTARY_ISSUER_ID" >/dev/null
+
+      # A throwaway keychain rather than the runner's login keychain. The
+      # runner is destroyed after the job either way, but an identity that
+      # outlives the step needing it is one another step can use by accident.
+      - name: Import the Developer ID certificate
+        env:
+          P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          umask 077
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$RUNNER_TEMP/developer-id.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+
+          # Without this, codesign prompts for keychain access and the job
+          # hangs until it times out rather than failing.
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+
+          # Prepend rather than replace the default: codesign searches the
+          # list, and taking the runner's login keychain out of it breaks
+          # anything else that expected to find something there.
+          existing="$(security list-keychains -d user | tr -d '"' | xargs)"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $existing
+
+          rm -P "$RUNNER_TEMP/developer-id.p12"
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+      - name: Resolve the signing identity
+        id: identity
+        run: |
+          identity=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+            | awk -F'"' '/Developer ID Application/ {print $2; exit}')
+          if [ -z "$identity" ]; then
+            echo "::error::No 'Developer ID Application' identity in the imported keychain."
+            security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+            exit 1
+          fi
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
@@ -70,3 +142,103 @@ jobs:
             -destination 'platform=macOS' \
             -skip-testing:PiumUITests \
             CODE_SIGNING_ALLOWED=NO
+
+      # DEVELOPMENT_TEAM normally comes from Local.xcconfig, which is a
+      # per-machine file and deliberately not in the repository, so it is
+      # supplied here. CODE_SIGN_STYLE overrides the project's Automatic:
+      # there is no account signed in on a runner to be automatic about.
+      - name: Archive
+        env:
+          CODESIGN_IDENTITY: ${{ steps.identity.outputs.identity }}
+        run: |
+          xcodebuild archive \
+            -project Pium.xcodeproj \
+            -scheme Pium \
+            -configuration Release \
+            -archivePath build/Pium.xcarchive \
+            -destination 'generic/platform=macOS' \
+            DEVELOPMENT_TEAM=692T844292 \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$CODESIGN_IDENTITY"
+
+      - name: Export
+        run: |
+          mkdir -p build
+          cat > build/ExportOptions.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>developer-id</string>
+            <key>teamID</key><string>692T844292</string>
+            <key>signingStyle</key><string>manual</string>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath build/Pium.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist \
+            -exportPath build/export
+
+      # PRD §3: universal. A single-architecture build ships and works on the
+      # machine that made it, which is exactly how it reaches everyone else
+      # broken.
+      - name: Verify the binary is universal
+        run: |
+          ARCHS=$(lipo -archs build/export/Pium.app/Contents/MacOS/Pium)
+          echo "architectures: $ARCHS"
+          echo "$ARCHS" | grep -q arm64 || { echo "::error::No arm64 slice."; exit 1; }
+          echo "$ARCHS" | grep -q x86_64 || { echo "::error::No x86_64 slice."; exit 1; }
+
+      # Hardened Runtime is set in project.yml, so this asserts the setting
+      # survived rather than discovering it. Notarization rejects a build
+      # without it, but it rejects it after the upload.
+      - name: Verify the signature and the runtime
+        run: |
+          codesign --verify --strict --verbose=2 build/export/Pium.app
+          codesign -d --verbose=4 build/export/Pium.app 2>&1 | grep -q 'flags=.*runtime' || {
+            echo "::error::Hardened Runtime is not enabled on the exported app."
+            exit 1
+          }
+
+      - name: Notarize and staple
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/export/Pium.app "$RUNNER_TEMP/notarize.zip"
+
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" \
+            --key "$RUNNER_TEMP/notary.p8" \
+            --key-id "$NOTARY_KEY_ID" \
+            --issuer "$NOTARY_ISSUER_ID" \
+            --wait
+
+          rm -f "$RUNNER_TEMP/notarize.zip"
+
+          xcrun stapler staple build/export/Pium.app
+          xcrun stapler validate build/export/Pium.app
+
+      # What the person who downloads this actually faces. The steps above
+      # check that the pieces are right; this checks that Gatekeeper agrees,
+      # which is the only opinion that decides whether the app opens.
+      - name: Ask Gatekeeper
+        run: |
+          spctl --assess --type exec --verbose=4 build/export/Pium.app 2>&1 | tee /tmp/spctl.txt
+          grep -q 'accepted' /tmp/spctl.txt || {
+            echo "::error::Gatekeeper rejected the stapled app."
+            exit 1
+          }
+          grep -q 'source=Notarized Developer ID' /tmp/spctl.txt || {
+            echo "::error::Gatekeeper accepted the app, but not as notarized."
+            exit 1
+          }
+
+      - name: Remove the signing keychain
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/notary.p8"
+          if [ -n "${KEYCHAIN_PATH:-}" ] && [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi
