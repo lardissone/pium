@@ -12,17 +12,17 @@ private final class StubUpdates: UpdateAvailability {
     func installPendingUpdate() {}
 }
 
-/// Settings has to be navigable, and readable, at the size it opens at.
+/// Every section of Settings has to be reachable at the size it opens at.
 ///
-/// PIUM-132: with its sections as tabs, macOS drew them across the title bar
-/// and collapsed all six into a `»` overflow button whenever the window was
-/// narrower than about 680 points. Settings opened at 620, so a first run
-/// showed no navigation at all until the window was dragged wider — and the
-/// threshold moved with the language, because the six Spanish labels render
-/// some 50 points wider than the English ones.
+/// PIUM-132: the sections used to be tabs, which macOS 26 draws across the
+/// title bar and collapses into an overflow chevron when they do not fit.
+/// Settings opened at 620 points and the tabs needed 680, so a first run
+/// showed no navigation at all — and the threshold moved with the language,
+/// because the six Spanish labels render some 50 points wider than the
+/// English ones.
 ///
-/// A sidebar does not have that failure: it lives in the content view, where
-/// its width is its own rather than whatever the title bar has left over.
+/// They are a list beside the content now, which has no width at which it
+/// hides anything.
 @MainActor
 @Suite("Settings window layout")
 struct SettingsWindowLayoutTests {
@@ -55,30 +55,27 @@ struct SettingsWindowLayoutTests {
         view.subviews + view.subviews.flatMap(descendants(of:))
     }
 
-    /// SwiftUI names a pane's hosting view after the style it was given, which
-    /// is what tells a sidebar from a detail pane — they are otherwise the
-    /// same kind of view.
-    private func sidebarWidth(in content: NSView) -> CGFloat {
-        descendants(of: content)
-            .filter { "\(type(of: $0))".contains("SidebarStyleContext") }
-            .map(\.frame.width)
-            .max() ?? 0
+    private func views(in content: NSView, named fragment: String) -> [NSView] {
+        descendants(of: content).filter { "\(type(of: $0))".contains(fragment) }
     }
 
-    @Test func theSectionListIsPresentAtTheSizeSettingsOpensAt() throws {
+    /// One row per section. A `List` becomes a table, and its rows are the
+    /// closest thing to "what the user can click" that AppKit will admit to —
+    /// SwiftUI draws the labels themselves without creating views for them.
+    private func listedSections(in content: NSView) -> Int {
+        views(in: content, named: "ListTableRowView").count
+    }
+
+    @Test func everySectionIsListedAtTheSizeSettingsOpensAt() throws {
         let window = try #require(presentSettings(), "Settings did not open")
         let content = try #require(window.contentView)
-        let sidebar = sidebarWidth(in: content)
 
-        // A pane of zero width is present and useless, so the width is
-        // asserted rather than the existence. The measured sidebar is about
-        // 140 points; under 100 is collapsed rather than laid out.
         #expect(
-            sidebar >= 100,
+            listedSections(in: content) == SettingsSection.allCases.count,
             """
-            The Settings sidebar is \(sidebar) points wide at \
-            \(content.frame.size). Its sections are unreachable until the \
-            window is resized, which is PIUM-132 returning.
+            \(listedSections(in: content)) of \(SettingsSection.allCases.count) \
+            sections are listed at \(content.frame.size). Settings has hidden \
+            part of itself, which is PIUM-132 returning.
             """
         )
 
@@ -91,8 +88,8 @@ struct SettingsWindowLayoutTests {
     ///
     /// `contentMinSize` is not the thing to assert: `NSHostingView` brings its
     /// own constraints and the floor SwiftUI derives wins, whatever the window
-    /// is told. So the window is squeezed and the sidebar looked for again.
-    @Test func theSectionListSurvivesTheSmallestWindowTheUserCanMake() throws {
+    /// is told. So the window is squeezed and the sections counted again.
+    @Test func everySectionSurvivesTheSmallestWindowTheUserCanMake() throws {
         let window = try #require(presentSettings(), "Settings did not open")
         #expect(window.contentLayoutRect.width >= 700, "Settings opened narrower than intended.")
 
@@ -100,15 +97,25 @@ struct SettingsWindowLayoutTests {
         window.setContentSize(NSSize(width: 200, height: 200))
         RunLoop.current.run(until: Date().addingTimeInterval(1.0))
 
+        // The list itself, not the row count. A table only builds rows for the
+        // ones on screen, so a short window legitimately reports four of six —
+        // the other two are a scroll away, which is reachable. What must never
+        // happen is the list going away.
         let content = try #require(window.contentView)
-        let sidebar = sidebarWidth(in: content)
+        let sidebar = views(in: content, named: "OutlineListRepresentable")
+            .map(\.frame.width).max() ?? 0
+
         #expect(
             sidebar >= 100,
             """
-            Squeezed to \(content.frame.size), the sidebar is \(sidebar) points \
-            wide. Settings has become unnavigable by dragging, which is the \
-            shape PIUM-132 took with tabs.
+            Squeezed to \(content.frame.size), the section list is \(sidebar) \
+            points wide. Settings has become unnavigable by dragging, which is \
+            the shape PIUM-132 took.
             """
+        )
+        #expect(
+            listedSections(in: content) > 0,
+            "No sections are listed at \(content.frame.size)."
         )
 
         window.orderOut(nil)
@@ -125,9 +132,7 @@ struct SettingsWindowLayoutTests {
     @Test func openingSettingsDoesNotStartRecordingAShortcut() throws {
         let window = try #require(presentSettings(), "Settings did not open")
 
-        let responder = window.firstResponder
-        let isRecorder = responder is ShortcutRecorderView.RecorderView
-
+        let isRecorder = window.firstResponder is ShortcutRecorderView.RecorderView
         #expect(
             !isRecorder,
             """
@@ -149,11 +154,13 @@ struct SettingsWindowLayoutTests {
         let window = try #require(presentSettings(), "Settings did not open")
         let content = try #require(window.contentView)
 
-        let pane = content.frame.width - sidebarWidth(in: content)
-        let section = descendants(of: content)
-            .filter { "\(type(of: $0))".contains("HostingScrollView") }
-            .map(\.frame.width)
-            .max() ?? 0
+        let sidebar = views(in: content, named: "OutlineListRepresentable")
+            .map(\.frame.width).max() ?? 0
+        #expect(sidebar >= 100, "The section list is \(sidebar) points wide.")
+
+        let pane = content.frame.width - sidebar
+        let section = views(in: content, named: "HostingScrollView")
+            .map(\.frame.width).max() ?? 0
 
         // Generous, because a section is inset from its pane and so always
         // narrower. This catches one pinned to a fixed width, not one padded.

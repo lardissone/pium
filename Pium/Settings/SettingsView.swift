@@ -1,6 +1,14 @@
 import SwiftUI
 
 /// The Settings content.
+///
+/// The sections are a list beside the content rather than a `TabView`, and the
+/// list is a plain column rather than a `NavigationSplitView` pane. Both of the
+/// obvious alternatives put chrome in the title bar that cannot be taken back
+/// out: tabs collapse into an overflow chevron when they do not fit (PIUM-132),
+/// and a split view fits a collapse button that neither placing nor removing
+/// would move. Settings has six sections and no reason to hide them, so it
+/// keeps none of that.
 struct SettingsView: View {
     let frecency: any FrecencyStoring
     let access: ProtectedFolderAccess
@@ -13,60 +21,92 @@ struct SettingsView: View {
     /// `AppDelegate`, which holds the controller that outlives this window.
     let onPreviewHUD: () -> Void
 
+    @State private var section: SettingsSection = .general
+
     var body: some View {
-        TabView {
+        HStack(spacing: 0) {
+            List(SettingsSection.allCases, selection: $section) { section in
+                Label(section.title, systemImage: section.symbol)
+                    .tag(section)
+            }
+            .listStyle(.sidebar)
+            // Room for the traffic lights, which sit over the sidebar now that
+            // the window draws under its own title bar.
+            .safeAreaInset(edge: .top) {
+                Color.clear.frame(height: Self.titleBarHeight)
+            }
+            // Fixed rather than resizable. There is no divider to drag and no
+            // button to collapse it, so the one width it has is the one it
+            // needs: enough for the longest section name in either language.
+            .frame(width: Self.sidebarWidth)
+
+            Divider()
+
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    /// Wide enough for "Actualizaciones", which is the longest section name in
+    /// either language Pium ships.
+    private static let sidebarWidth: CGFloat = 190
+
+    /// The standard title bar, which the window draws under.
+    private static let titleBarHeight: CGFloat = 28
+
+    @ViewBuilder
+    private var content: some View {
+        switch section {
+        case .general:
             GeneralSettingsView(onShortcutChanged: onShortcutChanged)
-                .tabItem {
-                    Label(
-                        String(localized: "settings.general.title"),
-                        systemImage: "gearshape"
-                    )
-                }
-
+        case .search:
             SearchSettingsView(frecency: frecency, access: access)
-                .tabItem {
-                    Label(
-                        String(localized: "settings.search.title"),
-                        systemImage: "magnifyingglass"
-                    )
-                }
-
+        case .plugins:
             PluginsSettingsView(
                 index: pluginIndex,
                 configuration: configuration,
                 secrets: secrets
             )
-            .tabItem {
-                Label(
-                    String(localized: "settings.plugins.title"),
-                    systemImage: "puzzlepiece.extension"
-                )
-            }
-
+        case .appearance:
             AppearanceSettingsView(onPreview: onPreviewHUD)
-                .tabItem {
-                    Label(
-                        String(localized: "settings.appearance.title"),
-                        systemImage: "paintbrush"
-                    )
-                }
-
+        case .updates:
             UpdatesSettingsView(updates: updates)
-                .tabItem {
-                    Label(
-                        String(localized: "settings.updates.title"),
-                        systemImage: "arrow.down.circle"
-                    )
-                }
-
+        case .advanced:
             AdvancedSettingsView()
-                .tabItem {
-                    Label(
-                        String(localized: "settings.advanced.title"),
-                        systemImage: "gearshape.2"
-                    )
-                }
         }
-        .tabViewStyle(.sidebarAdaptable)
+    }
+}
+
+/// The sections of Settings, in the order they are listed.
+enum SettingsSection: String, CaseIterable, Identifiable {
+    case general
+    case search
+    case plugins
+    case appearance
+    case updates
+    case advanced
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .general: String(localized: "settings.general.title")
+        case .search: String(localized: "settings.search.title")
+        case .plugins: String(localized: "settings.plugins.title")
+        case .appearance: String(localized: "settings.appearance.title")
+        case .updates: String(localized: "settings.updates.title")
+        case .advanced: String(localized: "settings.advanced.title")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: "gearshape"
+        case .search: "magnifyingglass"
+        case .plugins: "puzzlepiece.extension"
+        case .appearance: "paintbrush"
+        case .updates: "arrow.down.circle"
+        case .advanced: "gearshape.2"
+        }
     }
 }

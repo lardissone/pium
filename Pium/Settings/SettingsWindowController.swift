@@ -54,6 +54,18 @@ final class SettingsWindowController {
         )
         window.title = String(localized: "settings.windowTitle")
         window.isReleasedWhenClosed = false
+        // The sidebar runs the full height of the window, traffic lights over
+        // it, the way every Mac app with a sidebar looks. Without this the
+        // title bar is a solid strip across the top and the sidebar starts
+        // underneath it, which reads as a panel bolted into a window rather
+        // than as the window's own edge.
+        //
+        // The title is hidden rather than moved: the sidebar already says
+        // which section is showing, and the window says which app it is by
+        // being the only one Pium opens.
+        window.styleMask.insert(.fullSizeContentView)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
         // Pium has no Dock icon and does not appear in the application
         // switcher, so a window that slips behind another one cannot be
         // brought back the ways a person would try. Floating keeps it in
