@@ -87,6 +87,13 @@ final class SettingsWindowController {
 
         self.window = window
         raise(window)
+
+        // Nothing holds the keyboard until the user gives it to something.
+        // AppKit otherwise hands it to the first view that will take it, which
+        // here is the shortcut recorder — and a recorder with the keyboard is
+        // a recorder that says "Press a shortcut…" over the shortcut the user
+        // already has, before they have touched anything.
+        window.makeFirstResponder(nil)
     }
 
     /// Brings the window to the front and gives it the keyboard.

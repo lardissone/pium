@@ -114,6 +114,32 @@ struct SettingsWindowLayoutTests {
         window.orderOut(nil)
     }
 
+    /// Opening Settings must not look like it is waiting for a keystroke.
+    ///
+    /// The shortcut recorder draws "Press a shortcut…" whenever it holds the
+    /// keyboard, which is honest — it is listening. The trouble is that AppKit
+    /// hands the keyboard to the first view that will take it when a window
+    /// opens, and the recorder is that view. So Settings opened claiming to be
+    /// recording, and the shortcut the user actually has was nowhere on screen
+    /// until they pressed something.
+    @Test func openingSettingsDoesNotStartRecordingAShortcut() throws {
+        let window = try #require(presentSettings(), "Settings did not open")
+
+        let responder = window.firstResponder
+        let isRecorder = responder is ShortcutRecorderView.RecorderView
+
+        #expect(
+            !isRecorder,
+            """
+            The shortcut recorder holds the keyboard the moment Settings opens, \
+            so it draws "Press a shortcut…" over the shortcut the user already \
+            has.
+            """
+        )
+
+        window.orderOut(nil)
+    }
+
     /// A section that does not use the room it is given reads as broken even
     /// though everything works. General carried a fixed 460-point frame from
     /// when it was the only section and that number sized the whole window;
