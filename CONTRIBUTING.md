@@ -5,11 +5,16 @@ requests are welcome; so is being told an idea is out of scope.
 
 ## Before you write code
 
-**Open an issue first for anything larger than a fix.** The MVP scope is
-deliberately narrow and a fair amount is settled — the product document lists
-what is intentionally excluded. A pull request that adds a feature from that
-list will not be merged however good it is, and finding that out after the work
-is the worst possible order.
+**Open an issue first for anything larger than a fix.** The scope is
+deliberately narrow, and a fair amount of it is settled by decisions that are
+not obvious from the code — several things are missing because leaving them out
+was the point. "What version 1 does not do" in
+[the plugin format](docs/plugin-format-v1.md) and "Things Pium deliberately
+does not do" in [SECURITY.md](SECURITY.md) are the two written-down parts; the
+rest lives in the maintainer's tracker, so asking is genuinely faster than
+guessing. A pull request that adds something already ruled out will not be
+merged however good it is, and finding that out after the work is the worst
+possible order.
 
 Fixes need no ceremony. Fix it and send it.
 
@@ -57,6 +62,12 @@ not `ExecutionEndingV2`.
 because something surprising is going on: a lock where an actor would seem
 natural, `posix_spawn` where `Process` would, a check that appears redundant.
 If you had to think about it, write down what you thought.
+
+**`PRD §N` in a comment points at the maintainer's product document, which is
+not published.** It is a note about where a requirement came from, never
+something you need to read to understand the code around it — if a comment
+only cites a section and does not say what the requirement was, that is the
+comment's fault and worth reporting. Do not add new references of this kind.
 
 ## Tests
 

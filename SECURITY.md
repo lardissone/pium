@@ -58,8 +58,41 @@ everything it started — then `SIGKILL` two seconds later. A plugin cannot leav
 orphans behind by backgrounding something.
 
 **Nothing leaves the Mac.** No telemetry, no analytics, no account, no backend.
-Network traffic comes from plugins you approved and, once it exists, from
-update checks.
+Pium makes exactly two kinds of network request: the ones plugins you wrote
+make, and an update check. The update check sends nothing about you — it is a
+fetch of a static file.
+
+## Updates
+
+Pium updates itself with [Sparkle](https://sparkle-project.org). The properties
+that matter, all of them read from the application bundle rather than from
+preferences, so no stored setting can turn them off:
+
+**Every update is signature-checked before it runs.** The appcast names an
+EdDSA signature for each archive, and Sparkle refuses to install one that does
+not verify against the public key compiled into the app. A tampered download is
+rejected without being launched. The feed itself is fetched over HTTPS.
+
+**Nothing installs without you saying so.** Pium checks every six hours and
+tells you when something is waiting, but the download and the install happen
+only when you ask for them. Sparkle's "download and install automatically"
+option is switched off in the bundle, which both hides the checkbox and pins
+the behaviour — so it cannot be turned on by accident, and there is no state a
+future version silently inherits.
+
+**A check never interrupts you.** An available update appears as a row in the
+launcher the next time you open it, not as a window over whatever you were
+doing.
+
+Pium also holds its relaunch while a plugin command is still running, so an
+update does not cut one off mid-way. That one is written and unit-tested but
+has not yet been walked end to end against a real Sparkle install, so it is
+described here as intent rather than listed as a guarantee.
+
+The signing key for updates is held by the maintainer and is not in this
+repository. It is deliberately never rotated: an install trusts the key that
+shipped inside it, so replacing the key would strand every existing copy of
+Pium with no way to update itself back.
 
 ## Debug logging, and what it cannot hide
 

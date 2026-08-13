@@ -6,9 +6,9 @@ document exercises the full loop locally: a feed served over loopback HTTP, a
 locally signed appcast, and a 0.1.0 → 0.2.0 update walked by hand. Sparkle
 refuses a `file://` feed outright — it fails with `SUSparkleErrorDomain` Code
 2001, "The download request URL must use http or https" — so the feed and its
-enclosures are served from `http://localhost` throughout. Task 11 adds the
-second half of this document — the real release pipeline, once the five
-repository secrets exist.
+enclosures are served from `http://localhost` throughout. The second half of
+this document — the real release pipeline, run against GitHub rather than a
+local feed — is written once the signing and notarization secrets exist.
 
 Two parts follow. The first is what a machine verified, with the actual
 commands and output. The second is what only a person can do — pressing a
@@ -122,9 +122,9 @@ lardissone  39645  ...  /tmp/sparkle/bin/generate_appcast /tmp/pium-feed
 lardissone  39646  ...  /System/Library/.../SecurityAgent.bundle/Contents/MacOS/SecurityAgent
 ```
 
-`generate_appcast` reads the EdDSA private key from the login Keychain (as
-Task 1 set up). Both `generate_appcast` and `sign_update` are ad-hoc signed
-with no Team ID:
+`generate_appcast` reads the EdDSA private key from the login Keychain, where
+Sparkle's `generate_keys` put it when the key pair was made. Both
+`generate_appcast` and `sign_update` are ad-hoc signed with no Team ID:
 
 ```
 $ codesign -dv /tmp/sparkle/bin/generate_appcast
