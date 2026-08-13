@@ -242,10 +242,116 @@ jobs:
             exit 1
           }
 
+      # Two containers for two audiences. The DMG is what a person downloads
+      # and drags; the zip is what Sparkle installs. The zip is made from the
+      # stapled app rather than from the DMG's copy, so a Mac that happens to
+      # be offline when it updates still satisfies Gatekeeper from the
+      # stapled ticket instead of needing to ask Apple.
+      - name: Package the DMG and the update archive
+        env:
+          CODESIGN_IDENTITY: ${{ steps.identity.outputs.identity }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p build/dist build/dmg build/updates
+
+          cp -R build/export/Pium.app build/dmg/
+          ln -s /Applications build/dmg/Applications
+          hdiutil create -volname "Pium" -srcfolder build/dmg \
+            -ov -format UDZO "build/dist/Pium-${VERSION}.dmg"
+          codesign --force --sign "$CODESIGN_IDENTITY" \
+            --timestamp "build/dist/Pium-${VERSION}.dmg"
+
+          # generate_appcast reads a directory and treats every archive in it
+          # as a separate update, so the zip gets a directory to itself. With
+          # the DMG alongside it, one version would produce two entries.
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/export/Pium.app "build/updates/Pium-${VERSION}.zip"
+
+      # The app inside is stapled already, but the DMG is its own container
+      # and Gatekeeper judges it separately. Without this the download warns.
+      - name: Notarize and staple the DMG
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          xcrun notarytool submit "build/dist/Pium-${VERSION}.dmg" \
+            --key "$RUNNER_TEMP/notary.p8" \
+            --key-id "$NOTARY_KEY_ID" \
+            --issuer "$NOTARY_ISSUER_ID" \
+            --wait
+          xcrun stapler staple "build/dist/Pium-${VERSION}.dmg"
+          xcrun stapler validate "build/dist/Pium-${VERSION}.dmg"
+
+      - name: Ask Gatekeeper about the DMG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          spctl --assess --type open --context context:primary-signature \
+            --verbose=4 "build/dist/Pium-${VERSION}.dmg" 2>&1 | tee /tmp/spctl-dmg.txt
+          grep -q 'accepted' /tmp/spctl-dmg.txt || {
+            echo "::error::Gatekeeper rejected the DMG."
+            exit 1
+          }
+
+      # PRD §4.3 budgets the compressed download at 25 MB including Sparkle.
+      # Reported rather than enforced: a miss is a conversation, not a failed
+      # release.
+      - name: Report the download size
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          SIZE=$(( $(stat -f%z "build/updates/Pium-${VERSION}.zip") / 1024 / 1024 ))
+          echo "::notice::Update archive is ${SIZE} MB (budget: 25 MB)."
+
+      - name: Generate and sign the appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          # The same version project.yml pins, so the tool signing the feed
+          # and the framework reading it never disagree.
+          SPARKLE_VERSION: 2.9.5
+        run: |
+          umask 077
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          curl -fsSL -o "$RUNNER_TEMP/Sparkle.tar.xz" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          mkdir -p "$RUNNER_TEMP/sparkle"
+          tar -xJf "$RUNNER_TEMP/Sparkle.tar.xz" -C "$RUNNER_TEMP/sparkle"
+
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle-ed"
+
+          # The prefix has to be the release's own asset URL. The appcast is
+          # read by an app that has no idea where the feed came from, so a
+          # relative or wrong prefix parses fine and then fails to download.
+          "$RUNNER_TEMP/sparkle/bin/generate_appcast" \
+            --ed-key-file "$RUNNER_TEMP/sparkle-ed" \
+            --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
+            --link "https://github.com/${GITHUB_REPOSITORY}" \
+            -o build/dist/appcast.xml \
+            build/updates
+
+          rm -P "$RUNNER_TEMP/sparkle-ed"
+
+          cp "build/updates/Pium-${VERSION}.zip" build/dist/
+
+          test -s build/dist/appcast.xml || {
+            echo "::error::generate_appcast produced no appcast."
+            exit 1
+          }
+          grep -q 'sparkle:edSignature' build/dist/appcast.xml || {
+            echo "::error::The appcast carries no EdDSA signature."
+            exit 1
+          }
+          grep -q "releases/download/${GITHUB_REF_NAME}/Pium-${VERSION}.zip" build/dist/appcast.xml || {
+            echo "::error::The appcast enclosure does not point at this release's asset."
+            exit 1
+          }
+          echo "--- appcast.xml ---"
+          cat build/dist/appcast.xml
+
       - name: Remove the signing keychain
         if: always()
         run: |
-          rm -f "$RUNNER_TEMP/notary.p8"
+          rm -f "$RUNNER_TEMP/notary.p8" "$RUNNER_TEMP/sparkle-ed"
           if [ -n "${KEYCHAIN_PATH:-}" ] && [ -f "$KEYCHAIN_PATH" ]; then
             security delete-keychain "$KEYCHAIN_PATH" || true
           fi
