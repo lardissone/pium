@@ -348,6 +348,53 @@ jobs:
           echo "--- appcast.xml ---"
           cat build/dist/appcast.xml
 
+      # Not a prerelease and not a draft, deliberately. The feed URL compiled
+      # into every copy of Pium points at releases/latest/download/, and
+      # GitHub resolves `latest` to neither of those — publishing this as
+      # either would hide the appcast from every installed app.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Pium $VERSION" \
+            --generate-notes \
+            "build/dist/Pium-${VERSION}.dmg" \
+            "build/dist/Pium-${VERSION}.zip" \
+            build/dist/appcast.xml
+
+      # The feed URL in Info.plist is releases/latest/download/appcast.xml.
+      # If that stops resolving, every installed copy stops checking and the
+      # silence is indistinguishable from there being no news — so the run
+      # that publishes a release is the one that has to prove it reads back.
+      - name: Verify the published feed resolves
+        run: |
+          FEED="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/appcast.xml"
+          # The redirect through `latest` can lag the release by a moment.
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL -o "$RUNNER_TEMP/published-appcast.xml" "$FEED"; then
+              break
+            fi
+            echo "attempt $attempt: $FEED not resolving yet"
+            sleep 10
+          done
+
+          test -s "$RUNNER_TEMP/published-appcast.xml" || {
+            echo "::error::$FEED never resolved. Every installed copy reads this URL."
+            exit 1
+          }
+          grep -q 'sparkle:edSignature' "$RUNNER_TEMP/published-appcast.xml" || {
+            echo "::error::The published feed carries no EdDSA signature."
+            exit 1
+          }
+          grep -q "<sparkle:shortVersionString>${GITHUB_REF_NAME#v}</sparkle:shortVersionString>" \
+            "$RUNNER_TEMP/published-appcast.xml" || {
+            echo "::error::The published feed does not offer ${GITHUB_REF_NAME#v}."
+            exit 1
+          }
+          echo "::notice::${FEED} resolves and offers ${GITHUB_REF_NAME#v}."
+
       - name: Remove the signing keychain
         if: always()
         run: |
