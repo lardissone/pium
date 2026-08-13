@@ -24,7 +24,23 @@ Drop that in `~/.config/pium/plugins/hello.pium.json` and it is searchable
 without a restart. The whole format is in
 [docs/plugin-format-v1.md](docs/plugin-format-v1.md).
 
-**Status:** in development. Nothing is released yet.
+**Status:** early. 0.1.0 is the first release, and the version number is
+honest about how much has been used by anyone other than its author.
+
+## Installing
+
+Download the DMG from [the latest
+release](https://github.com/lardissone/pium/releases/latest), open it, and
+drag Pium to Applications. It is signed with a Developer ID and notarized by
+Apple, so it opens without a warning beyond the ordinary one macOS shows the
+first time you launch anything.
+
+Requires macOS 26.
+
+Pium updates itself. It checks every six hours and, when something is
+waiting, says so as a quiet row in the launcher the next time you open it —
+never as a window over whatever you were doing. **Nothing installs until you
+ask for it**, and there is no setting that changes that.
 
 ## Debug logging
 

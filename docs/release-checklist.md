@@ -6,14 +6,36 @@ document exercises the full loop locally: a feed served over loopback HTTP, a
 locally signed appcast, and a 0.1.0 → 0.2.0 update walked by hand. Sparkle
 refuses a `file://` feed outright — it fails with `SUSparkleErrorDomain` Code
 2001, "The download request URL must use http or https" — so the feed and its
-enclosures are served from `http://localhost` throughout. The second half of
-this document — the real release pipeline, run against GitHub rather than a
-local feed — is written once the signing and notarization secrets exist.
+enclosures are served from `http://localhost` throughout.
 
 Two parts follow. The first is what a machine verified, with the actual
 commands and output. The second is what only a person can do — pressing a
 global shortcut, watching a window appear, observing a relaunch — written so
 someone can follow it without having read the plan that produced this file.
+
+## The rehearsal is no longer the only evidence
+
+**0.1.0 was published for real on 2026-08-13**, by the release workflow rather
+than by hand: [`v0.1.0`](https://github.com/lardissone/pium/releases/tag/v0.1.0),
+carrying `Pium-0.1.0.dmg`, `Pium-0.1.0.zip`, and `appcast.xml`.
+
+Signed with Developer ID, notarized by Apple, stapled, and accepted by
+Gatekeeper as `source=Notarized Developer ID` — the app and the disk image
+each assessed separately. `releases/latest/download/appcast.xml` resolves and
+offers 0.1.0 over a verified EdDSA signature, checked both by the workflow and
+independently afterwards.
+
+That covers everything a machine can reach. Two things it cannot, and both are
+still open:
+
+1. **A first install from the DMG on a Mac that has never had Pium.** The
+   point is to face what a stranger downloads, not what a build directory
+   contains.
+2. **A real update, 0.1.0 → 0.1.1**, taken through the notice, the download,
+   the install, and the relaunch. This is PRD §18's acceptance criterion 15.
+
+The steps below still describe the local rehearsal, and remain the cheaper way
+to exercise the update path without spending a version number.
 
 ## What was verified automatically
 
