@@ -17,6 +17,13 @@ permissions:
 jobs:
   release:
     runs-on: macos-26
+    # The signing certificate and the notarization key live in this
+    # environment rather than on the repository, which is what makes them
+    # unreachable from anywhere else. A workflow that does not name the
+    # environment cannot read them at all, and reaching it requires both a
+    # tag matching v*.*.* and a human approving the run — so a change merged
+    # into a workflow file cannot quietly walk off with the certificate.
+    environment: release
     steps:
       - uses: actions/checkout@v4
 
