@@ -9,7 +9,9 @@ import SwiftUI
 /// item silently did nothing. Owning the window removes that dependency.
 @MainActor
 final class SettingsWindowController {
-    private static let frameAutosaveName = "settings"
+    /// Not private so a test can clear the saved frame and exercise a first
+    /// run, which is the only time the default size is what opens.
+    static let frameAutosaveName = "settings"
 
     private var window: NSWindow?
 
@@ -39,21 +41,43 @@ final class SettingsWindowController {
         // Resizable because the content is the user's: a plugin's name, its
         // declared command, and its environment variables are all as long as
         // its author made them, and a fixed width clips them with no way out.
+        //
+        // The width carries the sidebar as well as the content. Settings was
+        // 620 wide when its sections were tabs across the title bar; the
+        // sidebar takes about 150 of its own, so the same room is left for a
+        // section's own controls.
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 620, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 780, height: 460),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = String(localized: "settings.windowTitle")
         window.isReleasedWhenClosed = false
+        // The sidebar runs the full height of the window, traffic lights over
+        // it, the way every Mac app with a sidebar looks. Without this the
+        // title bar is a solid strip across the top and the sidebar starts
+        // underneath it, which reads as a panel bolted into a window rather
+        // than as the window's own edge.
+        //
+        // The title is hidden rather than moved: the sidebar already says
+        // which section is showing, and the window says which app it is by
+        // being the only one Pium opens.
+        window.styleMask.insert(.fullSizeContentView)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
         // Pium has no Dock icon and does not appear in the application
         // switcher, so a window that slips behind another one cannot be
         // brought back the ways a person would try. Floating keeps it in
         // reach, and closing it is the way it goes away — the same reasoning
         // `OnboardingWindowController` already applies to first launch.
         window.level = .floating
-        window.contentMinSize = NSSize(width: 560, height: 360)
+        // Advisory. `NSHostingView` brings its own constraints, and the floor
+        // the user actually meets is whatever SwiftUI derives from the split
+        // view and its content — measured at 608 points wide, wherever this
+        // line is placed and whatever it asks for. It is kept because it is
+        // the floor for the height, which SwiftUI does not constrain.
+        window.contentMinSize = NSSize(width: 700, height: 380)
         window.contentView = NSHostingView(
             rootView: SettingsView(
                 frecency: frecency,
@@ -75,6 +99,13 @@ final class SettingsWindowController {
 
         self.window = window
         raise(window)
+
+        // Nothing holds the keyboard until the user gives it to something.
+        // AppKit otherwise hands it to the first view that will take it, which
+        // here is the shortcut recorder — and a recorder with the keyboard is
+        // a recorder that says "Press a shortcut…" over the shortcut the user
+        // already has, before they have touched anything.
+        window.makeFirstResponder(nil)
     }
 
     /// Brings the window to the front and gives it the keyboard.

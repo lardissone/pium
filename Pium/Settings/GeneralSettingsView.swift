@@ -42,7 +42,11 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .padding(Tokens.Spacing.loose)
-        .frame(width: 460)
+        // Fills, like every other section. A fixed width here sized the whole
+        // window back when General was the only section and Settings had no
+        // navigation; with a sidebar beside it, the same number left the form
+        // stranded in the middle of a window twice its width.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear {
             shortcut = Preferences.shared.shortcut
             preferredLanguage = Preferences.shared.preferredLanguage

@@ -1758,13 +1758,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search path"
+            "value": "Where plugin commands are found"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ruta de búsqueda"
+            "value": "Dónde se buscan los comandos de plugins"
           }
         }
       }
@@ -1792,13 +1792,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Directories added here are searched after Pium's own, so a plugin can find a tool the defaults miss without replacing one that already works."
+            "value": "This is the PATH a plugin's command runs with — not where Pium looks for applications or files, which is in Search. Directories added here are searched after Pium's own, so a plugin can find a tool the defaults miss without replacing one that already works."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los directorios que agregues acá se buscan después de los de Pium, así un plugin puede encontrar una herramienta que falte sin reemplazar una que ya funciona."
+            "value": "Este es el PATH con el que se ejecuta el comando de un plugin — no es dónde Pium busca aplicaciones o archivos, que está en Búsqueda. Los directorios que agregues acá se buscan después de los de Pium, así un plugin puede encontrar una herramienta que falte sin reemplazar una que ya funciona."
           }
         }
       }

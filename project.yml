@@ -95,6 +95,8 @@ targets:
         # measurements are off unless asked for, and `xcodebuild` does not
         # forward its own environment to a macOS test host on its own.
         PIUM_MEASURE: $(PIUM_MEASURE)
+        # Same again, for the probe that holds Settings open to be photographed.
+        PIUM_LOOK: $(PIUM_LOOK)
 
   PiumTests:
     type: bundle.unit-test
