@@ -44,7 +44,18 @@ struct SettingsView: View {
 
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                // The rule and the list run behind the title bar; a section's
+                // controls must not. The top of the window drags it, so a
+                // control up there is one the user cannot press.
+                .safeAreaInset(edge: .top) {
+                    Color.clear.frame(height: Self.titleBarHeight)
+                }
         }
+        // Both the list and the rule beside it run behind the title bar rather
+        // than starting under it. Without this the window wears a lighter band
+        // across its full width and the rule begins below it, which reads as a
+        // sidebar stopping short of the top edge.
+        .ignoresSafeArea(.container, edges: .top)
     }
 
     /// Wide enough for "Actualizaciones", which is the longest section name in
