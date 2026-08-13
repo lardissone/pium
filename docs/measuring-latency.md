@@ -6,10 +6,15 @@ Budget: p95 ≤ 100 ms. Debug builds are not representative — measure Release.
 
    ```bash
    xcodegen generate
-   xcodebuild -project Pium.xcodeproj -scheme Pium -configuration Release build
+   xcodebuild -project Pium.xcodeproj -scheme Pium -configuration Release \
+     -derivedDataPath build/measure build
+   open build/measure/Build/Products/Release/Pium.app
    ```
 
-   Then open the built `Pium.app` from `Build/Products/Release`.
+   `-derivedDataPath` is there so the app has a findable location. Without it
+   the build lands in `~/Library/Developer/Xcode/DerivedData` under a directory
+   whose name carries a hash, and `xcodebuild -showBuildSettings` is the only
+   reliable way to learn which one.
 
 2. Open Instruments and choose the **os_signpost** template. Attach to `Pium`.
 3. Record, then press the shortcut 20 times with roughly a second between
@@ -91,8 +96,9 @@ upper bound rather than a description of a particular machine.
 
 **The shortcut-to-visible p95 is still unrecorded.** It cannot be taken this
 way: it needs Instruments attached to a Release build with a person pressing
-the shortcut twenty times, per the procedure at the top of this document. That
-is what PIUM-51 is still open for.
+the shortcut twenty times, per the procedure at the top of this document. The
+budget at the top of this file is therefore a target that has never been
+confronted with a measurement, and should be read as one.
 
 The same caveat as the launcher figure applies: the interval measures Pium's
 own code path, not keystroke-to-pixels.
