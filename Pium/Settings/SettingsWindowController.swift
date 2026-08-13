@@ -9,7 +9,9 @@ import SwiftUI
 /// item silently did nothing. Owning the window removes that dependency.
 @MainActor
 final class SettingsWindowController {
-    private static let frameAutosaveName = "settings"
+    /// Not private so a test can clear the saved frame and exercise a first
+    /// run, which is the only time the default size is what opens.
+    static let frameAutosaveName = "settings"
 
     private var window: NSWindow?
 
