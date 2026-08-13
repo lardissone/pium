@@ -63,6 +63,12 @@ because something surprising is going on: a lock where an actor would seem
 natural, `posix_spawn` where `Process` would, a check that appears redundant.
 If you had to think about it, write down what you thought.
 
+**`PRD §N` in a comment points at the maintainer's product document, which is
+not published.** It is a note about where a requirement came from, never
+something you need to read to understand the code around it — if a comment
+only cites a section and does not say what the requirement was, that is the
+comment's fault and worth reporting. Do not add new references of this kind.
+
 ## Tests
 
 **swift-testing** (`import Testing`, `@Test`, `#expect`) for unit and
