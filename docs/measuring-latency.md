@@ -94,11 +94,16 @@ it is not evidence of a speed-up. And the plugin figure is measured against a
 folder of 50 manifests, which is larger than anyone's real one, so it is an
 upper bound rather than a description of a particular machine.
 
-**The shortcut-to-visible p95 is still unrecorded.** It cannot be taken this
-way: it needs Instruments attached to a Release build with a person pressing
-the shortcut twenty times, per the procedure at the top of this document. The
-budget at the top of this file is therefore a target that has never been
-confronted with a measurement, and should be read as one.
+**The shortcut-to-visible p95 is unrecorded on purpose.** It cannot be taken
+this way — it needs Instruments attached to a Release build with a person
+pressing the shortcut twenty times — and taking it would answer a question
+nobody is asking. The launcher feels immediate and nobody has said otherwise.
+
+So the p95 ≤ 100 ms at the top of this document is a target that has never been
+confronted with a measurement, and should be read as one. The procedure is kept
+because the day the launcher feels slow, the number is worth having and the
+budget says what to compare it against. Measuring is what you do when something
+seems wrong, not what you do on a schedule to confirm it still is not.
 
 The same caveat as the launcher figure applies: the interval measures Pium's
 own code path, not keystroke-to-pixels.

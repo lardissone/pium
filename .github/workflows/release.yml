@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+# A second tag push while the first is still working would race for the same
+# GitHub Release. Serialise rather than cancel: a half-published release is
+# worse than a slow one.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select and verify Xcode
+        run: |
+          sudo xcode-select -switch /Applications/Xcode.app
+          xcodebuild -version
+          xcodebuild -version | grep -q '^Xcode 26' || {
+            echo "::error::Expected Xcode 26 on this runner. Available versions are listed above."
+            exit 1
+          }
+
+      # The cheapest check, run before anything is built: the tag and the
+      # version the project claims must agree. They drift when someone bumps
+      # one and forgets the other, and the result is a release whose Sparkle
+      # feed offers a version the app does not report having — which strands
+      # every install that takes the update, because Sparkle then believes
+      # they are still out of date.
+      - name: Verify the tag matches the project version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+
+          # Exactly one declaration, or the comparison below is against
+          # whichever line happened to sort first. A per-target override would
+          # otherwise pass this gate while shipping a different number.
+          MATCHES=$(grep -cE '^[[:space:]]+MARKETING_VERSION:' project.yml)
+          if [ "$MATCHES" -ne 1 ]; then
+            echo "::error::Expected exactly one MARKETING_VERSION in project.yml, found $MATCHES."
+            exit 1
+          fi
+
+          PROJECT=$(grep -E '^[[:space:]]+MARKETING_VERSION:' project.yml | awk '{print $2}' | tr -d '"')
+          echo "tag=$TAG project=$PROJECT"
+          if [ "$TAG" != "$PROJECT" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match MARKETING_VERSION $PROJECT in project.yml."
+            exit 1
+          fi
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      # The same suite CI runs. A tag does not get to skip it.
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project Pium.xcodeproj \
+            -scheme Pium \
+            -destination 'platform=macOS' \
+            -skip-testing:PiumUITests \
+            CODE_SIGNING_ALLOWED=NO
