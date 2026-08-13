@@ -39,8 +39,13 @@ final class SettingsWindowController {
         // Resizable because the content is the user's: a plugin's name, its
         // declared command, and its environment variables are all as long as
         // its author made them, and a fixed width clips them with no way out.
+        //
+        // The width carries the sidebar as well as the content. Settings was
+        // 620 wide when its sections were tabs across the title bar; the
+        // sidebar takes about 150 of its own, so the same room is left for a
+        // section's own controls.
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 620, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 780, height: 460),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -53,7 +58,12 @@ final class SettingsWindowController {
         // reach, and closing it is the way it goes away — the same reasoning
         // `OnboardingWindowController` already applies to first launch.
         window.level = .floating
-        window.contentMinSize = NSSize(width: 560, height: 360)
+        // Advisory. `NSHostingView` brings its own constraints, and the floor
+        // the user actually meets is whatever SwiftUI derives from the split
+        // view and its content — measured at 608 points wide, wherever this
+        // line is placed and whatever it asks for. It is kept because it is
+        // the floor for the height, which SwiftUI does not constrain.
+        window.contentMinSize = NSSize(width: 700, height: 380)
         window.contentView = NSHostingView(
             rootView: SettingsView(
                 frecency: frecency,

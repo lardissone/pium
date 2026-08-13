@@ -67,5 +67,6 @@ struct SettingsView: View {
                     )
                 }
         }
+        .tabViewStyle(.sidebarAdaptable)
     }
 }
