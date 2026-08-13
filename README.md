@@ -50,6 +50,7 @@ anything else you typed. Read an export before you send it to anyone.
 - [Security](SECURITY.md) — what Pium guarantees, and what it deliberately does not
 - [Contributing](CONTRIBUTING.md) — house style and local hazards
 - [Measuring latency](docs/measuring-latency.md) — the budgets and the recorded figures
+- [Releasing](docs/releasing.md) — how a tag becomes a release, and the one key that must never be rotated
 
 ## Building
 
