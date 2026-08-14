@@ -17,6 +17,7 @@ final class SpotlightFileProvider: ResultProvider {
     private let search: any MetadataSearching
     private let isEnabled: @Sendable @MainActor () -> Bool
     private let scope: @Sendable @MainActor () -> FileSearchScope
+    private let excludedFolders: @Sendable @MainActor () -> [String]
     private let debounce: Duration
     private let open: @Sendable @MainActor (URL) -> Void
     private let reveal: @Sendable @MainActor (URL) -> Void
@@ -29,6 +30,9 @@ final class SpotlightFileProvider: ResultProvider {
         scope: @escaping @Sendable @MainActor () -> FileSearchScope = {
             Preferences.shared.fileSearchScope
         },
+        excludedFolders: @escaping @Sendable @MainActor () -> [String] = {
+            Preferences.shared.excludedSearchFolders
+        },
         debounce: Duration = SpotlightFileProvider.defaultDebounce,
         open: @escaping @Sendable @MainActor (URL) -> Void = { url in
             NSWorkspace.shared.open(url)
@@ -40,6 +44,7 @@ final class SpotlightFileProvider: ResultProvider {
         self.search = search
         self.isEnabled = isEnabled
         self.scope = scope
+        self.excludedFolders = excludedFolders
         self.debounce = debounce
         self.open = open
         self.reveal = reveal
@@ -85,8 +90,9 @@ final class SpotlightFileProvider: ResultProvider {
     }
 
     private func results(from urls: [URL], query: NormalizedQuery) -> [SearchResult] {
-        urls
-            .filter(SpotlightQuery.isPresentable)
+        let excluded = excludedFolders()
+        return urls
+            .filter { SpotlightQuery.isPresentable($0, excludedFolders: excluded) }
             .compactMap { url in
                 let name = url.lastPathComponent
                 let score = FuzzyMatcher.bestScore(

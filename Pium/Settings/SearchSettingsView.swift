@@ -11,6 +11,8 @@ struct SearchSettingsView: View {
 
     @State private var isFileSearchEnabled = Preferences.shared.isFileSearchEnabled
     @State private var scope = Preferences.shared.fileSearchScope
+    @State private var excludedFolders = Preferences.shared.excludedSearchFolders
+    @State private var newExclusion = ""
     @State private var isConfirmingErase = false
     @State private var hasErased = false
     @State private var folderStatuses: [ProtectedFolder: ProtectedFolderAccess.Status] = [:]
@@ -27,6 +29,22 @@ struct SearchSettingsView: View {
         case allow
         case alreadyAllowed
         case openSystemSettings
+    }
+
+    /// The exclusion list after adding what was typed or picked: unchanged
+    /// when there is nothing to store, or when the entry is already there.
+    ///
+    /// Compared without case, because `FolderExclusion` matches without case:
+    /// `Build` beside `build` would be one entry appearing twice.
+    ///
+    /// Not `private`, so a test can exercise the decision without a window —
+    /// the same reason `shouldRefresh` is not.
+    static func adding(_ raw: String, to entries: [String]) -> [String] {
+        guard let entry = FolderExclusion.normalized(raw) else { return entries }
+        let isAlreadyThere = entries.contains {
+            $0.compare(entry, options: .caseInsensitive) == .orderedSame
+        }
+        return isAlreadyThere ? entries : entries + [entry]
     }
 
     func action(for status: ProtectedFolderAccess.Status) -> RowAction {
@@ -64,6 +82,40 @@ struct SearchSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                ForEach(excludedFolders, id: \.self) { entry in
+                    LabeledContent(entry) {
+                        Button(String(localized: "settings.search.excludedRemove")) {
+                            remove(entry)
+                        }
+                        // Every row's button says "Remove" and they are told
+                        // apart by the entry beside them, which a screen
+                        // reader reads separately or not at all.
+                        .accessibilityLabel(
+                            String(localized: "settings.search.excludedRemoveLabel \(entry)")
+                        )
+                    }
+                }
+                HStack(spacing: Tokens.Spacing.tight) {
+                    TextField(
+                        String(localized: "settings.search.excludedPlaceholder"),
+                        text: $newExclusion
+                    )
+                    Button(String(localized: "settings.search.excludedAdd"), action: add)
+                        .disabled(FolderExclusion.normalized(newExclusion) == nil)
+                    // Typing a long path is worse than pointing at it, and the
+                    // panel is also the only way to name a file exactly.
+                    Button(String(localized: "settings.search.excludedChoose"), action: choose)
+                }
+            } header: {
+                Text(String(localized: "settings.search.excluded"))
+            } footer: {
+                Text(String(localized: "settings.search.excludedExplanation"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .disabled(!isFileSearchEnabled)
 
             Section {
                 // Confirmed before erasing: this cannot be undone and the
@@ -179,6 +231,37 @@ struct SearchSettingsView: View {
         access.statuses(of: ProtectedFolder.allCases) { statuses in
             folderStatuses = statuses
         }
+    }
+
+    /// The field is only cleared once the entry is in the list, so an entry
+    /// that was already there does not look as though it vanished.
+    private func add() {
+        let updated = Self.adding(newExclusion, to: excludedFolders)
+        guard updated != excludedFolders else { return }
+        store(updated)
+        newExclusion = ""
+    }
+
+    /// Files as well as folders: excluding one document is as reasonable as
+    /// excluding a tree, and the entry is the same either way.
+    private func choose() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = true
+        panel.message = String(localized: "settings.search.excludedChooseMessage")
+        guard panel.runModal() == .OK else { return }
+        store(panel.urls.reduce(excludedFolders) { Self.adding($1.path, to: $0) })
+    }
+
+    private func remove(_ entry: String) {
+        store(excludedFolders.filter { $0 != entry })
+    }
+
+    private func store(_ entries: [String]) {
+        guard entries != excludedFolders else { return }
+        excludedFolders = entries
+        Preferences.shared.excludedSearchFolders = entries
     }
 
     private func request(_ folders: [ProtectedFolder]) {

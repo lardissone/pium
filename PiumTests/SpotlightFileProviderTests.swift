@@ -28,6 +28,7 @@ struct SpotlightFileProviderTests {
     private func makeProvider(
         _ paths: [String],
         enabled: Bool = true,
+        excluded: [String] = [],
         search: StubMetadataSearch? = nil
     ) -> (SpotlightFileProvider, StubMetadataSearch) {
         let stub = search ?? StubMetadataSearch(batches: [paths.map { URL(filePath: $0) }])
@@ -35,6 +36,7 @@ struct SpotlightFileProviderTests {
             search: stub,
             isEnabled: { enabled },
             scope: { .home },
+            excludedFolders: { excluded },
             debounce: .zero,
             open: { _ in },
             reveal: { _ in }
@@ -166,6 +168,21 @@ struct SpotlightFileProviderTests {
         #expect(found.map(\.id) == ["/Users/someone/Documents/report.pdf"])
     }
 
+    /// The user's own exclusions are applied to every batch, alongside the
+    /// hardcoded ones.
+    @Test func userExcludedFoldersAreDropped() async {
+        let (provider, _) = makeProvider(
+            [
+                "/Users/someone/Documents/report.pdf",
+                "/Users/someone/Developer/archive/report.pdf",
+                "/Users/someone/Projects/app/build/report.pdf",
+            ],
+            excluded: ["/Users/someone/Developer/archive", "build"]
+        )
+        let found = await results(provider, "report")
+        #expect(found.map(\.id) == ["/Users/someone/Documents/report.pdf"])
+    }
+
     /// One character matches most of the disk, so Spotlight is never asked.
     @Test func aQueryShorterThanTwoCharactersIssuesNoSearch() async {
         let (provider, stub) = makeProvider(["/Users/someone/Documents/report.pdf"])
@@ -270,6 +287,59 @@ struct SpotlightFileProviderTests {
         }
 
         #expect(found, "The provider as the app builds it must surface a real file")
+    }
+
+    /// The stubs above prove the filtering; this proves it against the real
+    /// index, which is where the wiring bugs live. The same file, found and
+    /// then not found, with nothing between the two runs but the exclusion.
+    ///
+    /// PIUM-50: skipped on CI. A fresh GitHub Actions macOS VM has no
+    /// Spotlight index at all, and there is no cheap way to build one inside
+    /// a job that tears the VM down when it finishes. This coverage still
+    /// runs, and matters, on a developer's machine, where the index already
+    /// exists.
+    @Test(
+        .disabled(
+            if: isRunningOnCI,
+            "PIUM-50: needs a live Spotlight index, which a fresh CI VM has no way to provide"
+        ),
+        .timeLimit(.minutes(1))
+    )
+    func anExcludedFolderStopsReturningItsFilesFromTheLiveIndex() async throws {
+        let name = "pium-excluded-\(UUID().uuidString.prefix(8))"
+        // Deliberately not `~/Documents`: macOS privacy controls hide that
+        // folder's contents from Spotlight results unless the app has been
+        // granted access, so a test pointed there passes or fails depending on
+        // what the developer once clicked. See PIUM-41.
+        let folder = URL(filePath: NSHomeDirectory()).appending(path: "pium-test-scratch")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "\(name).txt")
+        try "pium integration test".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        func provider(excluding entries: [String]) -> SpotlightFileProvider {
+            SpotlightFileProvider(
+                isEnabled: { true },
+                scope: { .home },
+                excludedFolders: { entries },
+                debounce: .zero,
+                open: { _ in },
+                reveal: { _ in }
+            )
+        }
+
+        var found = false
+        for _ in 0..<15 where !found {
+            found = await results(provider(excluding: []), name).contains { $0.title == "\(name).txt" }
+            if !found { try? await Task.sleep(for: .seconds(2)) }
+        }
+        try #require(found, "The file has to be indexed before its exclusion means anything")
+
+        let excluded = await results(provider(excluding: [folder.path]), name)
+        #expect(
+            !excluded.contains { $0.title == "\(name).txt" },
+            "A file under an excluded folder must not come back as a result"
+        )
     }
 
     /// Progressive batches reach the coordinator as they arrive.

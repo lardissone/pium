@@ -26,6 +26,32 @@ struct SearchSettingsTests {
         #expect(view.action(for: .blocked) == .openSystemSettings)
     }
 
+    /// Adding is where the untidy text a person actually types, and the same
+    /// folder arriving twice, have to be dealt with.
+    ///
+    /// Not private, so the decision is testable without a window — the same
+    /// reason `shouldRefresh` is not.
+    @Test func addingTidiesTheEntryAndRefusesWhatIsAlreadyThere() {
+        #expect(
+            SearchSettingsView.adding("  ~/Developer/archive/ ", to: [])
+                == ["\(NSHomeDirectory())/Developer/archive"]
+        )
+        #expect(SearchSettingsView.adding("build", to: ["node_modules"]) == ["node_modules", "build"])
+        #expect(
+            SearchSettingsView.adding("build", to: ["build"]) == ["build"],
+            "the same entry twice excludes nothing more"
+        )
+        #expect(
+            SearchSettingsView.adding("Build", to: ["build"]) == ["build"],
+            "matching ignores case, so two entries differing only in case are one"
+        )
+        #expect(SearchSettingsView.adding("   ", to: ["build"]) == ["build"])
+        #expect(
+            SearchSettingsView.adding("Developer/archive", to: []) == [],
+            "a relative path has nothing to be relative to"
+        )
+    }
+
     /// A refresh must not race the request it was triggered by. Answering the
     /// system's prompt reactivates Pium, and reactivating is what a refresh
     /// listens for — so a refresh that ran then could read what Pium remembers

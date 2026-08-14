@@ -15,6 +15,25 @@ struct PreferencesTests {
         return (Preferences(defaults: defaults), defaults, suiteName)
     }
 
+    /// Nothing is excluded until the user says so: the hardcoded exclusions in
+    /// `SpotlightQuery` are the only ones a fresh install has.
+    @Test func noFoldersAreExcludedFromFileSearchByDefault() {
+        let (preferences, _, suite) = makeIsolatedPreferences()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        #expect(preferences.excludedSearchFolders.isEmpty)
+    }
+
+    @Test func excludedFoldersSurviveAWriteAndReload() {
+        let (preferences, defaults, suite) = makeIsolatedPreferences()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        preferences.excludedSearchFolders = ["node_modules", "/Users/someone/archive"]
+
+        let reloaded = Preferences(defaults: defaults)
+        #expect(reloaded.excludedSearchFolders == ["node_modules", "/Users/someone/archive"])
+    }
+
     @Test func shortcutDefaultsToOptionSpace() {
         let (preferences, _, suite) = makeIsolatedPreferences()
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }

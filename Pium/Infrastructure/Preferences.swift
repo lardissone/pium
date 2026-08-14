@@ -21,6 +21,7 @@ final class Preferences {
         static let requestedFolderAccess = "pium.requestedFolderAccess"
         static let debugLoggingExpiry = "pium.debugLoggingExpiry"
         static let additionalSearchPaths = "pium.additionalSearchPaths"
+        static let excludedSearchFolders = "pium.excludedSearchFolders"
         /// Read by macOS at launch to pick the application's language.
         static let appleLanguages = "AppleLanguages"
     }
@@ -132,6 +133,13 @@ final class Preferences {
     var additionalSearchPaths: [String] {
         get { defaults.stringArray(forKey: Key.additionalSearchPaths) ?? [] }
         set { defaults.set(newValue, forKey: Key.additionalSearchPaths) }
+    }
+
+    /// What the user never wants to see among file results, kept in the order
+    /// they were added. See `FolderExclusion` for what an entry can be.
+    var excludedSearchFolders: [String] {
+        get { defaults.stringArray(forKey: Key.excludedSearchFolders) ?? [] }
+        set { defaults.set(newValue, forKey: Key.excludedSearchFolders) }
     }
 
     /// Which protected folders Pium has already asked macOS about.
