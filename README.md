@@ -8,6 +8,14 @@ A small, fast, native macOS launcher. A global shortcut opens a compact floating
 bar above whatever you are doing; typing once searches applications,
 Spotlight-indexed files, and file-based commands in a single ranked list.
 
+<p align="center">
+  <img src="assets/launcher.png" alt="The Pium launcher, showing applications and a plugin in one result list" width="680">
+</p>
+
+One list, one query. "Say hello" above is a plugin — a JSON file in a folder —
+sitting among the applications rather than in a section of its own, because
+from the keyboard there is no reason for it to be anywhere else.
+
 Commands are plugins, and a plugin is one readable JSON file. Adding or changing
 one never recompiles Pium!
 
@@ -24,8 +32,8 @@ Drop that in `~/.config/pium/plugins/hello.pium.json` and it is searchable
 without a restart. The whole format is in
 [docs/plugin-format-v1.md](docs/plugin-format-v1.md).
 
-**Status:** early. 0.1.0 is the first release, and the version number is
-honest about how much has been used by anyone other than its author.
+**Status:** early. The version number is honest about how much Pium has been
+used by anyone other than its author.
 
 ## Installing
 
