@@ -64,9 +64,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         executionManager = executions
         // Weakly, because the closure lives as long as the updater does and
         // the execution manager is owned here, not by it.
-        let updates = UpdateController(isBusy: { [weak executions] in
-            executions?.activeRecord != nil
-        })
+        let updates = UpdateController(
+            isBusy: { [weak executions] in
+                executions?.activeRecord != nil
+            },
+            // PRD §13 says an update must not interrupt a command, and Pium
+            // obeys — silently, which is the problem. The person pressed
+            // Install and Relaunch and watched nothing happen. Naming the
+            // command turns a button that looks broken into a promise being
+            // kept (PIUM-134).
+            announceWait: { [weak executions] in
+                guard let name = executions?.activeRecord?.pluginName else { return }
+                hud.show(
+                    HUDPresentation(
+                        kind: .success,
+                        title: String(localized: "update.waiting.title"),
+                        body: String(localized: "update.waiting.body \(name)"),
+                        duration: HUDPresentation.failureDuration
+                    )
+                )
+            }
+        )
         self.updates = updates
         panelController = LauncherPanelController(
             coordinator: SearchCoordinator(

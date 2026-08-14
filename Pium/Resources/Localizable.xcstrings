@@ -3195,6 +3195,40 @@
           }
         }
       }
+    },
+    "update.waiting.body %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium will restart into it when “%@” finishes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium se va a reiniciar cuando termine «%@»."
+          }
+        }
+      }
+    },
+    "update.waiting.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The update is ready"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La actualización está lista"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

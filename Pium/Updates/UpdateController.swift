@@ -20,12 +20,19 @@ final class UpdateController: NSObject, UpdateAvailability {
     /// Held so a postponed relaunch can be resumed when the run ends.
     @ObservationIgnored private var resumeRelaunch: (() -> Void)?
     @ObservationIgnored private let isBusy: () -> Bool
+    @ObservationIgnored private let announceWait: () -> Void
     @ObservationIgnored private var controller: SPUStandardUpdaterController?
 
     /// `isBusy` is a closure rather than a reference to `ExecutionManager` so
     /// the guard can be tested without building an execution stack.
-    init(isBusy: @escaping () -> Bool) {
+    ///
+    /// `announceWait` is called when a relaunch is held back. Holding it is
+    /// correct and invisible: the user presses Install and Relaunch, and from
+    /// where they are standing a button that does nothing and a broken button
+    /// look the same. Whoever supplies this is what makes the wait legible.
+    init(isBusy: @escaping () -> Bool, announceWait: @escaping () -> Void = {}) {
         self.isBusy = isBusy
+        self.announceWait = announceWait
         super.init()
     }
 
@@ -95,6 +102,7 @@ final class UpdateController: NSObject, UpdateAvailability {
     func postponeRelaunch(_ resume: @escaping () -> Void) -> Bool {
         guard isBusy() else { return false }
         resumeRelaunch = resume
+        announceWait()
         return true
     }
 
