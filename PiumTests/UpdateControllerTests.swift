@@ -7,6 +7,30 @@ import Foundation
 @MainActor
 @Suite("Update controller")
 struct UpdateControllerTests {
+    /// PIUM-134: the guard is right and invisible. Holding the relaunch is
+    /// exactly what PRD §13 asks for, but the person pressed Install and
+    /// Relaunch and watched nothing happen — which is what a broken button
+    /// also looks like.
+    @Test func postponingARelaunchSaysSo() {
+        var announced = 0
+        let controller = UpdateController(isBusy: { true }, announceWait: { announced += 1 })
+
+        _ = controller.postponeRelaunch {}
+
+        #expect(announced == 1)
+    }
+
+    /// And says nothing when there was nothing to wait for, or every ordinary
+    /// update would explain itself for no reason.
+    @Test func aRelaunchThatIsNotHeldBackSaysNothing() {
+        var announced = 0
+        let controller = UpdateController(isBusy: { false }, announceWait: { announced += 1 })
+
+        _ = controller.postponeRelaunch {}
+
+        #expect(announced == 0)
+    }
+
     @Test func aFoundUpdateIsHeldRatherThanInstalled() {
         let controller = UpdateController(isBusy: { false })
         #expect(controller.pendingUpdate == nil)
