@@ -80,6 +80,52 @@ struct SpotlightFileProviderTests {
         #expect(format.contains("*a1b2*"))
     }
 
+    /// PIUM-111 as it was reported, against the live index: a real file named
+    /// with an underscore, found by a query written with a space.
+    ///
+    /// The unit tests cover the predicate and the score separately. This is
+    /// the only one that answers the question the issue actually asked, which
+    /// is whether typing `yo n` reaches `yo_nueva.jpg` on a real Mac.
+    @Test(
+        .disabled(
+            if: isRunningOnCI,
+            "PIUM-50: needs a live Spotlight index, which a fresh CI VM has no way to provide"
+        ),
+        .timeLimit(.minutes(1))
+    )
+    func aSpacedQueryReachesAnUnderscoredName() async throws {
+        let stamp = UUID().uuidString.prefix(8)
+        let folder = URL(filePath: NSHomeDirectory()).appending(path: "pium-test-scratch")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "yo_nueva-\(stamp).jpg")
+        try "pium".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let provider = SpotlightFileProvider(
+            isEnabled: { true },
+            scope: { .home },
+            debounce: .zero,
+            open: { _ in },
+            reveal: { _ in }
+        )
+
+        // Every batch, not the last one. A query this broad arrives in several,
+        // and the helper above keeps only the final update — which is enough
+        // for a unique name and not for this.
+        var found = false
+        for _ in 0..<15 where !found {
+            for await batch in provider.results(for: TextNormalizer.query("yo n")) {
+                if batch.contains(where: { $0.title == url.lastPathComponent }) {
+                    found = true
+                    break
+                }
+            }
+            if !found { try? await Task.sleep(for: .seconds(2)) }
+        }
+
+        #expect(found, "Typing \"yo n\" must reach \(url.lastPathComponent)")
+    }
+
     @Test func matchingFilesBecomeResults() async {
         let (provider, _) = makeProvider(["/Users/someone/Documents/report.pdf"])
         let found = await results(provider, "report")
