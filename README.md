@@ -32,6 +32,16 @@ Drop that in `~/.config/pium/plugins/hello.pium.json` and it is searchable
 without a restart. The whole format is in
 [docs/plugin-format-v1.md](docs/plugin-format-v1.md).
 
+A plugin can take one argument. Press space on it and the result list gets out
+of the way — the plugin becomes a pill, and everything typed after it belongs
+to that plugin:
+
+<p align="center">
+  <img src="assets/argument-mode.png" alt="The Pium bar in argument mode: a YouTube pill followed by the typed argument" width="680">
+</p>
+
+`Backspace` on an empty argument goes back.
+
 **Status:** early. The version number is honest about how much Pium has been
 used by anyone other than its author.
 
