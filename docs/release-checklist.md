@@ -25,17 +25,31 @@ each assessed separately. `releases/latest/download/appcast.xml` resolves and
 offers 0.1.0 over a verified EdDSA signature, checked both by the workflow and
 independently afterwards.
 
-That covers everything a machine can reach. Two things it cannot, and both are
-still open:
+**0.1.1 followed on 2026-08-14**, and with it the two things a machine cannot
+reach — both walked on a Mac that had never had Pium before that day:
 
-1. **A first install from the DMG on a Mac that has never had Pium.** The
-   point is to face what a stranger downloads, not what a build directory
-   contains.
-2. **A real update, 0.1.0 → 0.1.1**, taken through the notice, the download,
-   the install, and the relaunch. This is PRD §18's acceptance criterion 15.
+1. **A first install from the DMG.** Downloaded from the Releases page rather
+   than from a build directory, so it faced what a stranger faces. It opened
+   with no warning beyond the ordinary first-launch prompt.
+2. **A real update, 0.1.0 → 0.1.1.** The notice appeared as a row in the
+   launcher rather than as a window over what was in front of it. Installing
+   from it downloaded, verified, installed and relaunched, and About reported
+   0.1.1. **This is PRD §18's acceptance criterion 15.**
 
-The steps below still describe the local rehearsal, and remain the cheaper way
-to exercise the update path without spending a version number.
+That is the update path proven end to end against GitHub, by the pipeline that
+will publish every later release, rather than against a feed served from a
+laptop.
+
+One thing is still unwalked, and it is written down rather than quietly
+dropped: **an update arriving while a plugin command is running**. The guard
+that holds the relaunch is implemented and unit-tested, and the ordering
+invariant behind it was mutation-verified twice — but nothing has yet
+confirmed that Sparkle calls
+`updater(_:shouldPostponeRelaunchForUpdate:untilInvokingBlock:)` on a real
+install. See PIUM-130.
+
+The steps below describe the local rehearsal, which remains the cheaper way to
+exercise the update path without spending a version number.
 
 ## What was verified automatically
 
