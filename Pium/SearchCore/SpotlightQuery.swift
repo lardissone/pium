@@ -27,9 +27,28 @@ enum SpotlightQuery {
         //
         // `%@` carries the text as an argument, so quotes, wildcards, and
         // apostrophes cannot change the shape of the query.
-        let matchesName = NSPredicate(
-            format: "kMDItemDisplayName LIKE[cd] %@", "*\(query.folded)*"
-        )
+        //
+        // One clause per word, rather than one clause for the whole query.
+        // A single `*yo n*` asks the index for a name containing that exact
+        // run of characters, space included — so `yo_nueva.jpg` was never
+        // returned at all, and no amount of scoring downstream could rescue a
+        // file the query never asked for (PIUM-111). Matching each word on its
+        // own leaves the file free to separate them however it likes.
+        //
+        // Falls back to the folded string when the query has no words, which
+        // is a query of pure punctuation.
+        let words = query.tokens.isEmpty ? [query.folded] : query.tokens
+        let clauses = words.map {
+            NSPredicate(format: "kMDItemDisplayName LIKE[cd] %@", "*\($0)*")
+        }
+        // One word gets its clause directly rather than an `AND` wrapped around
+        // a single term. The wrapper is meaningless to read and not meaningless
+        // to `NSMetadataQuery`: with it, a broad one-word search stopped
+        // producing a first batch at all, and a stream nobody could get a value
+        // out of is a hang rather than an error.
+        let matchesName = clauses.count == 1
+            ? clauses[0]
+            : NSCompoundPredicate(andPredicateWithSubpredicates: clauses)
         // Applications have their own provider; showing them here would
         // duplicate every result.
         let isNotApplication = NSPredicate(

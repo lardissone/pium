@@ -27,6 +27,25 @@ struct FuzzyMatcherTests {
         #expect(loose > FuzzyMatcher.rejectionThreshold)
     }
 
+    /// PIUM-111, a real search that found nothing: `yo n` did not reach
+    /// `yo_nueva.jpg`. A query with a space in it was compared as one literal
+    /// string, spaces and all, while candidates were split into words — so the
+    /// space could only match a space, and a file named with an underscore had
+    /// none to offer.
+    @Test func aQueryOfSeveralWordsMatchesWordsSeparatedAnyWay() {
+        #expect(score("yo n", "yo_nueva.jpg") > FuzzyMatcher.rejectionThreshold)
+        #expect(score("yo nue", "yo_nueva.jpg") > FuzzyMatcher.rejectionThreshold)
+        #expect(score("visual code", "Visual Studio Code") > FuzzyMatcher.rejectionThreshold)
+        #expect(score("act mon", "Activity Monitor.app") > FuzzyMatcher.rejectionThreshold)
+    }
+
+    /// Every word has to land somewhere. Otherwise a second word would be free
+    /// to be nonsense, and typing more would stop narrowing anything.
+    @Test func everyWordOfAQueryHasToMatchSomething() {
+        #expect(score("yo zzz", "yo_nueva.jpg") == 0)
+        #expect(score("visual zzz", "Visual Studio Code") == 0)
+    }
+
     @Test func anExactMatchScoresTheMaximum() {
         #expect(score("safari", "Safari") == 1.0)
     }

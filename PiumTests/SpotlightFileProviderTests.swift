@@ -51,6 +51,35 @@ struct SpotlightFileProviderTests {
         return last
     }
 
+    /// PIUM-111: `yo n` never reached `yo_nueva.jpg`, and the scoring was only
+    /// half the reason. A single `LIKE "*yo n*"` asks the index for that exact
+    /// run of characters, space included, so the file was never returned at
+    /// all — no amount of scoring downstream can rescue a file the query never
+    /// asked for. One clause per word leaves a name free to separate them its
+    /// own way.
+    @Test func eachWordOfAQueryIsMatchedOnItsOwn() {
+        let format = SpotlightQuery
+            .predicate(for: TextNormalizer.query("yo n"))
+            .predicateFormat
+
+        #expect(format.contains("*yo*"), "No clause for \"yo\" in: \(format)")
+        #expect(format.contains("*n*"), "No clause for \"n\" in: \(format)")
+        #expect(!format.contains("*yo n*"), "Still one clause for the whole query: \(format)")
+    }
+
+    /// A name written with hyphens has to stay findable. Folding punctuation
+    /// into the single clause broke exactly this, and it was the live provider
+    /// tests above that caught it.
+    @Test func punctuationInAQueryDoesNotHaveToAppearInTheName() {
+        let format = SpotlightQuery
+            .predicate(for: TextNormalizer.query("pium-provider-a1b2"))
+            .predicateFormat
+
+        #expect(format.contains("*pium*"))
+        #expect(format.contains("*provider*"))
+        #expect(format.contains("*a1b2*"))
+    }
+
     @Test func matchingFilesBecomeResults() async {
         let (provider, _) = makeProvider(["/Users/someone/Documents/report.pdf"])
         let found = await results(provider, "report")
