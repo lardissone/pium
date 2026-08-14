@@ -66,6 +66,18 @@ struct SpotlightQueryTests {
         #expect(!SpotlightQuery.isPresentable(URL(filePath: "/Applications/Safari.app")))
     }
 
+    /// What the user excluded goes on top of what Pium already hides, and is
+    /// read from the list on every call so a change in Settings applies at once.
+    @Test func whatTheUserExcludedIsDroppedToo() {
+        let url = URL(filePath: "/Users/someone/Developer/archive/2019/taxes.pdf")
+        #expect(SpotlightQuery.isPresentable(url))
+        #expect(
+            !SpotlightQuery.isPresentable(
+                url, excludedFolders: ["/Users/someone/Developer/archive"]
+            )
+        )
+    }
+
     /// The subtitle disambiguates same-named files, so it has to show where the
     /// file is, abbreviated the way the Finder does.
     @Test func theSubtitleIsTheAbbreviatedContainingDirectory() {

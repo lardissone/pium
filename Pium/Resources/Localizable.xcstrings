@@ -2755,6 +2755,142 @@
         }
       }
     },
+    "settings.search.excluded": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Excluded from results"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Excluido de los resultados"
+          }
+        }
+      }
+    },
+    "settings.search.excludedAdd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar"
+          }
+        }
+      }
+    },
+    "settings.search.excludedChoose": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir…"
+          }
+        }
+      }
+    },
+    "settings.search.excludedChooseMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the files and folders to keep out of file results"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegí los archivos y carpetas que no querés ver en los resultados"
+          }
+        }
+      }
+    },
+    "settings.search.excludedExplanation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A name such as node_modules hides that folder wherever it is. A path hides one place and everything inside it. A pattern such as **/[Cc]ache/** hides whatever it matches."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un nombre como node_modules oculta esa carpeta esté donde esté. Una ruta oculta un solo lugar y todo lo que contiene. Un patrón como **/[Cc]ache/** oculta lo que coincida con él."
+          }
+        }
+      }
+    },
+    "settings.search.excludedPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder name, path, or pattern"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre de carpeta, ruta o patrón"
+          }
+        }
+      }
+    },
+    "settings.search.excludedRemove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar"
+          }
+        }
+      }
+    },
+    "settings.search.excludedRemoveLabel %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar %@"
+          }
+        }
+      }
+    },
     "settings.search.fileSearch": {
       "extractionState": "manual",
       "localizations": {

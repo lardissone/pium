@@ -60,7 +60,10 @@ enum SpotlightQuery {
     }
 
     /// Whether a result is something a person was looking for.
-    static func isPresentable(_ url: URL) -> Bool {
+    ///
+    /// `excludedFolders` is what the user added in Settings; it goes on top of
+    /// the exclusions above rather than replacing them.
+    static func isPresentable(_ url: URL, excludedFolders: [String] = []) -> Bool {
         if url.pathExtension == "app" { return false }
 
         for component in url.pathComponents {
@@ -68,7 +71,7 @@ enum SpotlightQuery {
             if component.hasPrefix("."), component != "." { return false }
             if excludedComponents.contains(component) { return false }
         }
-        return true
+        return !FolderExclusion.excludes(url, matching: excludedFolders)
     }
 
     /// Where the file lives, abbreviated with `~` the way the Finder writes it.
