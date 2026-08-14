@@ -5,6 +5,10 @@ import Foundation
 struct NormalizedQuery: Sendable, Equatable {
     let raw: String
     let folded: String
+    /// The words the user typed, split the same way a candidate's are. What a
+    /// person separates with a space, a filename may separate with anything —
+    /// so the words are carried separately and matched one at a time.
+    let tokens: [String]
 
     var isEmpty: Bool { folded.isEmpty }
 }
@@ -23,7 +27,7 @@ struct NormalizedCandidate: Sendable, Equatable {
 /// lets Phase 4 reuse both for plugin names and aliases.
 enum TextNormalizer {
     static func query(_ string: String) -> NormalizedQuery {
-        NormalizedQuery(raw: string, folded: fold(string))
+        NormalizedQuery(raw: string, folded: fold(string), tokens: tokenize(string))
     }
 
     static func candidate(_ string: String) -> NormalizedCandidate {
@@ -35,14 +39,23 @@ enum TextNormalizer {
         )
     }
 
-    /// Lowercases, strips diacritics, and collapses whitespace.
+    /// Lowercases, strips diacritics, and reduces every run of whitespace or
+    /// punctuation to a single space.
     ///
     /// Folding is locale-insensitive on purpose: a Spanish user searching an
     /// English application name, and the reverse, must both work.
+    ///
+    /// Punctuation folds to a space rather than surviving, so that a word
+    /// boundary is one thing regardless of what drew it. `tokenize` below
+    /// already treats `_`, `-` and `.` as boundaries; leaving them in the
+    /// folded form meant the two disagreed, and a query's space could only
+    /// ever match a literal space. "yo n" therefore could not reach
+    /// "yo_nueva.jpg" — the file had no space to match — while the same query
+    /// found "Visual Studio Code" perfectly well (PIUM-111).
     static func fold(_ string: String) -> String {
         string
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
-            .split(whereSeparator: \.isWhitespace)
+            .split(whereSeparator: { $0.isWhitespace || $0.isPunctuation || $0.isSymbol })
             .joined(separator: " ")
     }
 
