@@ -89,6 +89,13 @@ targets:
     scheme:
       testTargets:
         - PiumTests
+        # Listed even though it needs a real GUI session, because a scheme is
+        # the only way to reach these at all: `-only-testing:PiumUITests` is
+        # refused outright for a target the test action does not name, and CI's
+        # `-skip-testing:PiumUITests` was skipping something already absent.
+        # Writing this block by hand to declare `CI` is what dropped the
+        # target — XcodeGen's generated scheme had included both.
+        - PiumUITests
       environmentVariables:
         CI: $(CI)
         # Same trick as `CI` above, for the same reason: the latency
