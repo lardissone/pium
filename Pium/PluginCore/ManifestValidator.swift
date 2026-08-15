@@ -47,7 +47,7 @@ enum ManifestValidator {
             guard isValidConfigurationKey(field.key) else {
                 return .invalidConfigurationKey(field.key)
             }
-            guard !PluginTemplate.reservedVariableNames.contains(field.key) else {
+            guard !ArgumentTemplate.reservedVariableNames.contains(field.key) else {
                 return .reservedConfigurationKey(field.key)
             }
             guard seen.insert(field.key).inserted else {
@@ -75,15 +75,13 @@ enum ManifestValidator {
         let declared = Set(manifest.configuration.map(\.key))
 
         for argument in manifest.command.arguments {
-            let tokens: [PluginTemplateToken]
-            switch PluginTemplate.parseAllowingConfiguration(
-                argument, configurationKeys: declared
-            ) {
+            let tokens: [ArgumentTemplateToken]
+            switch ArgumentTemplate.parse(argument, variables: declared) {
             case .success(let parsed): tokens = parsed
-            case .failure(let diagnostic): return diagnostic
+            case .failure(let error): return PluginDiagnostic(error)
             }
 
-            for case .configuration(let key, _) in tokens where secrets.contains(key) {
+            for case .variable(let key, _) in tokens where secrets.contains(key) {
                 return .secretInArguments(key: key)
             }
         }
