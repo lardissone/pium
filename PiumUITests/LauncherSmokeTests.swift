@@ -846,7 +846,10 @@ final class LauncherSmokeTests: XCTestCase {
     private func openLauncherFromMenubar() {
         XCTAssertTrue(statusItem.waitForExistence(timeout: 10))
         statusItem.click()
-        let openItem = app.menuItems["Open Pium"]
+        // "Open Pium!" — the exclamation mark is part of the product's display
+        // name, and so part of this item's title. Matching menu items by their
+        // visible text is what makes that a detail this file has to know.
+        let openItem = app.menuItems["Open Pium!"]
         XCTAssertTrue(openItem.waitForExistence(timeout: 10))
         openItem.click()
     }
