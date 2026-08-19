@@ -36,10 +36,12 @@ jobs:
       - name: Generate project
         run: xcodegen generate
 
-      # PiumUITests is skipped on purpose: XCUITest needs a real GUI session,
+      # PiumUITests is not in this scheme at all: it lives in `PiumUI`, which
+      # this job deliberately does not run. XCUITest needs a real GUI session,
       # and Pium additionally needs a registered global hotkey and a floating
-      # panel. Those run locally. Do not re-enable this without confirming the
-      # runner actually passes.
+      # panel — and asking for UI automation makes macOS prompt for a password
+      # and wait. Those tests run locally. Do not add that scheme here without
+      # confirming the runner actually passes.
       #
       # Within PiumTests, four Spotlight-backed tests (PIUM-50) disable
       # themselves here via `.disabled(if:)` on the `CI` environment variable
@@ -59,7 +61,6 @@ jobs:
             -project Pium.xcodeproj \
             -scheme Pium \
             -destination 'platform=macOS' \
-            -skip-testing:PiumUITests \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Build Release

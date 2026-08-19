@@ -1,17 +1,29 @@
 import Foundation
 
-/// One piece of an argument: text the author wrote, the user's input, or a
-/// value the plugin declares in its configuration.
-enum PluginTemplateToken: Sendable, Equatable {
+/// One piece of an argument: text its author wrote, the user's input, or a
+/// value the caller declares.
+enum ArgumentTemplateToken: Sendable, Equatable {
     case literal(String)
-    case input(PluginTemplateFilter)
-    case configuration(String, PluginTemplateFilter)
+    case input(ArgumentTemplateFilter)
+    case variable(String, ArgumentTemplateFilter)
 }
 
 /// How the user's input is transformed before it reaches the argument.
-enum PluginTemplateFilter: String, Sendable, Equatable, CaseIterable {
+enum ArgumentTemplateFilter: String, Sendable, Equatable, CaseIterable {
     case raw
     case urlEncode = "url_encode"
+}
+
+/// What can be wrong with a template, carried as data rather than as a
+/// sentence.
+///
+/// Two callers word the same rejection differently — a plugin's diagnostic
+/// names a file its author is editing, and reaches the result list — so the
+/// wording belongs to each of them rather than here.
+enum ArgumentTemplateError: Error, Sendable, Equatable {
+    case unclosedPlaceholder(String)
+    case unknownVariable(String)
+    case unknownFilter(String)
 }
 
 /// Parses `{{input}}` and `{{input|url_encode}}` into tokens, and resolves
@@ -21,32 +33,25 @@ enum PluginTemplateFilter: String, Sendable, Equatable, CaseIterable {
 /// resolved tokens into one `argv` element, so nothing the user types can ever
 /// become a separate argument or reach a shell. Validation proves a template is
 /// well formed; execution resolves the tokens.
-enum PluginTemplate {
+enum ArgumentTemplate {
     private static let opening = "{{"
     private static let closing = "}}"
     private static let variableName = "input"
 
-    /// Names a configuration field may not take. `{{input}}` is classified as
-    /// the plugin's own input before the declared keys are consulted, so a
-    /// field by that name is unreachable — and a secret by that name would
-    /// never become a `.configuration` token for the secret-in-arguments guard
-    /// to catch. Rejecting the name is what keeps that guard whole.
+    /// Names a caller's own variables may not take. `{{input}}` is classified
+    /// as the user's input before the declared names are consulted, so a
+    /// variable by that name is unreachable — and a plugin's secret by that
+    /// name would never become a `.variable` token for the secret-in-arguments
+    /// guard to catch. Rejecting the name is what keeps that guard whole.
     static let reservedVariableNames: Set<String> = [variableName]
 
-    /// Arguments may also interpolate a value the manifest declares, so
-    /// validation parses them with the configuration's keys in hand.
-    static func parseAllowingConfiguration(
-        _ string: String,
-        configurationKeys: Set<String>
-    ) -> Result<[PluginTemplateToken], PluginDiagnostic> {
-        parse(string, extraVariables: configurationKeys)
-    }
-
+    /// A template may also interpolate values the caller declares, so parsing
+    /// takes their names in hand.
     static func parse(
         _ string: String,
-        extraVariables: Set<String> = []
-    ) -> Result<[PluginTemplateToken], PluginDiagnostic> {
-        var tokens: [PluginTemplateToken] = []
+        variables: Set<String> = []
+    ) -> Result<[ArgumentTemplateToken], ArgumentTemplateError> {
+        var tokens: [ArgumentTemplateToken] = []
         var remainder = Substring(string)
 
         while let start = remainder.range(of: opening) {
@@ -55,15 +60,13 @@ enum PluginTemplate {
 
             let afterOpening = remainder[start.upperBound...]
             guard let end = afterOpening.range(of: closing) else {
-                return .failure(.invalidTemplate(
-                    String(localized: "plugin.template.unclosed \(string)")
-                ))
+                return .failure(.unclosedPlaceholder(string))
             }
 
             let body = afterOpening[afterOpening.startIndex..<end.lowerBound]
-            switch token(from: body, extraVariables: extraVariables) {
+            switch token(from: body, variables: variables) {
             case .success(let token): tokens.append(token)
-            case .failure(let diagnostic): return .failure(diagnostic)
+            case .failure(let error): return .failure(error)
             }
 
             remainder = afterOpening[end.upperBound...]
@@ -76,49 +79,47 @@ enum PluginTemplate {
     /// Turns the text between the braces into a token.
     private static func token(
         from body: Substring,
-        extraVariables: Set<String>
-    ) -> Result<PluginTemplateToken, PluginDiagnostic> {
+        variables: Set<String>
+    ) -> Result<ArgumentTemplateToken, ArgumentTemplateError> {
         let parts = body.split(separator: "|", maxSplits: 1).map {
             $0.trimmingCharacters(in: .whitespaces)
         }
         guard let name = parts.first,
-              name == variableName || extraVariables.contains(name)
+              name == variableName || variables.contains(name)
         else {
-            return .failure(.invalidTemplate(
-                String(localized: "plugin.template.unknownVariable \(String(body).trimmingCharacters(in: .whitespaces))")
-            ))
+            return .failure(
+                .unknownVariable(String(body).trimmingCharacters(in: .whitespaces))
+            )
         }
 
-        let filter: PluginTemplateFilter
+        let filter: ArgumentTemplateFilter
         if parts.count == 2 {
-            guard let named = PluginTemplateFilter(rawValue: parts[1]) else {
-                return .failure(.invalidTemplate(
-                    String(localized: "plugin.template.unknownFilter \(parts[1])")
-                ))
+            guard let named = ArgumentTemplateFilter(rawValue: parts[1]) else {
+                return .failure(.unknownFilter(parts[1]))
             }
             filter = named
         } else {
             filter = .raw
         }
 
-        return .success(name == variableName ? .input(filter) : .configuration(name, filter))
+        return .success(name == variableName ? .input(filter) : .variable(name, filter))
     }
 
     /// Concatenates resolved tokens into exactly one `argv` element.
     ///
     /// One element, always: an argument is a single string no matter what the
     /// user typed, so nothing can split itself into a second argument and
-    /// nothing reaches a shell. A configuration key with no stored value
-    /// resolves to nothing, never to the template text — a command receiving
-    /// the literal `{{baseURL}}` is worse than one receiving an empty string.
+    /// nothing reaches a shell. A declared variable with no value resolves to
+    /// nothing, never to the template text — a command receiving the literal
+    /// `{{baseURL}}` is worse than one receiving an empty string.
     ///
-    /// Secrets never appear here: `ManifestValidator` rejects a manifest that
-    /// interpolates one, so a `.configuration` token naming a secret cannot
-    /// reach this function.
+    /// A plugin's secrets never appear here: `ManifestValidator` rejects a
+    /// manifest that interpolates one, so a `.variable` token naming a secret
+    /// cannot reach this function.
     static func resolve(
-        _ tokens: [PluginTemplateToken],
+        _ tokens: [ArgumentTemplateToken],
         input: String,
-        configuration: [String: String]
+        variables: [String: String] = [:]
     ) -> String {
         tokens.map { token in
             switch token {
@@ -126,14 +127,14 @@ enum PluginTemplate {
                 text
             case .input(let filter):
                 apply(filter, to: input)
-            case .configuration(let key, let filter):
-                apply(filter, to: configuration[key] ?? "")
+            case .variable(let name, let filter):
+                apply(filter, to: variables[name] ?? "")
             }
         }
         .joined()
     }
 
-    private static func apply(_ filter: PluginTemplateFilter, to value: String) -> String {
+    private static func apply(_ filter: ArgumentTemplateFilter, to value: String) -> String {
         switch filter {
         case .raw:
             value
@@ -175,6 +176,3 @@ enum PluginTemplate {
         return String(decoding: encoded, as: UTF8.self)
     }
 }
-
-/// So a `Result` failure can be thrown from tests and callers alike.
-extension PluginDiagnostic: Error {}

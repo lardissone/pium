@@ -89,6 +89,11 @@ targets:
     scheme:
       testTargets:
         - PiumTests
+      # PiumUITests is deliberately absent, and lives in the `PiumUI` scheme
+      # at the foot of this file instead. Naming a UI testing bundle here makes
+      # `xcodebuild test` ask macOS to enable UI automation for the session,
+      # which prompts for the user's password and blocks until it is answered —
+      # on every run of the unit tests, and even with `-skip-testing` passed.
       environmentVariables:
         CI: $(CI)
         # Same trick as `CI` above, for the same reason: the latency
@@ -125,3 +130,21 @@ targets:
         # app has none. This one lets the sandboxed test runner write the
         # fixtures Pium then reads from the real home. See the file itself.
         CODE_SIGN_ENTITLEMENTS: PiumUITests/PiumUITests.entitlements
+
+# UI tests live in a scheme of their own so that asking for them is a
+# deliberate act. They need a real GUI session, an unlocked screen, and a
+# one-time authorization for UI automation that macOS asks for with a password
+# prompt — none of which should stand between somebody and the unit tests.
+#
+#   xcodebuild test -project Pium.xcodeproj -scheme PiumUI -destination 'platform=macOS'
+#
+# CI does not run this scheme. See .github/workflows/ci.yml for why.
+schemes:
+  PiumUI:
+    build:
+      targets:
+        Pium: all
+        PiumUITests: [test]
+    test:
+      targets:
+        - PiumUITests
