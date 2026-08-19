@@ -92,7 +92,7 @@ final class LauncherSmokeTests: XCTestCase {
 
         // Safari ships with macOS, so it is a safe target on any machine.
         XCTAssertTrue(
-            app.staticTexts["Safari"].waitForExistence(timeout: 10),
+            resultRow(labelled: "Safari").waitForExistence(timeout: 10),
             "Typing a known application name must show it in the results"
         )
     }
@@ -135,7 +135,7 @@ final class LauncherSmokeTests: XCTestCase {
         let searchField = app.textFields["Search"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 10))
         searchField.typeText("safari")
-        XCTAssertTrue(app.staticTexts["Safari"].waitForExistence(timeout: 10))
+        XCTAssertTrue(resultRow(labelled: "Safari").waitForExistence(timeout: 10))
 
         searchField.typeKey("k", modifierFlags: .command)
 
@@ -181,15 +181,9 @@ final class LauncherSmokeTests: XCTestCase {
         XCTAssertTrue(searchField.waitForExistence(timeout: 10))
         searchField.typeText(name)
 
-        // A file row combines its title and its location into one accessibility
-        // element, so it is matched by containment rather than by an exact
-        // title.
-        let row = app.descendants(matching: .any).matching(
-            NSPredicate(
-                format: "identifier == %@ AND value CONTAINS %@",
-                "result.row", "\(name).txt"
-            )
-        ).firstMatch
+        // Containment matters twice over here: a file row's label carries the
+        // folder beside the name, so the name alone is never the whole of it.
+        let row = resultRow(labelled: "\(name).txt")
 
         // Spotlight can take tens of seconds to index a file that was just
         // written, and the launcher only queries when the query changes —
@@ -760,7 +754,7 @@ final class LauncherSmokeTests: XCTestCase {
         let searchField = app.textFields["Search"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 10))
         searchField.typeText("safari")
-        XCTAssertTrue(app.staticTexts["Safari"].waitForExistence(timeout: 10))
+        XCTAssertTrue(resultRow(labelled: "Safari").waitForExistence(timeout: 10))
 
         searchField.typeKey("k", modifierFlags: .command)
         let menuRows = app.descendants(matching: .any).matching(identifier: "action.row")
@@ -801,19 +795,38 @@ final class LauncherSmokeTests: XCTestCase {
         selectedTitle(ofRowsIdentified: "result.row")
     }
 
+    /// A result row, found by the text it reads out.
+    ///
+    /// Not `app.staticTexts["Safari"]`: a result row is one accessibility
+    /// element with its children ignored, so the texts inside it do not exist
+    /// on their own to be looked up. What the row says is its title, its kind
+    /// and its subtitle joined together, so it is matched by containment.
+    private func resultRow(labelled text: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "result.row", text)
+        ).firstMatch
+    }
+
     /// The title of the selected row, once one exists.
     ///
     /// Waits rather than reading straight away: results arrive from an async
-    /// search, and reading `value` off a query with no matches raises "failed
-    /// to get matching snapshot" instead of returning nil. A combined row
-    /// exposes its title as the element's value, not its label.
+    /// search, and reading off a query with no matches raises "failed to get
+    /// matching snapshot" instead of returning nil.
+    ///
+    /// Label or value, whichever the row filled in, because the two lists this
+    /// serves do not describe themselves the same way. An action row combines
+    /// its children, which puts their text in the element's value. A result row
+    /// ignores its children and carries an explicit label instead, so its value
+    /// is empty — reading only the value is what made "Down must move the
+    /// selection" compare two empty strings and see no movement.
     private func selectedTitle(ofRowsIdentified identifier: String) -> String? {
         let selectedRow = app.descendants(matching: .any)
             .matching(identifier: identifier)
             .matching(NSPredicate(format: "selected == true"))
             .firstMatch
         guard selectedRow.waitForExistence(timeout: 10) else { return nil }
-        return selectedRow.value as? String
+        let label = selectedRow.label
+        return label.isEmpty ? selectedRow.value as? String : label
     }
 
     private func waitForChange(
