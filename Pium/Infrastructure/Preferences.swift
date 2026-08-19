@@ -22,6 +22,7 @@ final class Preferences {
         static let debugLoggingExpiry = "pium.debugLoggingExpiry"
         static let additionalSearchPaths = "pium.additionalSearchPaths"
         static let excludedSearchFolders = "pium.excludedSearchFolders"
+        static let bookmarks = "pium.bookmarks"
         /// Read by macOS at launch to pick the application's language.
         static let appleLanguages = "AppleLanguages"
     }
@@ -140,6 +141,32 @@ final class Preferences {
     var excludedSearchFolders: [String] {
         get { defaults.stringArray(forKey: Key.excludedSearchFolders) ?? [] }
         set { defaults.set(newValue, forKey: Key.excludedSearchFolders) }
+    }
+
+    /// The bookmarks the user made, as JSON.
+    ///
+    /// In preferences rather than in a watched folder like the plugins:
+    /// Settings is the only thing that writes these, there is no author
+    /// editing them in a text editor, and there are dozens of them rather
+    /// than hundreds.
+    ///
+    /// Stored data that cannot be read reads as none. It means somebody's hand
+    /// edit or a format that no longer exists, and losing the bookmarks is bad
+    /// where refusing to launch is worse.
+    var bookmarks: [Bookmark] {
+        get {
+            guard
+                let data = defaults.data(forKey: Key.bookmarks),
+                let decoded = try? JSONDecoder().decode([Bookmark].self, from: data)
+            else {
+                return []
+            }
+            return decoded
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue) else { return }
+            defaults.set(data, forKey: Key.bookmarks)
+        }
     }
 
     /// Which protected folders Pium has already asked macOS about.
