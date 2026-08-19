@@ -101,6 +101,22 @@ extension BookmarkDestination {
         }
     }
 
+    /// The destination as a URL, with the argument in it.
+    ///
+    /// A link is parsed as written; a path expands its leading `~` and becomes
+    /// a file URL. `nil` when the template does not resolve, or when what it
+    /// resolved to is not a URL at all — which a link can manage even after
+    /// percent-encoding, given a strange enough argument.
+    func url(input: String) -> URL? {
+        guard let resolved = resolved(input: input) else { return nil }
+        switch self {
+        case .link:
+            return URL(string: resolved)
+        case .path:
+            return URL(fileURLWithPath: (resolved as NSString).expandingTildeInPath)
+        }
+    }
+
     /// The destination with the argument in it, ready to be opened.
     ///
     /// `nil` when the template does not parse, which `parse` above rules out
