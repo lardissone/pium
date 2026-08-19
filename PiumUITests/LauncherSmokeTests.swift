@@ -865,6 +865,49 @@ final class LauncherSmokeTests: XCTestCase {
     func testAbookmarkCanBeMadeAndUnmadeInSettings() {
         let name = "pium-uitest-\(UUID().uuidString.prefix(8))"
 
+        let settings = makeBookmark(named: name, destination: "https://example.com/{{input}}")
+        XCTAssertTrue(
+            settings.staticTexts[name].waitForExistence(timeout: 10),
+            "A saved bookmark must appear in the list"
+        )
+
+        deleteBookmark(named: name, in: settings)
+    }
+
+    /// The whole point of the feature, end to end: something made in Settings
+    /// is something the launcher finds.
+    func testAbookmarkMadeInSettingsIsFoundByTheLauncher() {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))"
+
+        let settings = makeBookmark(named: name, destination: "https://example.com/")
+        XCTAssertTrue(settings.staticTexts[name].waitForExistence(timeout: 10))
+        settings.buttons[XCUIIdentifierCloseWindow].firstMatch.click()
+
+        openLauncherFromMenubar()
+        let searchField = app.textFields["Search"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 10))
+        searchField.typeText(name)
+
+        XCTAssertTrue(
+            resultRow(labelled: name).waitForExistence(timeout: 10),
+            "A bookmark must be searchable the moment it is saved"
+        )
+
+        // Not opened: a test that launches a browser is a test that gets in the
+        // way. What is proved here is that the provider is wired in at all.
+        searchField.typeKey(.escape, modifierFlags: [])
+
+        openSettingsFromMenubar()
+        let reopened = app.windows["Pium! Settings"].firstMatch
+        XCTAssertTrue(reopened.waitForExistence(timeout: 10))
+        reopened.staticTexts["Bookmarks"].click()
+        deleteBookmark(named: name, in: reopened)
+    }
+
+    /// Opens Settings, fills the Bookmarks form in, saves, and hands back the
+    /// window it did it in.
+    @discardableResult
+    private func makeBookmark(named name: String, destination: String) -> XCUIElement {
         openSettingsFromMenubar()
         // Titled rather than "Settings": the window's title is hidden in the
         // chrome but is still what identifies it, and the product's display
@@ -883,18 +926,24 @@ final class LauncherSmokeTests: XCTestCase {
         nameField.click()
         nameField.typeText(name)
 
-        let destination = settings.textFields["bookmark.destination"]
-        destination.click()
-        destination.typeText("https://example.com/{{input}}")
+        let destinationField = settings.textFields["bookmark.destination"]
+        destinationField.click()
+        destinationField.typeText(destination)
 
         settings.buttons["bookmark.save"].click()
+        return settings
+    }
 
+    /// Self-cleaning is not optional here: the application under test writes to
+    /// the real preferences, so a bookmark left behind is a bookmark in the
+    /// developer's own launcher. It is also the only proof the confirmation
+    /// works.
+    private func deleteBookmark(named name: String, in settings: XCUIElement) {
         let row = settings.staticTexts[name]
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "A saved bookmark must appear in the list")
-
-        // And away again, which is also the only proof the confirmation works.
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
         row.click()
         settings.buttons["bookmark.remove"].click()
+
         // Scoped to the window, not the application: macOS synthesises a Touch
         // Bar button for a dialog's default action, and an unscoped query finds
         // that one first and cannot click it.
