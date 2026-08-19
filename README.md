@@ -42,6 +42,15 @@ to that plugin:
 
 `Backspace` on an empty argument goes back.
 
+Bookmarks are the other half: name something once in Settings — a link, a
+file, a folder — and open it from the launcher afterwards. Put `{{input}}` in
+the destination and Pium asks for a value first, so a search URL becomes a
+bookmark you can type into.
+
+Bookmarked web sites are asked for their icon, once per site, and the answer is
+kept on your Mac. That request is the only thing Pium fetches besides its own
+updates; nothing else about a bookmark leaves the machine.
+
 **Status:** early. The version number is honest about how much Pium has been
 used by anyone other than its author.
 

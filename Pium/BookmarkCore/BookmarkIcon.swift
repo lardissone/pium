@@ -25,6 +25,38 @@ enum BookmarkIcon {
             NSWorkspace.shared.urlForApplication(toOpen: $0)
         }
     ) -> IconSource {
+        let cascade = applicationCascade(
+            for: bookmark,
+            applicationForBundleIdentifier: applicationForBundleIdentifier,
+            applicationToOpen: applicationToOpen
+        )
+        // A site's own icon says more about a bookmark than the browser that
+        // would open it — including when the user named that browser, which is
+        // a choice about where it opens rather than about what it is. Only the
+        // web has these, so everything else is the cascade outright.
+        guard let host = webHost(of: bookmark.destination) else { return cascade }
+        return .favicon(host: host, fallback: cascade)
+    }
+
+    /// The host to ask, for an `https` or `http` link and nothing else.
+    private static func webHost(of destination: BookmarkDestination) -> String? {
+        guard
+            case .link = destination,
+            let url = destination.url(input: ""),
+            let scheme = url.scheme?.lowercased(),
+            scheme == "https" || scheme == "http",
+            let host = url.host(), !host.isEmpty
+        else {
+            return nil
+        }
+        return host
+    }
+
+    private static func applicationCascade(
+        for bookmark: Bookmark,
+        applicationForBundleIdentifier: (String) -> URL?,
+        applicationToOpen: (URL) -> URL?
+    ) -> IconSource {
         // The application the user named for this bookmark, which is the most
         // specific thing there is to show. An application that is no longer
         // installed falls through rather than showing nothing.

@@ -15,6 +15,7 @@ struct BookmarksSettingsView: View {
 
     let store: BookmarkStore
     let applications: ApplicationIndex
+    let favicons: FaviconStore
 
     /// Which bookmark the form is showing, if any. A new one has no id yet —
     /// it is not in the store until it is saved, because a half-typed
@@ -36,6 +37,16 @@ struct BookmarksSettingsView: View {
                 list
                 Divider()
                 footer
+                // Under the list rather than in the detail pane: this is true
+                // of the section, not of whichever bookmark is selected, and
+                // somebody has a right to read it without selecting anything.
+                Text(String(localized: "bookmarks.favicon.disclosure"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Tokens.Spacing.tight)
+                    .padding(.bottom, Tokens.Spacing.tight)
             }
             .frame(minWidth: 180, idealWidth: 220, maxWidth: 260)
 
@@ -247,6 +258,11 @@ struct BookmarksSettingsView: View {
                 store.update(bookmark)
             } else {
                 store.add(bookmark)
+            }
+            // Asked for now rather than the first time it is searched for, so
+            // the icon is normally already there when the row appears.
+            if case .favicon(let host, _) = BookmarkIcon.source(for: bookmark) {
+                favicons.prefetch(host: host)
             }
             editing = .existing(bookmark.id)
         }
