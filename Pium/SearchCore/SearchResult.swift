@@ -3,6 +3,7 @@ import Foundation
 /// Which provider produced a result. The order of the cases is also the
 /// tie-break order the PRD fixes for equal scores.
 enum ResultKind: String, Sendable, CaseIterable {
+    case bookmark
     case plugin
     case application
     case file
@@ -10,9 +11,12 @@ enum ResultKind: String, Sendable, CaseIterable {
     /// Lower sorts first when text scores tie.
     var tieBreakRank: Int {
         switch self {
-        case .plugin: 0
-        case .application: 1
-        case .file: 2
+        // A bookmark is the only result the user made by hand, and named
+        // themselves. An equal text score means it is what they meant.
+        case .bookmark: 0
+        case .plugin: 1
+        case .application: 2
+        case .file: 3
         }
     }
 
@@ -22,6 +26,7 @@ enum ResultKind: String, Sendable, CaseIterable {
     /// simply lost.
     var spokenName: String {
         switch self {
+        case .bookmark: String(localized: "result.kind.bookmark")
         case .plugin: String(localized: "result.kind.plugin")
         case .application: String(localized: "result.kind.application")
         case .file: String(localized: "result.kind.file")
@@ -32,7 +37,10 @@ enum ResultKind: String, Sendable, CaseIterable {
 /// Where a row's icon comes from. Resolving it is the view's job, so the model
 /// stays free of AppKit and remains `Sendable`.
 enum IconSource: Sendable, Equatable {
-    case applicationBundle(URL)
+    /// Anything with a file icon: an application bundle, a document, a folder.
+    /// Resolved with `NSWorkspace.icon(forFile:)`, which has an answer for all
+    /// of them.
+    case fileIcon(URL)
     case systemSymbol(String)
     /// A symbol for a row that reports a problem. Separate from `systemSymbol`
     /// so the row can colour it without inferring intent from a symbol name.

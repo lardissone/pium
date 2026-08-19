@@ -114,7 +114,7 @@ final class SpotlightFileProvider: ResultProvider {
             subtitle: SpotlightQuery.subtitle(for: url),
             // Resolved with `NSWorkspace.icon(forFile:)`, which returns the
             // right icon for any file, not only for a bundle.
-            iconSource: .applicationBundle(url),
+            iconSource: .fileIcon(url),
             searchableTerms: [name],
             textScore: score,
             actions: [

@@ -23,6 +23,24 @@ struct ResultRankerTests {
         )
     }
 
+    /// A bookmark is the only result the user made by hand, with a name they
+    /// chose, so an equal text score means it is what they meant.
+    @Test func abookmarkOutranksEverythingElseOnAnEqualScore() {
+        let ranked = ResultRanker.rank(
+            [
+                result("Notes", kind: .file, score: 0.9),
+                result("Notes", kind: .application, score: 0.9),
+                result("Notes", kind: .plugin, score: 0.9),
+                result("Notes", kind: .bookmark, score: 0.9),
+            ],
+            for: TextNormalizer.query("notes"),
+            usage: UsageSnapshot(entries: []),
+            now: now
+        )
+
+        #expect(ranked.map(\.kind) == [.bookmark, .plugin, .application, .file])
+    }
+
     private func files(_ count: Int, score: Double = 0.5) -> [SearchResult] {
         (0..<count).map { result("file\($0)", kind: .file, score: score) }
     }

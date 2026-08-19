@@ -52,7 +52,7 @@ struct ResultRowView: View {
     @ViewBuilder
     private var icon: some View {
         switch result.iconSource {
-        case .applicationBundle(let url):
+        case .fileIcon(let url):
             Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
                 .resizable()
                 .scaledToFit()

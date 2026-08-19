@@ -61,7 +61,7 @@ final class ApplicationProvider: ResultProvider {
             kind: .application,
             title: application.name,
             subtitle: nil,
-            iconSource: .applicationBundle(url),
+            iconSource: .fileIcon(url),
             searchableTerms: [application.name],
             textScore: score,
             actions: [

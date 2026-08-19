@@ -86,6 +86,23 @@
         }
       }
     },
+    "action.copyDestination": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Link"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar enlace"
+          }
+        }
+      }
+    },
     "action.execute": {
       "extractionState": "manual",
       "localizations": {
@@ -1476,6 +1493,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aplicación"
+          }
+        }
+      }
+    },
+    "result.kind.bookmark": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bookmark"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcador"
           }
         }
       }
