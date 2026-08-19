@@ -139,6 +139,21 @@ struct BookmarkIconTests {
         return url.path
     }
 
+    /// The cascade, with any favicon in front of it set aside.
+    ///
+    /// These tests are about which application wins, and a web link now wears
+    /// a favicon over that answer — so the answer they are asking about is the
+    /// fallback.
+    private func cascade(
+        for bookmark: Bookmark,
+        installed: [String: URL] = [:],
+        opener: URL? = nil
+    ) -> IconSource {
+        let source = source(for: bookmark, installed: installed, opener: opener)
+        guard case .favicon(_, let fallback) = source else { return source }
+        return fallback
+    }
+
     private func source(
         for bookmark: Bookmark,
         installed: [String: URL] = [:],
@@ -161,7 +176,7 @@ struct BookmarkIconTests {
         )
 
         #expect(
-            source(for: bookmark, installed: ["com.google.Chrome": chrome], opener: safari)
+            cascade(for: bookmark, installed: ["com.google.Chrome": chrome], opener: safari)
                 == .fileIcon(chrome)
         )
     }
@@ -175,13 +190,13 @@ struct BookmarkIconTests {
             openWith: "com.google.Chrome"
         )
 
-        #expect(source(for: bookmark, installed: [:], opener: safari) == .fileIcon(safari))
+        #expect(cascade(for: bookmark, installed: [:], opener: safari) == .fileIcon(safari))
     }
 
     @Test func alinkOtherwiseShowsWhateverWouldOpenIt() {
         let bookmark = Bookmark(name: "Docs", destination: .link("https://example.com"))
 
-        #expect(source(for: bookmark, opener: safari) == .fileIcon(safari))
+        #expect(cascade(for: bookmark, opener: safari) == .fileIcon(safari))
     }
 
     /// A path shows the thing itself rather than the application that would
@@ -194,6 +209,35 @@ struct BookmarkIconTests {
         let bookmark = Bookmark(name: "Scratch", destination: .path(directory.path))
 
         #expect(iconPath(source(for: bookmark, opener: safari)) == directory.path)
+    }
+
+    /// A site's own icon says more than the browser that would open it, so it
+    /// goes in front of everything — including an application the user chose,
+    /// which is about where it opens rather than about what it is.
+    @Test func anHttpLinkAsksTheSiteForItsIcon() {
+        let bookmark = Bookmark(
+            name: "Docs",
+            destination: .link("https://example.com/a"),
+            openWith: "com.google.Chrome"
+        )
+
+        #expect(
+            source(for: bookmark, installed: ["com.google.Chrome": chrome], opener: safari)
+                == .favicon(host: "example.com", fallback: .fileIcon(chrome))
+        )
+    }
+
+    /// Only the web has favicons. Everything else goes straight to the cascade
+    /// rather than asking a host that will not answer.
+    @Test func nothingButTheWebIsAskedForAnIcon() throws {
+        let scheme = Bookmark(name: "Vault", destination: .link("obsidian://open?vault=x"))
+        #expect(source(for: scheme, opener: safari) == .fileIcon(safari))
+
+        let directory = URL.temporaryDirectory.appending(path: "pium-icon-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let path = Bookmark(name: "Scratch", destination: .path(directory.path))
+        #expect(iconPath(source(for: path, opener: safari)) == directory.path)
     }
 
     /// Nothing resolvable — a path that is not there, or a link nothing

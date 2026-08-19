@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyController = GlobalHotkeyController()
     private let applicationIndex: ApplicationIndex
     private let bookmarks = BookmarkStore()
+    private let favicons = FaviconStore()
     private let pluginIndex: PluginIndex
     private let pluginConfiguration = PluginConfigurationStore()
     private let pluginSecrets = KeychainSecretStore()
@@ -148,7 +149,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ),
             frecency: frecency,
             executionManager: executions,
-            updates: updates
+            updates: updates,
+            favicons: favicons
         )
         super.init()
     }
@@ -243,6 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             bookmarks: bookmarks,
             applications: applicationIndex,
+            favicons: favicons,
             pluginIndex: pluginIndex,
             configuration: pluginConfiguration,
             secrets: pluginSecrets,

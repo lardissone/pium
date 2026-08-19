@@ -15,6 +15,7 @@ struct SettingsView: View {
     let onShortcutChanged: (HotkeyShortcut) -> Void
     let bookmarks: BookmarkStore
     let applications: ApplicationIndex
+    let favicons: FaviconStore
     let pluginIndex: PluginIndex
     let configuration: any PluginConfigurationStoring
     let secrets: any PluginSecretStoring
@@ -75,7 +76,7 @@ struct SettingsView: View {
         case .search:
             SearchSettingsView(frecency: frecency, access: access)
         case .bookmarks:
-            BookmarksSettingsView(store: bookmarks, applications: applications)
+            BookmarksSettingsView(store: bookmarks, applications: applications, favicons: favicons)
         case .plugins:
             PluginsSettingsView(
                 index: pluginIndex,

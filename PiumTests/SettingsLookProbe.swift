@@ -40,6 +40,7 @@ struct SettingsLookProbe {
             onShortcutChanged: { _ in },
             bookmarks: BookmarkStore(),
             applications: ApplicationIndex(),
+            favicons: FaviconStore(),
             pluginIndex: PluginIndex(),
             configuration: PluginConfigurationStore(),
             secrets: KeychainSecretStore(),
@@ -92,7 +93,9 @@ struct SettingsLookProbe {
         window.title = "Bookmarks look probe"
         window.level = .floating
         window.contentView = NSHostingView(
-            rootView: BookmarksSettingsView(store: store, applications: applications)
+            rootView: BookmarksSettingsView(
+                store: store, applications: applications, favicons: FaviconStore()
+            )
         )
         window.center()
         window.makeKeyAndOrderFront(nil)

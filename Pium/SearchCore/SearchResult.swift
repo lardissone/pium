@@ -45,6 +45,10 @@ enum IconSource: Sendable, Equatable {
     /// A symbol for a row that reports a problem. Separate from `systemSymbol`
     /// so the row can colour it without inferring intent from a symbol name.
     case warningSymbol(String)
+    /// A site's own icon, with what to draw until it arrives — and instead of
+    /// it, if the site never answers. Indirect because the fallback is another
+    /// one of these.
+    indirect case favicon(host: String, fallback: IconSource)
 }
 
 /// A result that takes a free-form argument before it can run.

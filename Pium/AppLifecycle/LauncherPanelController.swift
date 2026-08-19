@@ -31,7 +31,8 @@ final class LauncherPanelController: NSObject {
         coordinator: SearchCoordinator,
         frecency: any FrecencyStoring,
         executionManager: ExecutionManager,
-        updates: any UpdateAvailability
+        updates: any UpdateAvailability,
+        favicons: FaviconStore
     ) {
         self.coordinator = coordinator
         self.frecency = frecency
@@ -52,6 +53,10 @@ final class LauncherPanelController: NSObject {
                 onQueryChanged: { [weak self] text in self?.runSearch(text) },
                 onPerform: { [weak self] result, _ in self?.record(result) }
             )
+            // Through the environment rather than down four initialisers: only
+            // the row at the bottom asks for an icon, and nothing between here
+            // and it has any use for the store.
+            .environment(favicons)
         )
         // `NSWindow.delegate` is weak, so this does not retain the controller.
         // Using the delegate rather than a NotificationCenter observer avoids

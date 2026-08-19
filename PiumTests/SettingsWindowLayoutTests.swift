@@ -41,6 +41,7 @@ struct SettingsWindowLayoutTests {
             onShortcutChanged: { _ in },
             bookmarks: BookmarkStore(),
             applications: ApplicationIndex(),
+            favicons: FaviconStore(),
             pluginIndex: PluginIndex(),
             configuration: PluginConfigurationStore(),
             secrets: KeychainSecretStore(),

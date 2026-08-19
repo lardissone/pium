@@ -392,6 +392,23 @@
         }
       }
     },
+    "bookmarks.favicon.disclosure": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium asks each bookmarked site for its icon, once per site, and keeps the answer on this Mac. It is the only thing Pium fetches besides updates."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium le pide el icono a cada sitio marcado, una vez por sitio, y guarda la respuesta en esta Mac. Es lo único que Pium descarga además de las actualizaciones."
+          }
+        }
+      }
+    },
     "bookmarks.field.destination": {
       "extractionState": "manual",
       "localizations": {
