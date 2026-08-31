@@ -49,7 +49,7 @@ final class UpdateController: NSObject, UpdateAvailability {
     /// in `Info.plist` as `SUScheduledCheckInterval`, with the rest of the
     /// Sparkle configuration.
     func start() {
-        guard controller == nil, !Self.isRunningTests else { return }
+        guard controller == nil, !Self.isRunningTests, AppIdentity.current.isRelease else { return }
 
         controller = SPUStandardUpdaterController(
             startingUpdater: true,
@@ -58,6 +58,10 @@ final class UpdateController: NSObject, UpdateAvailability {
         )
     }
 
+    /// A development build is left unstarted for a reason of its own: the
+    /// feed advertises the released application, and taking that update would
+    /// replace the bundle Xcode just built with a copy of the release.
+    ///
     /// `PiumTests` runs inside the app, so launching it launches the updater
     /// too. A started updater whose last check is unknown — every fresh CI
     /// runner — decides it is overdue and asks the real feed immediately, then

@@ -107,6 +107,10 @@ Files come from Spotlight, and Pium creates no index of its own.
 | Settings | `defaults read com.lardissone.pium` |
 | Secrets | macOS Keychain, one item per plugin field |
 
+A build made from source is a separate application: it stores under
+`Pium.debug` and `com.lardissone.pium.debug` instead, and shares only the
+plugins folder.
+
 Deleting the usage history is a button in Settings → Search. Deleting the logs
 is a button in Settings → Advanced.
 

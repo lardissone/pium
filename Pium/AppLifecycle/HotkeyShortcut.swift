@@ -39,6 +39,23 @@ struct HotkeyShortcut: Codable, Equatable, Sendable {
         modifiers: .option,
         keyLabel: "Space"
     )
+
+    /// What a development build starts on.
+    static let controlOptionSpace = HotkeyShortcut(
+        keyCode: UInt16(kVK_Space),
+        modifiers: [.control, .option],
+        keyLabel: "Space"
+    )
+
+    /// The combination a build offers before the user has chosen one.
+    ///
+    /// `RegisterEventHotKey` gives a combination to one process: whichever
+    /// copy asks second is refused and never hears its shortcut. Starting a
+    /// development build on a different combination is what lets it and an
+    /// installed copy both answer.
+    static var productDefault: HotkeyShortcut {
+        AppIdentity.current.isRelease ? .optionSpace : .controlOptionSpace
+    }
 }
 
 extension HotkeyShortcut {

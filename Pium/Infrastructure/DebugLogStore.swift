@@ -21,8 +21,7 @@ actor DebugLogStore {
     /// history rather than all of it.
     static let segmentSizeLimit = 4 * 1024 * 1024
 
-    static let defaultDirectory = URL.applicationSupportDirectory
-        .appending(path: "Pium")
+    static let defaultDirectory = AppIdentity.current.supportDirectory
         .appending(path: "DebugLogs")
 
     private static let fileExtension = "log"

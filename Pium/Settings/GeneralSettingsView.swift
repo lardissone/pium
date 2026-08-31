@@ -5,7 +5,7 @@ struct GeneralSettingsView: View {
     /// Called after the shortcut changes so the hotkey can be re-registered.
     let onShortcutChanged: (HotkeyShortcut) -> Void
 
-    @State private var shortcut = HotkeyShortcut.optionSpace
+    @State private var shortcut = HotkeyShortcut.productDefault
     @State private var preferredLanguage = PreferredLanguage.system
     @State private var launchAtLogin = false
     @State private var loginItemError: String?

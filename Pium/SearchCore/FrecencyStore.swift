@@ -22,7 +22,7 @@ final class FrecencyStore: FrecencyStoring {
 
     /// `~/Library/Application Support/Pium/frecency.json`.
     static var defaultFileURL: URL {
-        let base = URL.applicationSupportDirectory.appending(path: "Pium")
+        let base = AppIdentity.current.supportDirectory
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         return base.appending(path: "frecency.json")
     }

@@ -14,8 +14,15 @@ struct ProjectConfigurationTests {
         #expect(Bundle.main.object(forInfoDictionaryKey: "LSUIElement") as? Bool == true)
     }
 
+    /// The Debug configuration adds a suffix so a build running from Xcode
+    /// keeps its own state, which is why this is a prefix rather than an
+    /// equality: what must not drift is the released identifier the logging
+    /// subsystem, the Keychain service and the Sparkle feed are named from.
     @Test func bundleIdentifierIsStable() {
-        #expect(Bundle.main.bundleIdentifier == "com.lardissone.pium")
+        #expect(AppIdentity.releaseBundleIdentifier == "com.lardissone.pium")
+        #expect(
+            Bundle.main.bundleIdentifier?.hasPrefix(AppIdentity.releaseBundleIdentifier) == true
+        )
     }
 
     /// Sparkle reads both of these from the bundle and there is no code path

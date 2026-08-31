@@ -25,9 +25,10 @@ enum SecretStoreError: Error, Equatable {
 
 @MainActor
 final class KeychainSecretStore: PluginSecretStoring {
-    /// The bundle identifier appears here, so it is written once. Changing it
+    /// Named from the bundle identifier, so a development build reads and
+    /// writes its own items rather than the installed copy's. Changing it
     /// means migrating items stored under the old service name.
-    static let defaultService = "com.lardissone.pium.plugin-secrets"
+    static let defaultService = AppIdentity.current.keychainService
 
     private static let indexKey = "pium.plugin.storedSecrets"
 
