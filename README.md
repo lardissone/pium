@@ -30,7 +30,8 @@ one never recompiles Pium!
 
 Drop that in `~/.config/pium/plugins/hello.pium.json` and it is searchable
 without a restart. The whole format is in
-[docs/plugin-format-v1.md](docs/plugin-format-v1.md).
+[docs/plugin-format-v1.md](docs/plugin-format-v1.md), and `npx skills add
+lardissone/pium` hands the same thing to a coding agent.
 
 A plugin can take one argument. Press space on it and the result list gets out
 of the way — the plugin becomes a pill, and everything typed after it belongs

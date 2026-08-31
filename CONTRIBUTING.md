@@ -131,6 +131,19 @@ The format is documented in
 [docs/plugin-format-v1.md](docs/plugin-format-v1.md), and the schema in
 `Pium/Resources/PluginManifest.schema.json` is what the app actually enforces.
 
+If you write plugins with a coding agent, `skills/pium-plugin` teaches it the
+format and the handful of things that go wrong. Install it into whichever agent
+you use:
+
+```bash
+npx skills add lardissone/pium
+```
+
+The skill reads the schema out of the installed application rather than
+carrying a copy, so it cannot describe a format that shipped in some other
+version. Keep it that way: a rule that belongs in the schema goes in the
+schema.
+
 ## Security
 
 Do not open a public issue for a vulnerability. See [SECURITY.md](SECURITY.md).
