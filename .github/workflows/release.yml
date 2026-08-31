@@ -147,7 +147,6 @@ jobs:
             -project Pium.xcodeproj \
             -scheme Pium \
             -destination 'platform=macOS' \
-            -skip-testing:PiumUITests \
             CODE_SIGNING_ALLOWED=NO
 
       # DEVELOPMENT_TEAM normally comes from Local.xcconfig, which is a

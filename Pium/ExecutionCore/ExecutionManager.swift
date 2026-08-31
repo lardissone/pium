@@ -183,15 +183,15 @@ final class ExecutionManager {
         let keys = Set(manifest.configuration.map(\.key))
 
         return manifest.command.arguments.map { argument in
-            guard case .success(let tokens) = PluginTemplate.parseAllowingConfiguration(
-                argument, configurationKeys: keys
+            guard case .success(let tokens) = ArgumentTemplate.parse(
+                argument, variables: keys
             ) else {
                 // Unreachable: the file could not have loaded with a template
                 // that does not parse. Passing it through unchanged is the
                 // honest fallback — it is what the author wrote.
                 return argument
             }
-            return PluginTemplate.resolve(tokens, input: input, configuration: values)
+            return ArgumentTemplate.resolve(tokens, input: input, variables: values)
         }
     }
 

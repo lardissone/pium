@@ -70,3 +70,23 @@ enum PluginDiagnostic: Sendable, Equatable {
         path.isEmpty ? String(localized: "plugin.diagnostic.rootObject") : path
     }
 }
+
+extension PluginDiagnostic {
+    /// A rejected template, said in the terms a manifest's author is working
+    /// in. `ArgumentTemplate` reports what was wrong as data and leaves the
+    /// sentence to whoever is showing it, because the same rejection reads
+    /// differently to somebody editing a JSON file and somebody filling a form.
+    init(_ error: ArgumentTemplateError) {
+        switch error {
+        case .unclosedPlaceholder(let template):
+            self = .invalidTemplate(String(localized: "plugin.template.unclosed \(template)"))
+        case .unknownVariable(let name):
+            self = .invalidTemplate(String(localized: "plugin.template.unknownVariable \(name)"))
+        case .unknownFilter(let name):
+            self = .invalidTemplate(String(localized: "plugin.template.unknownFilter \(name)"))
+        }
+    }
+}
+
+/// So a `Result` failure can be thrown from tests and callers alike.
+extension PluginDiagnostic: Error {}

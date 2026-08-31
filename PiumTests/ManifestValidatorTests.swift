@@ -81,6 +81,20 @@ struct ManifestValidatorTests {
         }
     }
 
+    /// The diagnostic names what was wrong, not merely that something was: the
+    /// author is looking at a file with several arguments in it, and "invalid
+    /// template" alone does not say which one or why.
+    @Test func aRejectedTemplateNamesWhatWasWrong() {
+        #expect(
+            ManifestValidator.validate(manifest(arguments: ["{{input|base64}}"]))?
+                .message.contains("base64") == true
+        )
+        #expect(
+            ManifestValidator.validate(manifest(arguments: ["{{clipboard}}"]))?
+                .message.contains("clipboard") == true
+        )
+    }
+
     /// PRD §10.4: a secret reaches a child process only as an environment
     /// variable. An argument array is visible in the process table.
     @Test func asecretInterpolatedIntoAnArgumentIsRejected() {
