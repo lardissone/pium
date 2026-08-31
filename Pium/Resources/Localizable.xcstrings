@@ -171,6 +171,40 @@
         }
       }
     },
+    "bookmark.open.applicationMissing %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not installed, so this opened with the default application."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no está instalada, así que esto se abrió con la aplicación por defecto."
+          }
+        }
+      }
+    },
+    "bookmark.open.unopenable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not something macOS can open."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es algo que macOS pueda abrir."
+          }
+        }
+      }
+    },
     "execution.failure.alreadyRunning %@": {
       "extractionState": "manual",
       "localizations": {
