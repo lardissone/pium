@@ -47,9 +47,17 @@ enum ArgumentTemplate {
 
     /// A template may also interpolate values the caller declares, so parsing
     /// takes their names in hand.
+    ///
+    /// `defaultFilter` is what a placeholder written without one means. It is
+    /// the caller's policy rather than the parser's: text going into a URL has
+    /// to be percent-encoded and text going into a file name must not be, and
+    /// neither caller should have to make its users write the filter out. It
+    /// also keeps `{{input}}` and `{{input|raw}}` distinguishable, which they
+    /// would not be if a bare placeholder were resolved to `.raw` here.
     static func parse(
         _ string: String,
-        variables: Set<String> = []
+        variables: Set<String> = [],
+        defaultFilter: ArgumentTemplateFilter = .raw
     ) -> Result<[ArgumentTemplateToken], ArgumentTemplateError> {
         var tokens: [ArgumentTemplateToken] = []
         var remainder = Substring(string)
@@ -64,7 +72,7 @@ enum ArgumentTemplate {
             }
 
             let body = afterOpening[afterOpening.startIndex..<end.lowerBound]
-            switch token(from: body, variables: variables) {
+            switch token(from: body, variables: variables, defaultFilter: defaultFilter) {
             case .success(let token): tokens.append(token)
             case .failure(let error): return .failure(error)
             }
@@ -79,7 +87,8 @@ enum ArgumentTemplate {
     /// Turns the text between the braces into a token.
     private static func token(
         from body: Substring,
-        variables: Set<String>
+        variables: Set<String>,
+        defaultFilter: ArgumentTemplateFilter
     ) -> Result<ArgumentTemplateToken, ArgumentTemplateError> {
         let parts = body.split(separator: "|", maxSplits: 1).map {
             $0.trimmingCharacters(in: .whitespaces)
@@ -99,7 +108,7 @@ enum ArgumentTemplate {
             }
             filter = named
         } else {
-            filter = .raw
+            filter = defaultFilter
         }
 
         return .success(name == variableName ? .input(filter) : .variable(name, filter))
