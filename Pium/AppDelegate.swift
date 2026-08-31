@@ -93,6 +93,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 providers: [
                     // Listed in the PRD's tie-break order. Ranking does not read
                     // this order, but a reader looking for it should find it.
+                    BookmarkProvider(
+                        store: bookmarks,
+                        // Opening never goes through `ExecutionManager`: it
+                        // starts no process, and must not queue behind a plugin
+                        // holding the single run slot.
+                        open: { [opener = BookmarkOpener(report: { hud.show($0) })] bookmark, input in
+                            opener.open(bookmark, input: input)
+                        }
+                    ),
                     PluginProvider(
                         index: plugins,
                         status: {
