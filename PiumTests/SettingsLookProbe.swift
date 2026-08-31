@@ -38,6 +38,8 @@ struct SettingsLookProbe {
             frecency: FrecencyStore(),
             access: ProtectedFolderAccess(preferences: .shared),
             onShortcutChanged: { _ in },
+            bookmarks: BookmarkStore(),
+            applications: ApplicationIndex(),
             pluginIndex: PluginIndex(),
             configuration: PluginConfigurationStore(),
             secrets: KeychainSecretStore(),
@@ -49,6 +51,54 @@ struct SettingsLookProbe {
         let window = try #require(
             NSApp.windows.first { $0.title == String(localized: "settings.windowTitle") }
         )
+        print("LOOK  window=\(window.windowNumber)")
+        RunLoop.current.run(until: Date().addingTimeInterval(30))
+        window.orderOut(nil)
+    }
+
+    /// The Bookmarks section on its own, with something in it.
+    ///
+    /// Separate from the probe above because the section list is chosen by a
+    /// click, and nothing here can click. Hosting the one section directly is
+    /// what makes its own layout — the split, the form, the line under the
+    /// destination field — visible without driving the whole window.
+    ///
+    /// Its store is an isolated defaults domain, so photographing this never
+    /// touches the bookmarks the developer actually has.
+    @Test func holdBookmarksOpenForCapture() throws {
+        let suiteName = "com.lardissone.pium.look.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suiteName) }
+
+        let store = BookmarkStore(preferences: Preferences(defaults: defaults))
+        store.add(
+            Bookmark(
+                name: "Search YouTube",
+                destination: .link("https://www.youtube.com/results?search_query={{input}}"),
+                keywords: ["yt", "video"]
+            )
+        )
+        store.add(Bookmark(name: "Notes", destination: .path("~/Documents")))
+
+        let applications = ApplicationIndex()
+        applications.refresh()
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 420),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Bookmarks look probe"
+        window.level = .floating
+        window.contentView = NSHostingView(
+            rootView: BookmarksSettingsView(store: store, applications: applications)
+        )
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        RunLoop.current.run(until: Date().addingTimeInterval(2))
         print("LOOK  window=\(window.windowNumber)")
         RunLoop.current.run(until: Date().addingTimeInterval(30))
         window.orderOut(nil)

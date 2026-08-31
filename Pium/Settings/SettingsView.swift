@@ -13,6 +13,8 @@ struct SettingsView: View {
     let frecency: any FrecencyStoring
     let access: ProtectedFolderAccess
     let onShortcutChanged: (HotkeyShortcut) -> Void
+    let bookmarks: BookmarkStore
+    let applications: ApplicationIndex
     let pluginIndex: PluginIndex
     let configuration: any PluginConfigurationStoring
     let secrets: any PluginSecretStoring
@@ -72,6 +74,8 @@ struct SettingsView: View {
             GeneralSettingsView(onShortcutChanged: onShortcutChanged)
         case .search:
             SearchSettingsView(frecency: frecency, access: access)
+        case .bookmarks:
+            BookmarksSettingsView(store: bookmarks, applications: applications)
         case .plugins:
             PluginsSettingsView(
                 index: pluginIndex,
@@ -92,6 +96,7 @@ struct SettingsView: View {
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general
     case search
+    case bookmarks
     case plugins
     case appearance
     case updates
@@ -103,6 +108,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: String(localized: "settings.general.title")
         case .search: String(localized: "settings.search.title")
+        case .bookmarks: String(localized: "settings.bookmarks.title")
         case .plugins: String(localized: "settings.plugins.title")
         case .appearance: String(localized: "settings.appearance.title")
         case .updates: String(localized: "settings.updates.title")
@@ -114,6 +120,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape"
         case .search: "magnifyingglass"
+        case .bookmarks: "bookmark"
         case .plugins: "puzzlepiece.extension"
         case .appearance: "paintbrush"
         case .updates: "arrow.down.circle"

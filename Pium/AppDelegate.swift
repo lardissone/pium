@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let hotkeyController = GlobalHotkeyController()
     private let applicationIndex: ApplicationIndex
+    private let bookmarks = BookmarkStore()
     private let pluginIndex: PluginIndex
     private let pluginConfiguration = PluginConfigurationStore()
     private let pluginSecrets = KeychainSecretStore()
@@ -240,6 +241,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onShortcutChanged: { [weak self] shortcut in
                 self?.registerShortcut(shortcut)
             },
+            bookmarks: bookmarks,
+            applications: applicationIndex,
             pluginIndex: pluginIndex,
             configuration: pluginConfiguration,
             secrets: pluginSecrets,

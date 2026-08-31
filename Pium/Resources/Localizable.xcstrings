@@ -171,6 +171,40 @@
         }
       }
     },
+    "bookmark.destination.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bookmark needs a destination."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un marcador necesita un destino."
+          }
+        }
+      }
+    },
+    "bookmark.destination.unrecognized %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is neither a link nor a path. A link carries a scheme, like https:// or obsidian://; a path starts with / or ~."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es ni un enlace ni una ruta. Un enlace lleva un esquema, como https:// u obsidian://; una ruta empieza con / o ~."
+          }
+        }
+      }
+    },
     "bookmark.open.applicationMissing %@": {
       "extractionState": "manual",
       "localizations": {
@@ -201,6 +235,397 @@
           "stringUnit": {
             "state": "translated",
             "value": "«%@» no es algo que macOS pueda abrir."
+          }
+        }
+      }
+    },
+    "bookmark.template.unclosed %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” opens {{ and never closes it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» abre {{ y nunca lo cierra."
+          }
+        }
+      }
+    },
+    "bookmark.template.unknownFilter %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not a filter Pium knows. A bookmark takes raw, and encodes for you otherwise."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es un filtro que Pium conozca. Un marcador acepta raw, y si no, codifica por vos."
+          }
+        }
+      }
+    },
+    "bookmark.template.unknownVariable %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” is not something Pium can fill in. The only one a bookmark takes is {{input}}."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» no es algo que Pium pueda completar. Lo único que un marcador acepta es {{input}}."
+          }
+        }
+      }
+    },
+    "bookmarks.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a bookmark"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregar un marcador"
+          }
+        }
+      }
+    },
+    "bookmarks.delete.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar"
+          }
+        }
+      }
+    },
+    "bookmarks.delete.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This cannot be undone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto no se puede deshacer."
+          }
+        }
+      }
+    },
+    "bookmarks.delete.title %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete “%@”?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Borrar «%@»?"
+          }
+        }
+      }
+    },
+    "bookmarks.empty.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add one with the + below, and it will turn up in the launcher as soon as you type its name."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agregá uno con el + de abajo y va a aparecer en el launcher apenas escribas su nombre."
+          }
+        }
+      }
+    },
+    "bookmarks.empty.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No bookmarks yet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todavía no hay marcadores"
+          }
+        }
+      }
+    },
+    "bookmarks.field.destination": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destination"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino"
+          }
+        }
+      }
+    },
+    "bookmarks.field.keywords": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keywords"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palabras clave"
+          }
+        }
+      }
+    },
+    "bookmarks.field.keywords.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Separated by commas."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Separadas por comas."
+          }
+        }
+      }
+    },
+    "bookmarks.field.name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre"
+          }
+        }
+      }
+    },
+    "bookmarks.field.openWith": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open with"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir con"
+          }
+        }
+      }
+    },
+    "bookmarks.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New bookmark"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcador nuevo"
+          }
+        }
+      }
+    },
+    "bookmarks.openWith.systemDefault": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS default"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por defecto de macOS"
+          }
+        }
+      }
+    },
+    "bookmarks.problem.nameIsEmpty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bookmark needs a name."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un marcador necesita un nombre."
+          }
+        }
+      }
+    },
+    "bookmarks.reading.link": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read as a link."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se lee como un enlace."
+          }
+        }
+      }
+    },
+    "bookmarks.reading.path": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read as a place on this Mac."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se lee como un lugar en esta Mac."
+          }
+        }
+      }
+    },
+    "bookmarks.reading.takesArgument": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium will ask you for a value before opening it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pium te va a pedir un valor antes de abrirlo."
+          }
+        }
+      }
+    },
+    "bookmarks.remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete the selected bookmark"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar el marcador seleccionado"
+          }
+        }
+      }
+    },
+    "bookmarks.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar"
+          }
+        }
+      }
+    },
+    "bookmarks.whatIsAbookmark": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bookmark is something you name once and open from the launcher afterwards: a link, a file, a folder. Put {{input}} in the destination and Pium will ask you for a value before opening it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un marcador es algo que nombrás una vez y después abrís desde el launcher: un enlace, un archivo, una carpeta. Poné {{input}} en el destino y Pium te va a pedir un valor antes de abrirlo."
           }
         }
       }
@@ -2156,6 +2581,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apariencia"
+          }
+        }
+      }
+    },
+    "settings.bookmarks.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bookmarks"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcadores"
           }
         }
       }

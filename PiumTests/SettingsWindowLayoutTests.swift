@@ -39,6 +39,8 @@ struct SettingsWindowLayoutTests {
             frecency: FrecencyStore(),
             access: ProtectedFolderAccess(preferences: .shared),
             onShortcutChanged: { _ in },
+            bookmarks: BookmarkStore(),
+            applications: ApplicationIndex(),
             pluginIndex: PluginIndex(),
             configuration: PluginConfigurationStore(),
             secrets: KeychainSecretStore(),

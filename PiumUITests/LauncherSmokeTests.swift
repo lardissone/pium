@@ -856,6 +856,72 @@ final class LauncherSmokeTests: XCTestCase {
         app.menuBars.statusItems.firstMatch
     }
 
+    /// Making a bookmark, in the only place a person can: Settings.
+    ///
+    /// Self-cleaning on purpose. The application under test writes to the real
+    /// preferences, so a bookmark left behind is a bookmark in the developer's
+    /// own launcher — and deleting it through the same section is the only way
+    /// to prove `−` and its confirmation work anyway.
+    func testAbookmarkCanBeMadeAndUnmadeInSettings() {
+        let name = "pium-uitest-\(UUID().uuidString.prefix(8))"
+
+        openSettingsFromMenubar()
+        // Titled rather than "Settings": the window's title is hidden in the
+        // chrome but is still what identifies it, and the product's display
+        // name is part of it.
+        let settings = app.windows["Pium! Settings"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 10))
+
+        settings.staticTexts["Bookmarks"].click()
+
+        let add = settings.buttons["bookmark.add"]
+        XCTAssertTrue(add.waitForExistence(timeout: 10), "The Bookmarks section must offer a +")
+        add.click()
+
+        let nameField = settings.textFields["bookmark.name"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 10), "+ must open a form")
+        nameField.click()
+        nameField.typeText(name)
+
+        let destination = settings.textFields["bookmark.destination"]
+        destination.click()
+        destination.typeText("https://example.com/{{input}}")
+
+        settings.buttons["bookmark.save"].click()
+
+        let row = settings.staticTexts[name]
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "A saved bookmark must appear in the list")
+
+        // And away again, which is also the only proof the confirmation works.
+        row.click()
+        settings.buttons["bookmark.remove"].click()
+        // Scoped to the window, not the application: macOS synthesises a Touch
+        // Bar button for a dialog's default action, and an unscoped query finds
+        // that one first and cannot click it.
+        let confirm = settings.descendants(matching: .button)
+            .matching(identifier: "bookmark.delete.confirm").firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "Deleting must ask first")
+        confirm.click()
+
+        XCTAssertTrue(row.waitForNonExistence(timeout: 10), "A deleted bookmark must be gone")
+    }
+
+    private func openSettingsFromMenubar() {
+        XCTAssertTrue(statusItem.waitForExistence(timeout: 10))
+        statusItem.click()
+
+        // Two items carry this title and both are real: the one in the status
+        // menu just opened, and the app menu's `⌘,` item that `SettingsMenuItem`
+        // rewires to the same window. Only the open menu's is hittable, which
+        // is the difference the test wants and the one AppKit will keep.
+        let candidates = app.menuItems.matching(identifier: "Settings…")
+        let item = (0..<candidates.count)
+            .map { candidates.element(boundBy: $0) }
+            .first { $0.isHittable }
+        XCTAssertNotNil(item, "The status menu must offer Settings…")
+        item?.click()
+    }
+
     private func openLauncherFromMenubar() {
         XCTAssertTrue(statusItem.waitForExistence(timeout: 10))
         statusItem.click()
