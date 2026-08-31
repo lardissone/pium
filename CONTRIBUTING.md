@@ -43,6 +43,25 @@ Without it the unit tests still run
 (`-only-testing:PiumTests CODE_SIGNING_ALLOWED=NO`), but the UI tests and any
 signed build do not.
 
+## Running it beside an installed copy
+
+A Debug build is `com.lardissone.pium.debug`, calls itself **Pium! (Debug)** in
+the menu bar, and keeps everything it stores somewhere of its own:
+`~/Library/Application Support/Pium.debug`, its own Keychain items, its own
+defaults domain, and `⌃⌥Space` instead of `⌥Space` — macOS gives a global
+shortcut to one process, so sharing a default would leave whichever copy
+started second unable to hear it. It also never asks the update feed, which
+advertises the released application and would replace the bundle you just
+built.
+
+`AppIdentity` is where those names come from, and it appends rather than
+substitutes, so a Release build's names are exactly what an installed copy
+already uses. Anything new that persists state belongs behind it.
+
+Plugins are the exception and stay shared, in `~/.config/pium/plugins/`: they
+are your files, not Pium's state, and a development build is meant to see the
+same ones.
+
 ## House style
 
 The code has a voice. Matching it matters more than any rule below, and reading

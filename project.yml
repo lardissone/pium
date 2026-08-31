@@ -57,13 +57,6 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: Pium/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: com.lardissone.pium
-        # The name people see — in Finder, in Spotlight, in an alert macOS
-        # raises about the app. The exclamation mark is part of the product
-        # name. Only the display name carries it: the bundle stays `Pium.app`
-        # and the identifier stays `com.lardissone.pium`, so nothing that resolves
-        # the app by path or id has to know about it.
-        INFOPLIST_KEY_CFBundleDisplayName: Pium!
         # Menubar agent: no Dock icon, no default main window.
         INFOPLIST_KEY_LSUIElement: YES
         # The catalog is picked up as a resource by the `Pium` source path
@@ -78,6 +71,23 @@ targets:
         INFOPLIST_KEY_NSDocumentsFolderUsageDescription: "Pium! searches your Documents folder so its files appear in your results."
         INFOPLIST_KEY_NSDesktopFolderUsageDescription: "Pium! searches your Desktop so its files appear in your results."
         INFOPLIST_KEY_NSDownloadsFolderUsageDescription: "Pium! searches your Downloads folder so its files appear in your results."
+      # The identity, which is what keeps a build running from Xcode from
+      # rewriting the state of the copy installed in `/Applications`. macOS
+      # gives them separate user defaults on the identifier alone, and
+      # `AppIdentity` names everything else Pium stores from it in turn. The
+      # display name says which is which in the menu bar.
+      #
+      # The exclamation mark is part of the product name, and only the display
+      # name carries it: the bundle stays `Pium.app` and the released
+      # identifier stays `com.lardissone.pium`, so nothing that resolves the
+      # app by path or id has to know about it.
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.lardissone.pium.debug
+          INFOPLIST_KEY_CFBundleDisplayName: Pium! (Debug)
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: com.lardissone.pium
+          INFOPLIST_KEY_CFBundleDisplayName: Pium!
     # Explicit rather than XcodeGen's auto-generated scheme, so the test
     # action can declare an environment variable: `xcodebuild test` does not
     # forward its own shell environment to a macOS test host on its own, so

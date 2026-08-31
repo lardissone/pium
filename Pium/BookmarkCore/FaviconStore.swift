@@ -41,7 +41,7 @@ final class FaviconStore {
     /// `~/Library/Caches/Pium/Favicons`. A cache, not application support:
     /// everything here can be fetched again, and macOS may remove it.
     static var defaultDirectory: URL {
-        URL.cachesDirectory.appending(path: "Pium/Favicons")
+        AppIdentity.current.cacheDirectory.appending(path: "Favicons")
     }
 
     init(

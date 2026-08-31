@@ -34,11 +34,13 @@ struct PreferencesTests {
         #expect(reloaded.excludedSearchFolders == ["node_modules", "/Users/someone/archive"])
     }
 
-    @Test func shortcutDefaultsToOptionSpace() {
+    /// Which combination that is depends on the build, so the expectation is
+    /// written against the same source the app reads.
+    @Test func shortcutDefaultsToTheProductDefault() {
         let (preferences, _, suite) = makeIsolatedPreferences()
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
 
-        #expect(preferences.shortcut == .optionSpace)
+        #expect(preferences.shortcut == .productDefault)
     }
 
     @Test func shortcutSurvivesAWriteAndReload() {
@@ -65,7 +67,7 @@ struct PreferencesTests {
         defaults.set(Data("not json".utf8), forKey: "pium.shortcut")
 
         let preferences = Preferences(defaults: defaults)
-        #expect(preferences.shortcut == .optionSpace)
+        #expect(preferences.shortcut == .productDefault)
     }
 
     @Test func onboardingStartsIncomplete() {

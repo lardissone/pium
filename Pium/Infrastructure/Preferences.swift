@@ -42,7 +42,7 @@ final class Preferences {
             else {
                 // Missing or unreadable: the product default takes over rather
                 // than leaving the user with no way to open the launcher.
-                return .optionSpace
+                return .productDefault
             }
             return decoded
         }
